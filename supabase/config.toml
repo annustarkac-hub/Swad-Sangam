@@ -1,0 +1,20 @@
+# Supabase CLI configuration (used by `supabase db push` / `supabase functions deploy`
+# in .github/workflows/deploy-backend.yml). The hosted project is configured in
+# the Supabase dashboard; these values only matter for the CLI and local dev.
+project_id = "swad-sangam"
+
+[api]
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 500
+
+[auth]
+site_url = "http://localhost:5173"
+enable_signup = true
+
+[auth.email]
+enable_confirmations = true
+
+[functions.push-order-status]
+# Called by the database with a shared secret, not a user JWT.
+verify_jwt = false

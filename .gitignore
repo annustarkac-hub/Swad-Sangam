@@ -1,0 +1,24 @@
+# OS / editors
+.DS_Store
+.idea/
+*.iml
+.vscode/
+
+# Secrets — never commit
+*.jks
+*.keystore
+keystore.properties
+local.properties
+google-services.json
+.env
+.env.local
+service-account*.json
+
+# Builds
+android/.gradle/
+android/build/
+android/app/build/
+android/.kotlin/
+admin-dashboard/node_modules/
+admin-dashboard/dist/
+supabase/.temp/
