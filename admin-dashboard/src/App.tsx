@@ -12,20 +12,41 @@ import OrdersPage from "./pages/OrdersPage";
 import QrPage from "./pages/QrPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
+import AccountingPage from "./pages/AccountingPage";
+import ExpensesPage from "./pages/ExpensesPage";
+import InsightsPage from "./pages/InsightsPage";
+import InventoryPage from "./pages/InventoryPage";
+import PartiesPage from "./pages/PartiesPage";
+import PayrollPage from "./pages/PayrollPage";
+import PosPage from "./pages/PosPage";
+import TablesPage from "./pages/TablesPage";
 import StaffPage from "./pages/StaffPage";
 import type { Role } from "./lib/types";
 
+const FOH: Role[] = ["OWNER", "MANAGER", "STAFF", "CASHIER", "WAITER"];
+const MGMT: Role[] = ["OWNER", "MANAGER"];
+const FIN: Role[] = ["OWNER", "MANAGER", "ACCOUNTANT"];
+
 const NAV: { to: string; label: string; roles: Role[] }[] = [
-  { to: "/", label: "Dashboard", roles: ["OWNER", "MANAGER", "STAFF"] },
-  { to: "/orders", label: "Orders", roles: ["OWNER", "MANAGER", "STAFF"] },
-  { to: "/kitchen", label: "Kitchen", roles: ["OWNER", "MANAGER", "STAFF", "KITCHEN"] },
-  { to: "/menu", label: "Menu", roles: ["OWNER", "MANAGER", "STAFF", "KITCHEN"] },
-  { to: "/offers", label: "Offers", roles: ["OWNER", "MANAGER"] },
-  { to: "/reports", label: "Reports", roles: ["OWNER", "MANAGER"] },
-  { to: "/feedback", label: "Feedback", roles: ["OWNER", "MANAGER"] },
+  { to: "/", label: "Dashboard", roles: [...FOH, "ACCOUNTANT"] },
+  { to: "/pos", label: "POS / Billing", roles: FOH },
+  { to: "/orders", label: "Orders", roles: FOH },
+  { to: "/kitchen", label: "Kitchen", roles: [...FOH, "KITCHEN"] },
+  { to: "/tables", label: "Tables", roles: FOH },
+  { to: "/menu", label: "Menu", roles: [...FOH, "KITCHEN"] },
+  { to: "/inventory", label: "Inventory", roles: [...FIN, "KITCHEN"] },
+  { to: "/accounting", label: "Accounts", roles: FIN },
+  { to: "/expenses", label: "Expenses", roles: [...FIN, "STAFF", "CASHIER"] },
+  { to: "/khata", label: "Khata", roles: FIN },
+  { to: "/suppliers", label: "Suppliers", roles: FIN },
+  { to: "/payroll", label: "Payroll", roles: FIN },
+  { to: "/reports", label: "Reports", roles: FIN },
+  { to: "/insights", label: "Insights", roles: FIN },
+  { to: "/offers", label: "Offers", roles: MGMT },
+  { to: "/feedback", label: "Feedback", roles: MGMT },
+  { to: "/qr", label: "QR codes", roles: MGMT },
+  { to: "/staff", label: "Staff logins", roles: MGMT },
   { to: "/settings", label: "Settings", roles: ["OWNER"] },
-  { to: "/staff", label: "Staff", roles: ["OWNER", "MANAGER"] },
-  { to: "/qr", label: "QR codes", roles: ["OWNER", "MANAGER"] },
   { to: "/audit", label: "Audit log", roles: ["OWNER"] },
 ];
 
@@ -65,7 +86,7 @@ export default function App() {
     );
   }
 
-  const home = role === "KITCHEN" ? "/kitchen" : "/";
+  const home = role === "KITCHEN" ? "/kitchen" : role === "ACCOUNTANT" ? "/accounting" : "/";
 
   return (
     <div className="shell">
@@ -87,12 +108,21 @@ export default function App() {
       </header>
       <main className="content">
         <Routes>
-          <Route path="/" element={role === "KITCHEN" ? <Navigate to="/kitchen" /> : <DashboardPage />} />
-          <Route path="/orders" element={<Guard roles={["OWNER", "MANAGER", "STAFF"]}><OrdersPage /></Guard>} />
+          <Route path="/" element={role === "KITCHEN" ? <Navigate to="/kitchen" /> : role === "ACCOUNTANT" ? <Navigate to="/accounting" /> : <DashboardPage />} />
+          <Route path="/pos" element={<Guard roles={FOH}><PosPage /></Guard>} />
+          <Route path="/tables" element={<Guard roles={FOH}><TablesPage /></Guard>} />
+          <Route path="/inventory" element={<Guard roles={[...FIN, "KITCHEN"]}><InventoryPage /></Guard>} />
+          <Route path="/accounting" element={<Guard roles={FIN}><AccountingPage /></Guard>} />
+          <Route path="/expenses" element={<Guard roles={[...FIN, "STAFF", "CASHIER"]}><ExpensesPage /></Guard>} />
+          <Route path="/khata" element={<Guard roles={FIN}><PartiesPage kind="CUSTOMER" /></Guard>} />
+          <Route path="/suppliers" element={<Guard roles={FIN}><PartiesPage kind="SUPPLIER" /></Guard>} />
+          <Route path="/payroll" element={<Guard roles={FIN}><PayrollPage /></Guard>} />
+          <Route path="/insights" element={<Guard roles={FIN}><InsightsPage /></Guard>} />
+          <Route path="/orders" element={<Guard roles={FOH}><OrdersPage /></Guard>} />
           <Route path="/kitchen" element={<KitchenPage />} />
           <Route path="/menu" element={<MenuPage />} />
           <Route path="/offers" element={<Guard roles={["OWNER", "MANAGER"]}><OffersPage /></Guard>} />
-          <Route path="/reports" element={<Guard roles={["OWNER", "MANAGER"]}><ReportsPage /></Guard>} />
+          <Route path="/reports" element={<Guard roles={FIN}><ReportsPage /></Guard>} />
           <Route path="/feedback" element={<Guard roles={["OWNER", "MANAGER"]}><FeedbackPage /></Guard>} />
           <Route path="/settings" element={<Guard roles={["OWNER"]}><SettingsPage /></Guard>} />
           <Route path="/staff" element={<Guard roles={["OWNER", "MANAGER"]}><StaffPage /></Guard>} />

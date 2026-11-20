@@ -9,7 +9,10 @@ const ROLES: { r: Role; d: string }[] = [
   { r: "OWNER", d: "Full access" },
   { r: "MANAGER", d: "Menu, orders, reports" },
   { r: "STAFF", d: "View and update orders" },
-  { r: "KITCHEN", d: "Preparation queue only" },
+  { r: "CASHIER", d: "POS billing, payments, cash register, orders" },
+  { r: "WAITER", d: "Take table orders on POS (no payments)" },
+  { r: "KITCHEN", d: "Preparation queue, stock wastage" },
+  { r: "ACCOUNTANT", d: "Accounts, expenses, suppliers, khata, payroll, reports" },
 ];
 
 export default function StaffPage() {

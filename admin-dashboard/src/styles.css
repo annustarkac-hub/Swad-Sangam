@@ -62,7 +62,8 @@ label.check input { width: auto; margin: 0; }
 }
 .brand { font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
 .brand .muted { color: #f6d9b5; font-weight: 400; }
-.nav { display: flex; gap: 0.25rem; flex-wrap: wrap; flex: 1; }
+.nav { display: flex; gap: 0.25rem; flex-wrap: nowrap; overflow-x: auto; flex: 1; scrollbar-width: thin; }
+.nav a { white-space: nowrap; }
 .nav a { color: #fff; text-decoration: none; padding: 0.4rem 0.65rem; border-radius: 6px; font-size: 0.92rem; }
 .nav a.active { background: rgba(255, 255, 255, 0.2); }
 .user { display: flex; align-items: center; gap: 0.4rem; }
@@ -120,4 +121,9 @@ th { background: #f6ebdd; }
 @media (max-width: 640px) {
   .content { padding: 0.75rem; }
   .user .muted { display: none; }
+}
+
+@media print {
+  .topbar, .tabs, button, .no-print { display: none !important; }
+  body, .content { background: #fff; }
 }

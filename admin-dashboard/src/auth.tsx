@@ -69,6 +69,8 @@ export function useAuth(): AuthState {
   return v;
 }
 
+/** Mirrors private.role_matches(): CASHIER and WAITER count as STAFF. */
 export function can(role: Role | null, ...allowed: Role[]): boolean {
-  return role != null && allowed.includes(role);
+  if (role == null) return false;
+  return allowed.includes(role) || ((role === "CASHIER" || role === "WAITER") && allowed.includes("STAFF"));
 }

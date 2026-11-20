@@ -17,7 +17,8 @@ const TEXT: [string, string][] = [
   ["upi_id", "UPI ID shown for pay-at-restaurant"], ["fssai_number", "FSSAI licence/registration no. (14 digits)"],
   ["gstin", "GSTIN (if registered)"], ["legal_business_name", "Legal business name"], ["parking_info", "Parking information"],
   ["dine_in_info", "Dine-in information"], ["delivery_area_note", "Delivery area description"], ["delivery_radius_km", "Delivery radius (km)"],
-  ["tax_label", "Tax label (e.g. GST)"], ["rating", "Public rating (e.g. 4.5)"], ["review_count", "Public review count"],
+  ["tax_label", "Tax label (e.g. GST)"], ["gst_scheme", "GST scheme: REGULAR or COMPOSITION"], ["sac_code", "SAC code on invoices"],
+  ["place_of_supply", "Place of supply (state)"], ["invoice_footer", "Bill footer text"], ["receipt_width_mm", "Receipt printer width (58 or 80)"], ["rating", "Public rating (e.g. 4.5)"], ["review_count", "Public review count"],
   ["reviews_url", "Link to public reviews (Google)"], ["privacy_policy_url", "Privacy policy URL"], ["terms_url", "Order terms URL"],
 ];
 const MONEY: [string, string][] = [
@@ -36,6 +37,7 @@ const SWITCHES: [string, string][] = [
   ["cash_enabled", "Cash on pickup/delivery"], ["upi_at_restaurant_enabled", "UPI at restaurant"],
   ["temporarily_closed", "Temporarily closed"], ["allow_cancel_after_accept", "Customers may cancel after acceptance"],
   ["prices_include_tax", "Menu prices include tax"], ["hours_verified", "Opening hours confirmed by owner"],
+  ["gst_registered", "GST registered (print tax invoices)"], ["gst_input_credit", "Claim input tax credit on purchases"],
 ];
 
 export default function SettingsPage() {

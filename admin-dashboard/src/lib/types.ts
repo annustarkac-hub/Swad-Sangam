@@ -1,4 +1,4 @@
-export type Role = "OWNER" | "MANAGER" | "STAFF" | "KITCHEN";
+export type Role = "OWNER" | "MANAGER" | "STAFF" | "KITCHEN" | "CASHIER" | "WAITER" | "ACCOUNTANT";
 export type OrderStatus = "PLACED" | "ACCEPTED" | "PREPARING" | "READY" | "OUT_FOR_DELIVERY" | "COMPLETED" | "REJECTED" | "CANCELLED";
 export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUND_PENDING" | "REFUNDED";
 

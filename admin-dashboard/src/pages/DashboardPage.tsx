@@ -4,6 +4,7 @@ import { can, useAuth } from "../auth";
 import { requestNotifyPermission, unlockAudio } from "../lib/alert";
 import { dateTime, minutesSince, rupees } from "../lib/format";
 import { friendlyError, supabase } from "../lib/supabase";
+import { Overview } from "./AccountingPage";
 
 interface Summary {
   todayOrders: number; pending: number; accepted: number; preparing: number; ready: number;
@@ -90,6 +91,7 @@ export default function DashboardPage() {
             <Stat l="Gross sales (completed)" v={rupees(s.grossSalesPaise)} />
             <Stat l="Payments collected" v={rupees(s.collectedPaise)} />
           </div>
+          {can(role, "OWNER", "MANAGER") && <><h2>Business today</h2><Overview /></>}
           <h2>Best-selling dishes (30 days)</h2>
           {s.bestSellers.length === 0 ? (
             <p className="muted small">Shown once there are at least 20 completed orders in 30 days.</p>
