@@ -121,10 +121,10 @@ begin
                           when 'SUPPLIER' then (select name from public.suppliers where id = t.party_id)
                           else (select name from public.employees where id = t.party_id) end,
       'balancePaise', t.bal, 'lastActivity', t.last_date,
-      'd0_30', coalesce((select sum(due) from open o where o.party_id = t.party_id and current_date - o.entry_date <= 30),0),
-      'd31_60', coalesce((select sum(due) from open o where o.party_id = t.party_id and current_date - o.entry_date between 31 and 60),0),
-      'd61_90', coalesce((select sum(due) from open o where o.party_id = t.party_id and current_date - o.entry_date between 61 and 90),0),
-      'd90plus', coalesce((select sum(due) from open o where o.party_id = t.party_id and current_date - o.entry_date > 90),0))
+      'd0_30', coalesce((select sum(due) from open o where o.party_id = t.party_id and ((now() at time zone 'Asia/Kolkata')::date - o.entry_date) <= 30),0),
+      'd31_60', coalesce((select sum(due) from open o where o.party_id = t.party_id and ((now() at time zone 'Asia/Kolkata')::date - o.entry_date) between 31 and 60),0),
+      'd61_90', coalesce((select sum(due) from open o where o.party_id = t.party_id and ((now() at time zone 'Asia/Kolkata')::date - o.entry_date) between 61 and 90),0),
+      'd90plus', coalesce((select sum(due) from open o where o.party_id = t.party_id and ((now() at time zone 'Asia/Kolkata')::date - o.entry_date) > 90),0))
       order by t.bal desc)
       from tot t where t.bal <> 0), '[]'::jsonb);
 end $$;

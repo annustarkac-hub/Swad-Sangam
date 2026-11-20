@@ -10,6 +10,8 @@ begin
   raise notice 'ok - %', p_name;
 end $$;
 set client_min_messages = notice;
+-- dates in India time (journal entry dates are IST)
+create or replace function pg_temp.today() returns date language sql as $$ select (now() at time zone 'Asia/Kolkata')::date $$;
 
 -- every journal entry so far must balance
 create or replace function pg_temp.books_balanced() returns boolean language sql as $$
@@ -115,12 +117,12 @@ select pg_temp.check((select credit_paise from public.journal_lines l join publi
    where e.source='SALE' and e.source_ref = (select o->>'id' from pos) and l.account_id = private.acct('4000')) = 18571,
    'GST separated from inclusive price (195/1.05)');
 set role authenticated;
-select pg_temp.check((public.trial_balance(current_date)->>'totalDebitPaise') = (public.trial_balance(current_date)->>'totalCreditPaise'), 'trial balance totals equal');
-select pg_temp.check((public.balance_sheet(current_date)->>'balanced')::boolean, 'balance sheet balances');
+select pg_temp.check((public.trial_balance(pg_temp.today())->>'totalDebitPaise') = (public.trial_balance(pg_temp.today())->>'totalCreditPaise'), 'trial balance totals equal');
+select pg_temp.check((public.balance_sheet(pg_temp.today())->>'balanced')::boolean, 'balance sheet balances');
 select pg_temp.check((public.party_balances('CUSTOMER')->0->>'balancePaise')::bigint = 5000, 'customer khata outstanding 50');
 select public.record_customer_receipt('{"customerId":1,"amountPaise":3000,"tender":"UPI"}');
 select pg_temp.check((public.party_balances('CUSTOMER')->0->>'balancePaise')::bigint = 2000, 'khata payment collected');
-select pg_temp.check((public.account_ledger('1100', current_date - 1, current_date, 'CUSTOMER', 1)->>'closingPaise')::bigint = 2000, 'customer statement closing balance');
+select pg_temp.check((public.account_ledger('1100', pg_temp.today() - 1, pg_temp.today(), 'CUSTOMER', 1)->>'closingPaise')::bigint = 2000, 'customer statement closing balance');
 select public.record_expense('{"accountCode":"5400","amountPaise":250000,"tender":"BANK","vendorName":"UPCL"}');
 select pg_temp.check((select status from public.expenses order by id desc limit 1) = 'APPROVED', 'accountant expense auto-approved');
 do $$ begin
@@ -138,11 +140,11 @@ do $$ begin
 exception when others then if sqlerrm = 'ledger edited' then raise; end if; end $$;
 select pg_temp.check(true, 'posted journal lines are immutable');
 set role authenticated;
-select pg_temp.check((public.profit_and_loss(current_date - 1, current_date)->>'netProfitPaise') is not null, 'P&L runs');
-select pg_temp.check(jsonb_array_length(public.gst_report(current_date - 1, current_date)->'outward') >= 1, 'GST report has outward supplies');
-select pg_temp.check((public.cash_flow(current_date - 1, current_date)->'closing'->>'1000') is not null, 'cash flow runs');
+select pg_temp.check((public.profit_and_loss(pg_temp.today() - 1, pg_temp.today())->>'netProfitPaise') is not null, 'P&L runs');
+select pg_temp.check(jsonb_array_length(public.gst_report(pg_temp.today() - 1, pg_temp.today())->'outward') >= 1, 'GST report has outward supplies');
+select pg_temp.check((public.cash_flow(pg_temp.today() - 1, pg_temp.today())->'closing'->>'1000') is not null, 'cash flow runs');
 select pg_temp.check(jsonb_array_length(public.menu_costing()) > 0, 'menu costing');
-select pg_temp.check((public.business_insights(current_date - 1, current_date)->>'salesPaise')::bigint > 0, 'business insights');
+select pg_temp.check((public.business_insights(pg_temp.today() - 1, pg_temp.today())->>'salesPaise')::bigint > 0, 'business insights');
 
 -- ---------- cash register close ----------
 set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000e1';
@@ -158,14 +160,14 @@ select public.stock_adjust(jsonb_build_object('type','COUNT','itemId',(select id
 select pg_temp.check((select qty from public.stock_items where name='Atta') = 18.5, 'wastage and physical count applied');
 
 -- ---------- payroll ----------
-select public.mark_attendance((select id from public.employees limit 1), date_trunc('month', current_date)::date, 'ABSENT');
+select public.mark_attendance((select id from public.employees limit 1), date_trunc('month', pg_temp.today())::date, 'ABSENT');
 select public.give_salary_advance((select id from public.employees limit 1), 200000, 'CASH', 'Festival');
-create temp table pv as select public.payroll_preview(current_date) as p;
+create temp table pv as select public.payroll_preview(pg_temp.today()) as p;
 grant select on pv to public;
 select pg_temp.check((select (p->0->>'advanceRecoveredPaise')::bigint from pv) = 200000, 'advance recovered from salary');
-select public.run_payroll(current_date, 'BANK');
+select public.run_payroll(pg_temp.today(), 'BANK');
 select pg_temp.check((select count(*) from public.payroll_lines) = 1, 'payroll posted');
-select pg_temp.check((public.run_payroll(current_date, 'BANK')->>'employeesPaid')::int = 0, 'payroll not paid twice');
+select pg_temp.check((public.run_payroll(pg_temp.today(), 'BANK')->>'employeesPaid')::int = 0, 'payroll not paid twice');
 select pg_temp.check((public.party_balances('EMPLOYEE') = '[]'::jsonb), 'advance cleared');
 select pg_temp.check((select (public.erp_overview()->>'todayOrders')::int) >= 1, 'owner overview');
 reset role;
