@@ -123,7 +123,7 @@ export default function SettingsPage() {
       <h2>Charges</h2>
       <div className="form-grid">
         {MONEY.map(([k, l]) => (
-          <label key={k}>{l}<input inputMode="decimal" defaultValue={fromPaise(s[k] as number)} onBlur={(e) => set(k, toPaise(e.target.value || "0") ?? 0)} /></label>
+          <label key={k + String(orig?.updated_at)}>{l}<input inputMode="decimal" defaultValue={fromPaise(s[k] as number)} onBlur={(e) => set(k, toPaise(e.target.value || "0") ?? 0)} /></label>
         ))}
         {NUM.map(([k, l]) => (
           <label key={k}>{l}<input type="number" value={String(s[k] ?? "")} onChange={(e) => set(k, Number(e.target.value))} /></label>

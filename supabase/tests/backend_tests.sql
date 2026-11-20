@@ -10,6 +10,15 @@ begin
   if not coalesce(p_ok, false) then raise exception 'TEST FAILED: %', p_name; end if;
   raise notice 'ok - %', p_name;
 end $$;
+-- true when the query returns no rows OR the role has no privilege at all (both are secure)
+create or replace function pg_temp.sees_nothing(p_sql text) returns boolean language plpgsql as $$
+declare n bigint;
+begin
+  execute 'select count(*) from (' || p_sql || ') x' into n;
+  return n = 0;
+exception when insufficient_privilege then
+  return true;
+end $$;
 set client_min_messages = notice;
 
 -- ---------- fixtures: users ----------
@@ -36,7 +45,7 @@ select pg_temp.check(private.is_open_at('{"1":[{"open":"18:00","close":"02:00"}]
 set role anon;
 select pg_temp.check((select count(*) from public.menu_items) = 12, 'anon can read menu');
 select pg_temp.check((select count(*) from public.categories) = 7, 'inactive categories hidden');
-select pg_temp.check((select count(*) from public.orders) = 0, 'anon cannot read orders');
+select pg_temp.check(pg_temp.sees_nothing('select * from public.orders'), 'anon cannot read orders');
 do $$ begin
   perform count(*) from public.coupons;
   raise exception 'anon read coupons';
@@ -117,7 +126,7 @@ reset role;
 set role authenticated;
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 set request.jwt.claims = '{"email":"stranger@test.in"}';
-select pg_temp.check((select count(*) from public.orders) = 0, 'inactive signup sees no orders');
+select pg_temp.check(pg_temp.sees_nothing('select * from public.orders'), 'inactive signup sees no orders');
 do $$ begin
   perform public.dashboard_summary();
   raise exception 'stranger read dashboard';
@@ -131,7 +140,7 @@ do $$ begin
   raise exception 'kitchen accepted order';
 exception when insufficient_privilege then null; end $$;
 select pg_temp.check(true, 'kitchen cannot accept orders');
-select pg_temp.check((select count(*) from public.orders) = 0, 'kitchen cannot read customer orders table');
+select pg_temp.check(pg_temp.sees_nothing('select * from public.orders'), 'kitchen cannot read customer orders table');
 
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
 set request.jwt.claims = '{"email":"staff@test.in"}';

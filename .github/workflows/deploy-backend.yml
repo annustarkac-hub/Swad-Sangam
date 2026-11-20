@@ -1,0 +1,35 @@
+# One-click backend deployment to your free Supabase project.
+# Run it from the Actions tab → "Deploy backend" → "Run workflow".
+# Needs repository secrets: SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF, SUPABASE_DB_PASSWORD.
+name: Deploy backend
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_function:
+        description: "Also deploy the push-notification function"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Link project
+        run: supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+      - name: Apply database migrations
+        run: supabase db push --password "$SUPABASE_DB_PASSWORD"
+      - name: Deploy push-notification function
+        if: inputs.deploy_function
+        run: supabase functions deploy push-order-status --project-ref "$PROJECT_REF" --no-verify-jwt

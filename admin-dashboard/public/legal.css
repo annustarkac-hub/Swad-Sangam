@@ -1,0 +1,8 @@
+:root { --red:#9E3528; --text:#34241F; --cream:#FFF8EF; }
+body { margin:0; background:var(--cream); color:var(--text); font:16px/1.6 Roboto, system-ui, sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { color: var(--red); font-size: 1.7rem; }
+h2 { font-size: 1.15rem; margin-top: 1.6rem; }
+.note { background:#fde2b8; padding:10px 14px; border-radius:8px; font-size:.92rem; }
+table { border-collapse: collapse; width: 100%; }
+td, th { border: 1px solid #ecdccb; padding: 6px 8px; text-align: left; vertical-align: top; }

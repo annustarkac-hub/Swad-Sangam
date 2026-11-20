@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- PRD §8 proposed brand palette -->
+    <color name="brand_red">#9E3528</color>
+    <color name="brand_saffron">#E8A13B</color>
+    <color name="brand_cream">#FFF8EF</color>
+    <color name="brand_text">#34241F</color>
+    <color name="ic_launcher_background">#9E3528</color>
+</resources>
