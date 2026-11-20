@@ -121,3 +121,46 @@ Automated: 50+ SQL assertions (`supabase/tests`), Kotlin unit tests (`BusinessRu
 `docs/PLAY_STORE_LISTING.md`, `docs/SETUP_GUIDE.md`, `.github/workflows/*`, `docs/LAUNCH_CHECKLIST.md`.
 Ownership (PRD §19): all accounts (GitHub, Supabase, Firebase, Play Console, signing key) are created **by the owner**
 following the setup guide; developers get role-based access only.
+
+---
+
+# Restaurant ERP (owner's expanded scope, Nov 2026)
+
+Owner direction: **free website + Android APK are the focus; Play Store not needed; everything on free services.**
+
+| Module | Status | Where |
+|---|---|---|
+| Free customer website (PWA, installable, offline menu, Hindi/English, QR table ordering, order tracking, reorder) | ✅ | `admin-dashboard/index.html`, `src/site/` |
+| Free APK distribution | ✅ | `.github/workflows/release-apk.yml` → GitHub Releases `swad-sangam.apk` |
+| POS: dine-in / takeaway / delivery / counter, table-wise, multiple open bills, hold & resume (add items), KOT print & reprint | ✅ | `pos_create_order`, `pos_add_items`, `PosPage` |
+| Split, partial and credit (khata) payments; cash change; dynamic UPI QR; card/UPI references; idempotent | ✅ | `record_order_payment`, `PaymentModal` |
+| Discounts (bill-level) and complimentary items — manager/owner only, audited | ✅ | `pos_set_discount`, `price_lines` |
+| Receipts / tax invoice / bill of supply, 58 & 80 mm, duplicate marking, invoice numbering | ✅ | `get_receipt`, `components/Receipt.ts` |
+| Cash register: opening cash, expected vs counted, shortage/excess posted | ✅ | `open/close_cash_session` |
+| Refunds and corrections posted to ledger | ✅ | `order_adjustments` trigger |
+| Double-entry ledger: chart of accounts, journal, balanced & immutable, reversal, manual journal, opening balances | ✅ | migration 7 |
+| Trial balance, P&L, balance sheet, cash flow, account & party ledgers, CSV/Excel export, print-to-PDF | ✅ | migration 11, `AccountingPage` |
+| Customer ledger (khata): credit limits, receipts, statements, FIFO ageing, WhatsApp reminder link | ✅ | `PartiesPage` |
+| Supplier ledger: purchase invoices, partial payments, statements, ageing | ✅ | `record_purchase`, `record_supplier_payment` |
+| GST: registration/scheme settings, CGST/SGST split, inclusive/exclusive, SAC, input credit option, GST summary | ✅ (verify with CA) | settings + `gst_report` |
+| Inventory: items, units (kg/g/l/ml/pc conversion), opening stock, receipts, wastage, physical count, low-stock alerts, batch & expiry, weighted-average valuation, movement history | ✅ | migration 8, `InventoryPage` |
+| Recipes, auto stock deduction once per completed order, recipe cost, food cost %, margin | ✅ | `consume_stock`, `menu_costing` |
+| Expenses: categories, tender, vendor, bill photo (private storage), approval, journal posting, recurring reminders | ✅ | `ExpensesPage` |
+| Employees, attendance, overtime hours, salary advances, monthly payroll, payslips | ✅ | migration 10, `PayrollPage` |
+| Tables (status, cleaning) and reservations / waiting list | ✅ | `TablesPage` |
+| Roles: Owner, Manager, Cashier, Waiter, Kitchen, Accountant (+Staff) enforced in the database | ✅ | `private.role_matches` |
+| Owner overview: sales, orders, AOV, cash/UPI/card, receivables, payables, expenses, est. gross profit, food cost %, top items, low stock, KOTs, attendance | ✅ | `erp_overview` |
+| Business insights: busiest hours, dish profitability, wastage, supplier rate comparison, break-even | ✅ (estimates labelled) | `business_insights` |
+| Daily encrypted backups | ✅ | `.github/workflows/backup.yml` |
+| Hindi owner guide | ✅ | `docs/OWNER_GUIDE_HINDI.md` |
+
+## Not built yet (honest list — next phases)
+
+- Fully **offline POS** with local queue and background sync (POS is online-first with safe retries — ADR-6).
+- Split one bill into several / merge two bills / table transfer.
+- Purchase requests → purchase orders → quotations → GRN workflow (purchases are recorded directly as invoices); purchase returns / debit & credit notes.
+- Kitchen stations, item-level preparation status, voice alerts in the kitchen.
+- Loyalty points, birthday offers, customer lifetime value; automatic WhatsApp/SMS sending (needs a paid/approved provider — not added without owner approval).
+- Leave balances and shift rosters; bank reconciliation screen; FIFO stock valuation option (weighted average only).
+- Customer display screen; direct ESC/POS printer driver (printing uses the browser print dialog, which works with thermal printers that have a driver).
+- Android app UI polish with the external design skill repositories the owner listed (not fetched in this round).

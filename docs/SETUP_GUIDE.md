@@ -1,9 +1,18 @@
 # Swad Sangam — Setup guide (no coding needed)
 
 > **Hinglish mein short summary:** Is guide ko step-by-step follow karo. Har step mein sirf website par
-> click karna hai aur kuch text copy-paste karna hai. Sab kuch **free** hai — sirf Google Play Store
-> account ke liye Google ek baar **$25 (~₹2,100)** leta hai. Agar Play Store nahi chahiye to APK file
-> WhatsApp / website se directly share kar sakte ho (bilkul free).
+> click karna hai aur kuch text copy-paste karna hai. **Sab kuch free hai** — customer website, Android APK
+> download, restaurant admin/POS/accounts, backups. Play Store zaroori nahi hai.
+>
+> Aapko milega:
+> - **Customer website:** `https://annustarkac-hub.github.io/Swad-Sangam/` — menu, order, table QR ordering, order tracking
+> - **Android app (APK):** website ke “Android app” button se free download
+> - **Restaurant admin / POS / accounts:** `https://annustarkac-hub.github.io/Swad-Sangam/admin.html`
+>
+> Daily use ke liye Hindi guide: **docs/OWNER_GUIDE_HINDI.md**
+
+> **Pehla kaam:** GitHub par is branch ka Pull Request **main** mein merge karo. GitHub ke buttons
+> (Actions → Run workflow) sirf main branch par dikhte hain.
 
 You will set up four free services. Do them in this order. Keep a notebook (or a private Google Doc)
 for the passwords and keys you create — **never** post them in WhatsApp groups or on GitHub issues.
@@ -12,9 +21,10 @@ for the passwords and keys you create — **never** post them in WhatsApp groups
 |---|---------|--------------|------|
 | 1 | **Supabase** | Database: menu, orders, staff logins, photos | Free plan |
 | 2 | **GitHub** (this repository) | Builds the Android app and dashboard automatically | Free |
-| 3 | **GitHub Pages or Netlify** | Hosts the admin dashboard + privacy policy | Free |
-| 4 | **Firebase** (optional) | Push notifications + crash reports | Free (Spark plan) |
-| 5 | **Google Play Console** (optional) | Publish on Play Store | **$25 one-time** (only paid item) |
+| 3 | **GitHub Pages** | Hosts the customer website, admin/POS, privacy policy | Free (repo is public) |
+| 4 | **GitHub Releases** | Free download link for the Android APK | Free |
+| 5 | **Firebase** (optional) | Instant push notifications + crash reports | Free (Spark plan) |
+| — | Google Play Console | **Not needed.** Optional later ($25 one-time) | — |
 
 ---
 
@@ -39,8 +49,8 @@ for the passwords and keys you create — **never** post them in WhatsApp groups
 **Easiest way (copy-paste):**
 
 1. In Supabase open **SQL Editor → New query**.
-2. In this GitHub repository open the folder `supabase/migrations`. There are 5 files. For **each file in
-   order** (`…0001_schema.sql`, `…0002_…`, `…0003_…`, `…0004_seed.sql`, `…0005_…`):
+2. In this GitHub repository open the folder `supabase/migrations`. There are 11 files. For **each file in
+   order** (`…0001_schema.sql` … `…0011_erp_reports_security.sql`) — **one file per Run**:
    open it → click **Raw** → select all → copy → paste into the SQL editor → **Run**.
    You should see “Success. No rows returned”.
 3. Open **Table Editor** — you should see `menu_items` with the 12 seed dishes.
@@ -72,16 +82,17 @@ Optional (only for the one-click “Deploy backend” workflow):
 | `SUPABASE_DB_PASSWORD` | database password from Step 1 |
 | `SUPABASE_ACCESS_TOKEN` | Supabase → your avatar → **Account → Access Tokens → Generate** |
 
-## Step 5 — Put the admin dashboard online (free)
+## Step 5 — Put the website + admin online (free)
 
 Choose **one**:
 
-**A. GitHub Pages** (works if this repository is **public**, or you have GitHub Pro):
+**A. GitHub Pages** (recommended — this repository is public, so it is free):
 1. **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 2. **Settings → Secrets and variables → Actions → Variables tab → New variable**:
    `ENABLE_GITHUB_PAGES` = `true`.
 3. **Actions → Admin dashboard → Run workflow**. When it finishes, the address is shown on the run page,
-   e.g. `https://<your-username>.github.io/Swad-Sangam/`.
+   `https://annustarkac-hub.github.io/Swad-Sangam/` = customer website,
+   `https://annustarkac-hub.github.io/Swad-Sangam/admin.html` = restaurant admin / POS / accounts.
 
 **B. Netlify** (works with **private** repositories):
 1. <https://app.netlify.com> → sign in with GitHub → **Add new site → Import an existing project** → pick this repo.
@@ -97,7 +108,7 @@ Go back to Supabase Step 3 and set **Site URL** to the dashboard address.
 
 ## Step 6 — Create the owner login
 
-1. Open the dashboard → **New staff? Create account** → use the owner's email → confirm the email.
+1. Open `…/admin.html` → **New staff? Create account** → use the owner's email → confirm the email.
 2. In Supabase **SQL Editor** run (with the owner's email):
    ```sql
    select public.make_owner('owner@example.com');
@@ -117,7 +128,7 @@ In the dashboard:
    (the Beverages category stays hidden until it has dishes).
 3. **QR codes** — print table and “download the app” QR codes when you are ready.
 
-## Step 8 — Build the Android app
+## Step 8 — Test build of the Android app
 
 1. **Actions → Android app → Run workflow** (it also runs automatically on every change).
 2. When it is green ✅, open the run → **Artifacts** → download **swad-sangam-debug-apk**.
@@ -127,13 +138,33 @@ In the dashboard:
 
 > The debug app is called `in.swadsangam.restaurant.debug` so it can be installed next to the real one.
 
-## Step 9 — Release signing key (needed for Play Store)
+## Step 9 — Publish the Android APK for customers (free)
 
 1. **Actions → Create signing key (run once) → Run workflow** → type `YES`.
 2. Download the **signing-key** artifact within 24 hours. Save `release.jks` and `KEY-INFO.txt` in **two safe
-   places** (e.g. Google Drive + a pen drive). If you lose this key you cannot update the app easily.
+   places** (e.g. Google Drive + a pen drive). Every future app update must be signed with this same key —
+   if it is lost, customers must uninstall and reinstall.
 3. Add the four secrets listed in `KEY-INFO.txt` to GitHub (Step 4 screen).
-4. Re-run **Android app**. The **swad-sangam-release** artifact now contains a signed `app-release.aab`.
+4. **Actions → Release Android APK → Run workflow.** It creates a release with `swad-sangam.apk`.
+5. The website’s **Android app** button and the link
+   `https://github.com/annustarkac-hub/Swad-Sangam/releases/latest/download/swad-sangam.apk`
+   now always give the newest version. Share that link on WhatsApp, print it as a QR (dashboard → QR codes).
+6. Customers: open link → download → allow “Install unknown apps” → Install. For an update they install the new APK
+   over the old one. (Android shows a warning for apps outside Play Store — that is normal.)
+
+## Step 9b — Daily backups (free, strongly recommended)
+
+The Supabase free plan has **no automatic backups**.
+1. Supabase → **Connect** (top bar) → **Session pooler** → copy the URI and put your database password in it.
+2. GitHub secrets: `SUPABASE_DB_URL` = that URI, `BACKUP_PASSPHRASE` = a long secret phrase (write it in your notebook —
+   without it the backup cannot be opened).
+3. **Actions → Database backup** runs every night; each run keeps an encrypted backup for 30 days.
+   Restoring needs a technical person: decrypt with `gpg -d file.dump.gpg > db.dump`, then `pg_restore -d <URL> db.dump`.
+
+## Step 9c (optional, later) — Play Store bundle
+
+The same signing key from Step 9 also signs the Play Store bundle: **Actions → Android app** → artifact
+**swad-sangam-release** → `app-release.aab`. Only needed if you decide to publish on Google Play later (Step 11).
 
 ## Step 10 (optional) — Push notifications with Firebase (free)
 
@@ -162,7 +193,7 @@ background every ~15 minutes. With it, updates arrive instantly.
    ```
 8. Re-run **Android app** and install the new APK. Crashlytics crash reports also start working.
 
-## Step 11 (optional) — Publish on Google Play
+## Step 11 (optional, later) — Publish on Google Play
 
 Follow `docs/PLAY_STORE_LISTING.md` (store text, Data safety answers, content rating) and
 `docs/LAUNCH_CHECKLIST.md`. Summary:
@@ -173,9 +204,10 @@ Follow `docs/PLAY_STORE_LISTING.md` (store text, Data safety answers, content ra
 
 ## QR table ordering
 
-The dashboard **QR codes** page makes one QR per table. Scanning opens the app on the menu with the table
-number filled in (turn on **Dine-in / table orders** in Settings). The link format is
-`swadsangam://menu?table=5`. If you later buy a website domain you can switch to `https://` App Links.
+The dashboard **QR codes** page makes one QR per table. Scanning (any phone camera, Android or iPhone, no app needed)
+opens the website menu with the table number filled in (turn on **Dine-in / table orders** in Settings).
+Link format: `https://annustarkac-hub.github.io/Swad-Sangam/index.html?table=5`. Orders appear in the POS / Orders
+screen with the table number.
 
 ## Keeping it free and healthy
 

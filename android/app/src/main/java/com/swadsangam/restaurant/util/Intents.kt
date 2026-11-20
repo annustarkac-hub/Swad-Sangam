@@ -34,7 +34,7 @@ object Intents {
     fun share(context: Context, info: RestaurantInfo) {
         val text = context.getString(
             R.string.share_text, info.name, info.address, info.phone, mapsUrl(info),
-            "https://play.google.com/store/apps/details?id=in.swadsangam.restaurant",
+            "https://github.com/annustarkac-hub/Swad-Sangam/releases/latest/download/swad-sangam.apk",
         )
         val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
         safeStart(context, Intent.createChooser(send, context.getString(R.string.share)))
