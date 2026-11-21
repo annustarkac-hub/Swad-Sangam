@@ -233,4 +233,11 @@
     <string name="notif_rejected">ऑर्डर स्वीकार नहीं हुआ</string>
     <string name="notif_cancelled">ऑर्डर रद्द हुआ</string>
     <string name="notif_body">ऑर्डर %1$s</string>
+    <string name="choose_one">एक चुनें</string>
+    <string name="variant_regular">सामान्य</string>
+    <string name="table_code">टेबल कोड (स्टाफ़ से पूछें)</string>
+    <string name="table_code_error">स्टाफ़ द्वारा बताया गया 4 अंकों का कोड लिखें</string>
+    <string name="see_all">सभी देखें</string>
+    <string name="add_ons">अतिरिक्त</string>
+    <string name="from_price">%1$s से</string>
 </resources>

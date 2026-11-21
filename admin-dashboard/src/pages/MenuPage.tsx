@@ -80,15 +80,17 @@ export default function MenuPage() {
                 <tbody>
                   {list.map((it) => (
                     <tr key={it.id} style={{ opacity: it.is_archived ? 0.5 : 1 }}>
-                      <td style={{ width: 64 }}>{it.image_url ? <img className="thumb" src={it.image_url} alt="" /> : <div className="thumb" />}{it.image_is_representative && <div className="small muted">sample</div>}</td>
+                      <td className="menu-thumb">{it.image_url ? <img className="thumb" src={it.image_url} alt="" loading="lazy"
+                        onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden"; }} /> : <div className="thumb" />}
+                        {it.image_is_representative && <div className="small muted" title="Stock photo — upload your own in Edit">stock</div>}</td>
                       <td>
                         <FoodDot type={it.food_type} /> <b>{it.name}</b> {it.is_popular && <span className="badge">Popular</span>}
                         {!it.details_verified && <span className="badge" title="Not verified by owner">Unverified</span>}
                         <div className="small muted">{it.description}</div>
                         {it.options.length > 0 && <div className="small">{it.variant_base_label ? `${it.variant_base_label} ${rupees(it.price_paise)} · ` : "Options: "}{it.options.map((o) => `${o.name} ${o.group ? rupees(it.price_paise + o.pricePaise) : "+" + rupees(o.pricePaise)}`).join(" · ")}</div>}
                       </td>
-                      <td className="right"><b>{rupees(it.price_paise)}</b></td>
-                      <td style={{ width: 170 }}>
+                      <td className="right menu-price"><b>{rupees(it.price_paise)}</b></td>
+                      <td className="menu-actions">
                         <button className={it.is_available ? "ok small" : "danger small"} onClick={() => void toggleAvailable(it)}
                           title="Tap to change availability">
                           {it.is_available ? "Available" : "Unavailable"}

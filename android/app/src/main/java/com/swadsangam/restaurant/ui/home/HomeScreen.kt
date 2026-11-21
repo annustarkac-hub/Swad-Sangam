@@ -1,5 +1,7 @@
 package com.swadsangam.restaurant.ui.home
 
+import androidx.compose.foundation.layout.heightIn
+import com.swadsangam.restaurant.ui.theme.Dimens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -92,7 +94,7 @@ fun HomeScreen(
                     Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).padding(16.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFFFF8EF), modifier = Modifier.size(48.dp)) {
+                        Surface(shape = RoundedCornerShape(Dimens.radiusM), color = Color.White, modifier = Modifier.size(48.dp)) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text("SS", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                             }
@@ -100,30 +102,31 @@ fun HomeScreen(
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(info?.name ?: stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall, color = Color.White)
-                            Text(stringResource(R.string.home_tagline), color = Color(0xFFF6D9B5), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.home_tagline), color = Color.White, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(
-                        Modifier.clickable { info?.let { vm.track(Analytics.DIRECTIONS); Intents.directions(context, it) } }.padding(vertical = 4.dp),
+                        Modifier.heightIn(min = 48.dp).clickable { info?.let { vm.track(Analytics.DIRECTIONS); Intents.directions(context, it) } },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(Icons.Default.LocationOn, null, tint = Color.White, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text(stringResource(R.string.location_short), color = Color.White, style = MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.get_directions), color = Color(0xFFE8A13B), style = MaterialTheme.typography.labelLarge)
+                        Text(stringResource(R.string.get_directions), color = Color.White, style = MaterialTheme.typography.labelLarge,
+                            textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline)
                     }
                     Spacer(Modifier.height(8.dp))
                     // 3. Search bar (opens the menu with search focused)
                     Surface(
-                        shape = RoundedCornerShape(10.dp), color = Color.White,
-                        modifier = Modifier.fillMaxWidth().height(48.dp).clickable { onOpenMenu(null, true) },
+                        shape = RoundedCornerShape(Dimens.radiusM), color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.fillMaxWidth().height(Dimens.touch).clickable { onOpenMenu(null, true) },
                     ) {
                         Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Search, null, tint = Color.Gray)
+                            Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.search_hint), color = Color.Gray)
+                            Text(stringResource(R.string.search_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -171,7 +174,7 @@ fun HomeScreen(
                 item {
                     Card(
                         Modifier.fillMaxWidth().padding(16.dp).height(180.dp).clickable { onOpenMenu("thalis", false) },
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(Dimens.radiusL),
                     ) {
                         Box {
                             DishImage(hero.imageUrl, Modifier.fillMaxSize())
@@ -232,7 +235,7 @@ fun HomeScreen(
                     SectionHeader(stringResource(R.string.customer_reviews))
                     Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Star, null, tint = Color(0xFFE8A13B))
+                            Icon(Icons.Default.Star, null, tint = MaterialTheme.colorScheme.tertiary)
                             Spacer(Modifier.width(8.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(stringResource(R.string.rating_value, info.rating.toString()), style = MaterialTheme.typography.titleMedium)
@@ -286,7 +289,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.section(
     if (items.isEmpty()) return
     item(key = "section-$title") {
         Column {
-            SectionHeader(title, if (onMore != null) "›" else null, onMore)
+            SectionHeader(title, if (onMore != null) stringResource(R.string.see_all) else null, onMore)
             LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(items, key = { it.id }) { item -> DishCard(item, hindi, { onOpenItem(item.id) }, { onAdd(item) }) }
             }
@@ -296,19 +299,21 @@ private fun androidx.compose.foundation.lazy.LazyListScope.section(
 
 @Composable
 private fun DishCard(item: MenuItem, hindi: Boolean, onOpen: () -> Unit, onAdd: () -> Unit) {
-    Card(Modifier.width(160.dp).clickable(onClick = onOpen)) {
-        DishImage(item.imageUrl, Modifier.fillMaxWidth().height(100.dp))
+    Card(Modifier.width(164.dp).clickable(onClick = onOpen), shape = RoundedCornerShape(Dimens.radiusM)) {
+        DishImage(item.imageUrl, Modifier.fillMaxWidth().height(110.dp))
         Column(Modifier.padding(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 FoodTypeMark(item.foodType, 14.dp)
                 Spacer(Modifier.width(6.dp))
-                Text(item.displayName(hindi), style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(item.displayName(hindi), style = MaterialTheme.typography.titleSmall, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Price(item.pricePaise, Modifier.weight(1f))
+                Text(if (item.variantGroups.isEmpty()) com.swadsangam.restaurant.core.Money.format(item.pricePaise)
+                    else stringResource(R.string.from_price, com.swadsangam.restaurant.core.Money.format(item.pricePaise)),
+                    style = com.swadsangam.restaurant.ui.theme.PriceStyle, modifier = Modifier.weight(1f))
                 androidx.compose.material3.TextButton(onClick = if (item.options.isEmpty()) onAdd else onOpen,
-                    modifier = Modifier.height(40.dp)) { Text(stringResource(R.string.add)) }
+                    modifier = Modifier.heightIn(min = Dimens.touch)) { Text(stringResource(R.string.add)) }
             }
         }
     }

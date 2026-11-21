@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import com.swadsangam.restaurant.ui.theme.Dimens
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -79,6 +81,16 @@ fun FoodTypeMark(type: FoodType, size: Dp = 16.dp) {
     }
 }
 
+/** "Half ₹120 · Full ₹199" for dishes with sizes, otherwise the base price. */
+@Composable
+fun priceLabel(item: MenuItem): String {
+    val sizes = item.variantGroups["size"].orEmpty()
+    if (sizes.isEmpty()) return Money.format(item.pricePaise)
+    val base = item.variantBaseLabel ?: stringResource(R.string.variant_regular)
+    return (listOf("$base ${Money.format(item.pricePaise)}") + sizes.map { "${it.name} ${Money.format(item.pricePaise + it.pricePaise)}" })
+        .joinToString(" · ")
+}
+
 @Composable
 fun Price(paise: Int, modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurface) {
     Text(Money.format(paise), style = PriceStyle, color = color, modifier = modifier)
@@ -105,7 +117,7 @@ fun DishImage(url: String?, modifier: Modifier) {
 @Composable
 fun QuantityStepper(quantity: Int, onChange: (Int) -> Unit, max: Int, modifier: Modifier = Modifier) {
     Row(
-        modifier.border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)),
+        modifier.border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(Dimens.radiusS)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = { onChange(quantity - 1) }, Modifier.size(48.dp)) {
@@ -141,7 +153,7 @@ fun DishRow(
             }
             Spacer(Modifier.height(4.dp))
             Text(item.displayName(hindi), style = MaterialTheme.typography.titleMedium)
-            Price(item.pricePaise)
+            Text(priceLabel(item), style = PriceStyle)
             item.displayDescription(hindi)?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -153,10 +165,10 @@ fun DishRow(
         }
         Spacer(Modifier.width(12.dp))
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            DishImage(item.imageUrl, Modifier.size(96.dp).clip(RoundedCornerShape(10.dp)))
+            DishImage(item.imageUrl, Modifier.size(104.dp).clip(RoundedCornerShape(Dimens.radiusM)))
             Spacer(Modifier.height(6.dp))
             if (item.isAvailable) {
-                OutlinedButton(onClick = if (item.options.isEmpty()) onAdd else onOpen, modifier = Modifier.height(40.dp),
+                OutlinedButton(onClick = if (item.options.isEmpty()) onAdd else onOpen, modifier = Modifier.heightIn(min = Dimens.touch),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)) {
                     Text(if (cartQuantity > 0) stringResource(R.string.add_more, cartQuantity) else stringResource(R.string.add))
                 }
@@ -174,7 +186,7 @@ fun Tag(text: String, color: Color = MaterialTheme.colorScheme.secondaryContaine
 
 @Composable
 fun SectionHeader(title: String, action: String? = null, onAction: (() -> Unit)? = null) {
-    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 20.dp, bottom = 8.dp),
+    Row(Modifier.fillMaxWidth().padding(start = Dimens.gutter, end = 8.dp, top = 20.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Text(title, style = MaterialTheme.typography.titleLarge)
         if (action != null && onAction != null) {

@@ -26,7 +26,7 @@ fun SettingsDto.toDomain() = RestaurantInfo(
     packagingFeePaise = packagingFeePaise, taxRateBps = taxRateBps, taxLabel = taxLabel,
     pricesIncludeTax = pricesIncludeTax, budgetThresholdPaise = budgetThresholdPaise,
     maxItemQuantity = maxItemQuantity, fssaiNumber = fssaiNumber, gstin = gstin,
-    legalBusinessName = legalBusinessName, parkingInfo = parkingInfo, dineInInfo = dineInInfo,
+    legalBusinessName = legalBusinessName, parkingInfo = parkingInfo, dineInInfo = dineInInfo, requireTableCode = requireTableCode,
     rating = rating, reviewCount = reviewCount, reviewsUrl = reviewsUrl,
     privacyPolicyUrl = privacyPolicyUrl, termsUrl = termsUrl,
 )

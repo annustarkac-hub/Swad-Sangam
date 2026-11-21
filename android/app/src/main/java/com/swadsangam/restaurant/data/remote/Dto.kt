@@ -33,6 +33,7 @@ data class MenuItemDto(
     @SerialName("portion_info") val portionInfo: String? = null,
     val options: List<ItemOption> = emptyList(),
     @SerialName("sort_order") val sortOrder: Int = 0,
+    @SerialName("variant_base_label") val variantBaseLabel: String? = null,
 )
 
 @Serializable
@@ -87,6 +88,7 @@ data class SettingsDto(
     @SerialName("legal_business_name") val legalBusinessName: String? = null,
     @SerialName("parking_info") val parkingInfo: String? = null,
     @SerialName("dine_in_info") val dineInInfo: String? = null,
+    @SerialName("require_table_code") val requireTableCode: Boolean = false,
     val rating: Double? = null,
     @SerialName("review_count") val reviewCount: Int? = null,
     @SerialName("reviews_url") val reviewsUrl: String? = null,
@@ -190,6 +192,7 @@ data class OrderRequest(
     val items: List<OrderLineRequest>,
     val termsAccepted: Boolean,
     val tableNumber: String? = null,
+    val tableCode: String? = null,
     val deliveryAddress: String? = null,
     val deliveryLandmark: String? = null,
     val pickupInstructions: String? = null,

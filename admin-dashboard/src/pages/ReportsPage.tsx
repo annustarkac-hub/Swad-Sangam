@@ -69,10 +69,10 @@ export default function ReportsPage() {
           <p className="small muted">These figures are kept separate on purpose. Gross order value is food value before discounts, taxes and fees. Net receipts = payments received − refunds ± corrections.</p>
           <div className="grid tight">
             <Stat l="Gross order value" v={rupees(r.grossOrderValuePaise)} />
-            <Stat l="Discounts" v={"−" + rupees(r.discountsPaise)} />
+            <Stat l="Discounts" v={(r.discountsPaise ? "−" : "") + rupees(r.discountsPaise)} />
             <Stat l="Taxes collected" v={rupees(r.taxesPaise)} />
             <Stat l="Fees (packaging/delivery)" v={rupees(r.feesPaise)} />
-            <Stat l="Refunds" v={"−" + rupees(r.refundsPaise)} />
+            <Stat l="Refunds" v={(r.refundsPaise ? "−" : "") + rupees(r.refundsPaise)} />
             <Stat l="Corrections" v={rupees(r.correctionsPaise)} />
             <Stat l="Payments received" v={rupees(r.paidReceiptsPaise)} />
             <Stat l="Net receipts" v={rupees(r.netReceiptsPaise)} />

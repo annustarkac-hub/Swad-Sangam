@@ -35,6 +35,7 @@ data class CheckoutUi(
     val orderType: OrderType = OrderType.PICKUP,
     val payment: PaymentMethod = PaymentMethod.CASH,
     val tableNumber: String = "",
+    val tableCode: String = "",
     val address: String = "",
     val landmark: String = "",
     val instructions: String = "",
@@ -102,11 +103,13 @@ class CheckoutViewModel @Inject constructor(
     fun phoneError(u: CheckoutUi) = PhoneValidator.normalize(u.phone) == null
     fun addressError(u: CheckoutUi) = u.orderType == OrderType.DELIVERY && u.address.trim().length < 10
     fun tableError(u: CheckoutUi) = u.orderType == OrderType.DINE_IN && u.tableNumber.isBlank()
+    fun tableCodeError(u: CheckoutUi, required: Boolean) = required && u.orderType == OrderType.DINE_IN && !Regex("\\d{4}").matches(u.tableCode)
 
     fun submit() {
         val u = _ui.value
         if (u.submitting) return  // guards against double taps
-        if (nameError(u) || phoneError(u) || addressError(u) || tableError(u) || !u.termsAccepted) {
+        if (nameError(u) || phoneError(u) || addressError(u) || tableError(u) ||
+            tableCodeError(u, info.value?.requireTableCode == true) || !u.termsAccepted) {
             _ui.update { it.copy(showErrors = true) }
             return
         }
@@ -115,7 +118,7 @@ class CheckoutViewModel @Inject constructor(
             val l = cart.lines.first().filter { it.isOrderable }
             val form = CheckoutForm(
                 name = u.name, phone = PhoneValidator.normalize(u.phone)!!, orderType = u.orderType,
-                paymentMethod = u.payment, tableNumber = u.tableNumber.trim(), deliveryAddress = u.address.trim(),
+                paymentMethod = u.payment, tableNumber = u.tableNumber.trim(), tableCode = u.tableCode.trim(), deliveryAddress = u.address.trim(),
                 deliveryLandmark = u.landmark.trim().ifBlank { null }, pickupInstructions = u.instructions.trim().ifBlank { null },
                 notes = u.notes.trim().ifBlank { null }, couponCode = draft.couponCode.value, termsAccepted = u.termsAccepted,
             )

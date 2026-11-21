@@ -1,5 +1,9 @@
 package com.swadsangam.restaurant.ui.checkout
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -66,7 +70,8 @@ fun CheckoutScreen(
     val err = u.showErrors
 
     Column(Modifier.fillMaxSize()) {
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(stringResource(R.string.your_details), style = MaterialTheme.typography.titleMedium)
             Text(stringResource(R.string.no_account_needed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(u.name, { v -> vm.edit { it.copy(name = v.take(60)) } }, Modifier.fillMaxWidth(),
@@ -79,7 +84,6 @@ fun CheckoutScreen(
                 isError = err && vm.phoneError(u), supportingText = if (err && vm.phoneError(u)) { { Text(stringResource(R.string.phone_error)) } } else null,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
 
-            Spacer(Modifier.height(12.dp))
             Text(stringResource(R.string.order_type), style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 i.enabledOrderTypes.forEach { t ->
@@ -96,6 +100,13 @@ fun CheckoutScreen(
                     i.dineInInfo?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                     OutlinedTextField(u.tableNumber, { v -> vm.edit { it.copy(tableNumber = v.take(10)) } }, Modifier.fillMaxWidth(),
                         label = { Text(stringResource(R.string.table_number)) }, singleLine = true, isError = err && vm.tableError(u))
+                    if (i.requireTableCode) {
+                        OutlinedTextField(u.tableCode, { v -> vm.edit { it.copy(tableCode = v.filter(Char::isDigit).take(4)) } }, Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.table_code)) }, singleLine = true,
+                            isError = err && vm.tableCodeError(u, i.requireTableCode),
+                            supportingText = if (err && vm.tableCodeError(u, i.requireTableCode)) { { Text(stringResource(R.string.table_code_error)) } } else null,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword))
+                    }
                 }
                 OrderType.DELIVERY -> {
                     (i.deliveryAreaNote ?: i.deliveryRadiusKm?.let { stringResource(R.string.delivery_radius, it.toString()) })?.let {
@@ -112,17 +123,19 @@ fun CheckoutScreen(
             OutlinedTextField(u.notes, { v -> vm.edit { it.copy(notes = v.take(300)) } }, Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.order_notes)) })
 
-            Spacer(Modifier.height(12.dp))
             Text(stringResource(R.string.payment_method), style = MaterialTheme.typography.titleMedium)
             i.enabledPaymentMethods.forEach { m ->
-                Row(Modifier.fillMaxWidth().clickable { vm.edit { it.copy(payment = m) } }, verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(u.payment == m, { vm.edit { it.copy(payment = m) } })
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .selectable(selected = u.payment == m, role = Role.RadioButton) { vm.edit { it.copy(payment = m) } },
+                    verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(u.payment == m, null)
+                    Spacer(Modifier.width(8.dp))
                     Text(paymentLabel(m, u.orderType))
                 }
             }
             Text(stringResource(R.string.online_payment_later), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-            HorizontalDivider(Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(Modifier.padding(vertical = 4.dp))
             Text(stringResource(R.string.order_summary), style = MaterialTheme.typography.titleMedium)
             lines.filter { it.isOrderable }.forEach { l ->
                 Text("${l.quantity} × ${l.item?.displayName(hindi)}" +

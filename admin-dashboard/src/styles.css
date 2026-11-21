@@ -1,9 +1,9 @@
 /* Swad Sangam admin — clean, mobile-first restaurant POS design system.
    Tokens first; every page uses the shared classes below (card, stat, table, badge, buttons). */
 :root {
-  --brand: #9e3528;
-  --brand-600: #86291e;
-  --brand-50: #fbeeec;
+  --brand: #c94a07;      /* Swad Sangam orange (signboard), AA contrast with white text */
+  --brand-600: #a83d05;
+  --brand-50: #fff0e6;
   --saffron: #e8a13b;
   --bg: #f6f5f3;
   --surface: #ffffff;
@@ -28,7 +28,7 @@
   -webkit-font-smoothing: antialiased;
 }
 :root[data-theme="dark"] {
-  --brand: #e0705f; --brand-600: #f08a7a; --brand-50: #3a1f1b;
+  --brand: #ff9a5c; --brand-600: #ffb183; --brand-50: #3a2216;
   --bg: #121010; --surface: #1b1817; --surface-2: #221e1d; --text: #f2ece8; --muted: #a8a09a; --line: #2f2a28;
   --green: #4cc27e; --green-50: #16301f; --amber-50: #3a2d14; --red: #ff7b72; --red-50: #3b1b19; --blue-50: #17243b;
   --shadow: 0 1px 2px rgba(0,0,0,.4); --shadow-lg: 0 10px 30px rgba(0,0,0,.5);
@@ -222,3 +222,21 @@ tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 70%, transpa
   .sidebar, .topbar, .bottom-bar, .tabs, button, .no-print { display: none !important; }
   .shell { display: block; } body, .content { background: #fff; }
 }
+
+/* UI/UX pass */
+.menu-thumb { width: 64px; }
+.menu-actions { width: 170px; white-space: nowrap; }
+@media (max-width: 720px) {
+  /* Menu list on phones: photo | name; price and actions on one line under the name */
+  .table-wrap table tr:has(.menu-actions) { display: grid; grid-template-columns: 64px auto 1fr; column-gap: 10px; align-items: center;
+    border-bottom: 1px solid var(--line); padding: 8px 0; }
+  .table-wrap table tr:has(.menu-actions) > td { border: 0; padding: 2px 0; }
+  .table-wrap table tr:has(.menu-actions) > .menu-thumb { grid-row: 1 / span 2; align-self: start; }
+  .table-wrap table tr:has(.menu-actions) > td:nth-child(2) { grid-column: 2 / span 2; }
+  .table-wrap table tr:has(.menu-actions) > .menu-price { grid-column: 2; text-align: left; }
+  .table-wrap table tr:has(.menu-actions) > .menu-actions { grid-column: 3; width: auto; text-align: right; }
+}
+:where(button, a, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+/* Dark mode: the brand colour is light, so filled brand buttons need dark text (AA contrast) */
+:where(:root[data-theme="dark"]) button { color: #1c1917; }
+:where(:root[data-theme="dark"]) .brand .logo { color: #1c1917; }

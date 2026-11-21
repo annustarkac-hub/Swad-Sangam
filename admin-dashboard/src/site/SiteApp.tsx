@@ -56,6 +56,14 @@ function variantHint(i: MenuItem): string | null {
   return g.length ? [i.variant_base_label, ...g.map((o) => o.name)].filter(Boolean).join(" / ") : null;
 }
 
+/** Dish photo that falls back to a neat placeholder if the image cannot load (never shows broken-image text). */
+function DishImg({ src, className }: { src: string | null; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  if (!src || failed) return <div className={"ph-s" + (className ? " " + className : "")} aria-hidden="true">🍛</div>;
+  return <img src={src} className={className} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />;
+}
+
 function Veg({ type }: { type: "VEG" | "NON_VEG" }) {
   return <span className={type === "VEG" ? "veg" : "nonveg"} role="img" aria-label={type === "VEG" ? "Vegetarian" : "Non-vegetarian"} />;
 }
@@ -285,7 +293,7 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
           <div className="cat-circles">
             {cats.filter((c) => items.some((i) => i.category_id === c.id)).map((c) => (
               <button key={c.id} onClick={() => jump(c.id)}>
-                <span className="circle">{catImg(c.id) ? <img src={catImg(c.id)!} alt="" loading="lazy" /> : "🍛"}</span>{name(c)}
+                <span className="circle"><DishImg src={catImg(c.id) ?? null} /></span>{name(c)}
               </button>
             ))}
           </div>
@@ -298,7 +306,7 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
           <div className="feat-row">
             {featured.map((i) => (
               <article key={i.id} className="feat-card" onClick={() => onOpen(i)}>
-                <img src={i.image_url!} alt={i.name} loading="lazy" />
+                <DishImg src={i.image_url} />
                 <div className="feat-shade" />
                 <div className="feat-text"><Veg type={i.food_type} /><b>{name(i)}</b><span>{i.options.some((o) => o.group === "size") ? "from " : ""}{rupees(i.price_paise)}</span></div>
               </article>
@@ -338,7 +346,7 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
                 </div>
                 <div className="dish-media">
                   <button className="img-btn" onClick={() => onOpen(i)} aria-label={name(i)}>
-                    {i.image_url ? <img src={i.image_url} alt={i.name} loading="lazy" /> : <div className="ph-s">🍛</div>}
+                    <DishImg src={i.image_url} />
                   </button>
                   {!i.is_available ? <span className="sold-badge">{L("soldOut")}</span>
                     : canOrder && (i.options.length === 0 && plain > 0
@@ -366,7 +374,7 @@ function DishSheet({ L, lang, item, canOrder, onClose, onAdd }: { L: L; lang: La
   const total = (item.price_paise + opts.filter((o) => sel.includes(o.id)).reduce((s, o) => s + o.pricePaise, 0)) * qty;
   return (
     <Sheet title={hi && item.name_hi ? item.name_hi : item.name} onClose={onClose}>
-      {item.image_url && <div className="sheet-img-wrap"><img className="sheet-img" src={item.image_url} alt="" />
+      {item.image_url && <div className="sheet-img-wrap"><DishImg className="sheet-img" src={item.image_url} />
         </div>}
       <div className="row-s" style={{ marginTop: 10 }}><Veg type={item.food_type} /><b className="price-s">{rupees(item.price_paise)}</b>{item.is_popular && <span className="tag-s">★ {L("bestsellers")}</span>}</div>
       {(hi ? item.description_hi ?? item.description : item.description) && <p className="muted-s">{hi ? item.description_hi ?? item.description : item.description}</p>}
@@ -406,7 +414,10 @@ function DishSheet({ L, lang, item, canOrder, onClose, onAdd }: { L: L; lang: La
 function DeskCart({ L, lang, cart, byId, estimate, onChange, onCheckout }: { L: L; lang: Lang; cart: Line[]; byId: Record<string, MenuItem>; estimate: number; onChange: (id: string, o: string[], d: number) => void; onCheckout: () => void }) {
   const lines = cart.filter((l) => byId[l.itemId]);
   return (
-    <aside className="desk-cart">
+    <aside className="desk-side">
+      <img className="promo-side" src={`${import.meta.env.BASE_URL}promo-banner.webp`} alt="Swad Sangam — Restaurant & Fast Food" width={1600} height={533}
+        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+    <div className="desk-cart">
       <h3>{L("cart")}</h3>
       {!lines.length && <p className="muted-s small">{L("emptyCart")}</p>}
       {lines.map((l) => {
@@ -419,6 +430,7 @@ function DeskCart({ L, lang, cart, byId, estimate, onChange, onCheckout }: { L: 
         );
       })}
       {lines.length > 0 && <button className="primary-s wide" onClick={onCheckout}>{L("checkout")} · {rupees(estimate)}</button>}
+    </div>
     </aside>
   );
 }
