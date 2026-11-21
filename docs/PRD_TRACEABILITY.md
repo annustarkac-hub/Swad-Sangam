@@ -195,3 +195,16 @@ sold-out badges, add-on/variant bottom sheet, cart as bottom sheet with order-ty
 no table (`public_tables()`), table code field, cash/UPI choice, order tracking with progress steps and an exact-amount
 UPI QR + "Pay with UPI app" link (staff confirm receipt), call waiter / bill / water, Hindi/English, dark mode.
 Not built: phone OTP login (needs a paid SMS provider).
+
+## Premium customer website (Zomato/Swiggy-style, Nov 2026)
+- Research: the owner's Justdial page returned "Access Denied" to automated access and the Google share link only resolves
+  to a JavaScript search page, so **no menu, prices, photos or reviews were taken from them**. Menu items/prices remain the
+  owner-supplied PRD seed, still flagged "Unverified" in admin until the owner ticks "Details verified".
+- Photos: each seeded dish has a dish-specific **representative** photo from Wikimedia Commons (CC0/CC BY/CC BY-SA), shown
+  with a "Representative" label and credited at `/photo-credits.html`. Uploading a real photo in Admin → Menu replaces it
+  and removes the label automatically (`menu_items.image_is_representative`, `image_credit`). Banner photo and "cost for
+  two" are editable in Settings (`hero_image_url`, `cost_for_two_paise`; cost for two hidden until set).
+- UI: hero banner, info card with rating/open status/call/directions/app, order-mode switch (dine-in/takeaway/delivery,
+  only modes enabled in Settings), "What's on your mind?" category circles, recommended carousel, filters (veg, non-veg,
+  under ₹100, bestseller, price sort), dish detail sheet (portion, prep time, allergens, add-ons, quantity), desktop
+  two-column layout with live order summary. Ordering, UPI, tracking, QR table ordering unchanged (same RPCs → POS/KOT).

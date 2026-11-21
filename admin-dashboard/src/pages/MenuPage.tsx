@@ -80,7 +80,7 @@ export default function MenuPage() {
                 <tbody>
                   {list.map((it) => (
                     <tr key={it.id} style={{ opacity: it.is_archived ? 0.5 : 1 }}>
-                      <td style={{ width: 64 }}>{it.image_url ? <img className="thumb" src={it.image_url} alt="" /> : <div className="thumb" />}</td>
+                      <td style={{ width: 64 }}>{it.image_url ? <img className="thumb" src={it.image_url} alt="" /> : <div className="thumb" />}{it.image_is_representative && <div className="small muted">sample</div>}</td>
                       <td>
                         <FoodDot type={it.food_type} /> <b>{it.name}</b> {it.is_popular && <span className="badge">Popular</span>}
                         {!it.details_verified && <span className="badge" title="Not verified by owner">Unverified</span>}
@@ -148,7 +148,7 @@ function ItemEditor({ item, cats, onClose, onSaved }: { item: MenuItem; cats: Ca
       const path = `dishes/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
       const { error } = await supabase.storage.from("menu-images").upload(path, blob, { contentType: "image/webp", upsert: false });
       if (error) throw error;
-      set({ image_url: supabase.storage.from("menu-images").getPublicUrl(path).data.publicUrl });
+      set({ image_url: supabase.storage.from("menu-images").getPublicUrl(path).data.publicUrl, image_is_representative: false, image_credit: null });
     } catch (e) {
       setErr(friendlyError((e as Error).message));
     } finally {
@@ -215,7 +215,12 @@ function ItemEditor({ item, cats, onClose, onSaved }: { item: MenuItem; cats: Ca
       <div className="row">
         {it.image_url && <img className="thumb" src={it.image_url} alt="" />}
         <input type="file" accept="image/*" style={{ maxWidth: 260 }} onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} />
-        {it.image_url && <button className="link" onClick={() => set({ image_url: null })}>Remove photo</button>}
+        {it.image_url && <button className="link" onClick={() => set({ image_url: null, image_is_representative: false, image_credit: null })}>Remove photo</button>}
+      </div>
+      {it.image_is_representative && (
+        <p className="small" style={{ color: "var(--saffron)" }}>⚠ This is a representative photo (not from Swad Sangam){it.image_credit ? ` — ${it.image_credit}` : ""}. Upload a real photo of this dish to replace it.</p>
+      )}
+      <div>
       </div>
 
       <h3 style={{ marginTop: 12 }}>Options / add-ons</h3>

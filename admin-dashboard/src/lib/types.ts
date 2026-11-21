@@ -36,6 +36,8 @@ export interface MenuItem {
   price_paise: number;
   food_type: "VEG" | "NON_VEG";
   image_url: string | null;
+  image_is_representative?: boolean;
+  image_credit?: string | null;
   is_available: boolean;
   is_archived: boolean;
   is_popular: boolean;
