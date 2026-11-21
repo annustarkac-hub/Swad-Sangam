@@ -112,4 +112,5 @@ select pg_temp.check(not exists (select 1 from public.journal_lines group by ent
 set role anon;
 select pg_temp.check(jsonb_array_length(public.public_tables()) >= 2 and not (public.public_tables()->0 ? 'session_code'), 'guests see table list without codes');
 reset role;
+select pg_temp.check((select count(*) from information_schema.columns where table_name='menu_items' and column_name in ('image_is_representative','image_credit')) = 2, 'menu media columns');
 \echo ALL POS UPGRADE TESTS PASSED

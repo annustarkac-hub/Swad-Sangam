@@ -19,12 +19,12 @@ const TEXT: [string, string][] = [
   ["dine_in_info", "Dine-in information"], ["delivery_area_note", "Delivery area description"], ["delivery_radius_km", "Delivery radius (km)"],
   ["tax_label", "Tax label (e.g. GST)"], ["gst_scheme", "GST scheme: REGULAR or COMPOSITION"], ["sac_code", "SAC code on invoices"],
   ["place_of_supply", "Place of supply (state)"], ["invoice_footer", "Bill footer text"], ["receipt_width_mm", "Receipt printer width (58 or 80)"], ["rating", "Public rating (e.g. 4.5)"], ["review_count", "Public review count"],
-  ["reviews_url", "Link to public reviews (Google)"], ["privacy_policy_url", "Privacy policy URL"], ["terms_url", "Order terms URL"],
+  ["reviews_url", "Link to public reviews (Google)"], ["hero_image_url", "Website banner photo URL (real restaurant photo)"], ["privacy_policy_url", "Privacy policy URL"], ["terms_url", "Order terms URL"],
 ];
 const MONEY: [string, string][] = [
   ["min_order_paise", "Minimum order (₹)"], ["delivery_min_order_paise", "Minimum order for delivery (₹)"],
   ["delivery_fee_paise", "Delivery fee (₹)"], ["packaging_fee_paise", "Packaging fee for pickup/delivery (₹)"],
-  ["budget_threshold_paise", "“Budget meals” price limit (₹)"],
+  ["budget_threshold_paise", "“Budget meals” price limit (₹)"], ["cost_for_two_paise", "Approx. cost for two (₹, shown on website; leave 0 to hide)"],
 ];
 const NUM: [string, string][] = [
   ["tax_rate_bps", "Tax rate in basis points (500 = 5%)"], ["default_prep_minutes", "Default preparation time (min)"],
