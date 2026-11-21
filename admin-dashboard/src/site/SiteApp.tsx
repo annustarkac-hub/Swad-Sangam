@@ -24,6 +24,8 @@ const store = {
   get<T>(k: string, d: T): T { try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : d; } catch { return d; } },
   set(k: string, v: unknown) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } },
 };
+const isAi = (i: { image_credit?: string | null }) => !!i.image_credit && /\bAI\b/.test(i.image_credit);
+const repLabel = (i: { image_credit?: string | null }) => (isAi(i) ? "AI-generated image" : "Representative image");
 function parseHash(): View {
   const h = location.hash.replace(/^#\/?/, "");
   if (h.startsWith("order/")) return { name: "order", token: h.slice(6) };
@@ -302,7 +304,7 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
                 <img src={i.image_url!} alt={i.name} loading="lazy" />
                 <div className="feat-shade" />
                 <div className="feat-text"><Veg type={i.food_type} /><b>{name(i)}</b><span>{i.options.some((o) => o.group === "size") ? "from " : ""}{rupees(i.price_paise)}</span></div>
-                {i.image_is_representative && <span className="rep-tag">Representative image</span>}
+                {i.image_is_representative && <span className="rep-tag">{repLabel(i)}</span>}
               </article>
             ))}
           </div>
@@ -341,7 +343,7 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
                 <div className="dish-media">
                   <button className="img-btn" onClick={() => onOpen(i)} aria-label={name(i)}>
                     {i.image_url ? <img src={i.image_url} alt={i.name} loading="lazy" /> : <div className="ph-s">🍛</div>}
-                    {i.image_is_representative && <span className="rep-tag small-tag">Representative</span>}
+                    {i.image_is_representative && <span className="rep-tag small-tag">{isAi(i) ? "AI image" : "Representative"}</span>}
                   </button>
                   {!i.is_available ? <span className="sold-badge">{L("soldOut")}</span>
                     : canOrder && (i.options.length === 0 && plain > 0
@@ -354,7 +356,7 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
         </section>
       ))}
       {groups.length === 0 && <p className="empty-s">{hi ? "कोई डिश नहीं मिली" : "No dishes match. Try another search or filter."}</p>}
-      <p className="muted-s small credit-note">Photos marked “Representative” show the dish type and are not photos from Swad Sangam. Credits: Info → Photo credits.</p>
+      <p className="muted-s small credit-note">Photos marked “Representative” or “AI image” only show the dish type — they are not photos of Swad Sangam’s food. Credits: Info → Photo credits.</p>
     </>
   );
 }
@@ -371,7 +373,7 @@ function DishSheet({ L, lang, item, canOrder, onClose, onAdd }: { L: L; lang: La
   return (
     <Sheet title={hi && item.name_hi ? item.name_hi : item.name} onClose={onClose}>
       {item.image_url && <div className="sheet-img-wrap"><img className="sheet-img" src={item.image_url} alt="" />
-        {item.image_is_representative && <span className="rep-tag">Representative image{item.image_credit ? ` · ${item.image_credit}` : ""}</span>}</div>}
+        {item.image_is_representative && <span className="rep-tag">{repLabel(item)}{item.image_credit ? ` · ${item.image_credit}` : ""}</span>}</div>}
       <div className="row-s" style={{ marginTop: 10 }}><Veg type={item.food_type} /><b className="price-s">{rupees(item.price_paise)}</b>{item.is_popular && <span className="tag-s">★ {L("bestsellers")}</span>}</div>
       {(hi ? item.description_hi ?? item.description : item.description) && <p className="muted-s">{hi ? item.description_hi ?? item.description : item.description}</p>}
       {item.portion_info && <p className="small"><b>{hi ? "मात्रा" : "Portion"}:</b> {item.portion_info}</p>}
