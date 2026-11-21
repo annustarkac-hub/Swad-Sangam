@@ -187,3 +187,11 @@ feature list was used as a checklist; **no code was copied** (ADR-5). Status aga
 | Security: RBAC, audit log | ✅ (PIN quick-switch not built; optional TOTP via Supabase) | |
 | Design: sidebar nav, dark mode, phone bottom bar, POS tabs on phones | ✅ | `App.tsx`, `styles.css` |
 | Not built: offline LAN server, multi-branch, gift cards, tips, customer display, ESC/POS USB, delivery zones/drivers, marketing campaigns, maintenance, documents | — | next phases |
+
+## Customer website redesign (ElitaleRestro-style guest flow, Nov 2026)
+`tirforge/restro` (ElitaleRestro, AGPL-3.0) was used as a feature reference only — no code copied.
+Built: sticky search + scroll-spy category tabs, popular carousel, card dishes with photo and inline ADD → stepper,
+sold-out badges, add-on/variant bottom sheet, cart as bottom sheet with order-type switch, table picker when the QR has
+no table (`public_tables()`), table code field, cash/UPI choice, order tracking with progress steps and an exact-amount
+UPI QR + "Pay with UPI app" link (staff confirm receipt), call waiter / bill / water, Hindi/English, dark mode.
+Not built: phone OTP login (needs a paid SMS provider).

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import QRCode from "qrcode";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { rupees, time } from "../lib/format";
 import { supabase } from "../lib/supabase";
 import type { Category, MenuItem, Order } from "../lib/types";
@@ -7,61 +8,81 @@ import { t, type Key, type Lang } from "./i18n";
 const APK_URL = "https://github.com/annustarkac-hub/Swad-Sangam/releases/latest/download/swad-sangam.apk";
 
 interface Settings {
-  restaurant_name: string; phone: string; address: string; maps_query: string; latitude: number | null; longitude: number | null;
+  restaurant_name: string; tagline: string; phone: string; address: string; maps_query: string; latitude: number | null; longitude: number | null;
   opening_hours: Record<string, { open: string; close: string }[]>; announcement: string | null; accepting_orders: boolean;
   pickup_enabled: boolean; dine_in_enabled: boolean; delivery_enabled: boolean; cash_enabled: boolean; upi_at_restaurant_enabled: boolean;
   upi_id: string | null; rating: number | null; review_count: number | null; reviews_url: string | null; temporarily_closed: boolean;
   closure_message: string | null; min_order_paise: number; max_item_quantity: number; fssai_number: string | null; delivery_area_note: string | null;
+  require_table_code: boolean;
 }
-interface Quote { subtotalPaise: number; discountPaise: number; taxPaise: number; packagingFeePaise: number; deliveryFeePaise: number; totalPaise: number; couponError: string | null; minOrderPaise: number; pricesIncludeTax: boolean }
+interface Quote { subtotalPaise: number; discountPaise: number; taxPaise: number; packagingFeePaise: number; deliveryFeePaise: number; totalPaise: number; couponError: string | null; minOrderPaise: number }
 interface Line { itemId: string; qty: number; optionIds: string[] }
-type View = { name: "menu" } | { name: "cart" } | { name: "orders" } | { name: "info" } | { name: "order"; token: string };
+type View = { name: "menu" } | { name: "orders" } | { name: "info" } | { name: "order"; token: string };
+type L = (k: Key) => string;
 
 const store = {
   get<T>(k: string, d: T): T { try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : d; } catch { return d; } },
   set(k: string, v: unknown) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } },
 };
-
 function parseHash(): View {
   const h = location.hash.replace(/^#\/?/, "");
   if (h.startsWith("order/")) return { name: "order", token: h.slice(6) };
-  if (h === "cart" || h === "orders" || h === "info") return { name: h };
+  if (h === "orders" || h === "info") return { name: h };
   return { name: "menu" };
 }
-const go = (path: string) => { location.hash = "#/" + path; };
-
-function mapsUrl(s: Settings) {
-  const d = s.latitude != null && s.longitude != null ? `${s.latitude},${s.longitude}` : s.maps_query;
-  return "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(d);
-}
+const go = (path: string) => { location.hash = "#/" + path; window.scrollTo({ top: 0 }); };
+const mapsUrl = (s: Settings) => "https://www.google.com/maps/dir/?api=1&destination=" +
+  encodeURIComponent(s.latitude != null && s.longitude != null ? `${s.latitude},${s.longitude}` : s.maps_query);
+const upiLink = (upi: string, name: string, paise: number, note: string) =>
+  `upi://pay?${new URLSearchParams({ pa: upi, pn: name, am: (paise / 100).toFixed(2), cu: "INR", tn: note }).toString()}`;
+const lineKey = (l: { itemId: string; optionIds: string[] }) => l.itemId + "|" + [...l.optionIds].sort().join(",");
 
 function isOpen(s: Settings): boolean {
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
   const dow = ((now.getDay() + 6) % 7) + 1;
   const mins = now.getHours() * 60 + now.getMinutes();
-  const toM = (x: string) => { const [h, m] = x.split(":").map(Number); return h * 60 + m; };
+  const m = (x: string) => { const [h, mm] = x.split(":").map(Number); return h * 60 + mm; };
   const today = s.opening_hours?.[String(dow)] ?? [];
   const prev = s.opening_hours?.[String(dow === 1 ? 7 : dow - 1)] ?? [];
-  return !s.temporarily_closed && (today.some((sl) => { const o = toM(sl.open), c = toM(sl.close); return c > o ? mins >= o && mins < c : mins >= o; })
-    || prev.some((sl) => toM(sl.close) <= toM(sl.open) && mins < toM(sl.close)));
+  return !s.temporarily_closed && (today.some((x) => (m(x.close) > m(x.open) ? mins >= m(x.open) && mins < m(x.close) : mins >= m(x.open)))
+    || prev.some((x) => m(x.close) <= m(x.open) && mins < m(x.close)));
+}
+
+function Veg({ type }: { type: "VEG" | "NON_VEG" }) {
+  return <span className={type === "VEG" ? "veg" : "nonveg"} role="img" aria-label={type === "VEG" ? "Vegetarian" : "Non-vegetarian"} />;
+}
+
+function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => { document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = ""; }; }, []);
+  return (
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div className="sheet" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-grip" />
+        <div className="sheet-head"><h2>{title}</h2><button className="icon-btn" aria-label="Close" onClick={onClose}>✕</button></div>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export default function SiteApp() {
   const [lang, setLang] = useState<Lang>(store.get("ss_lang", navigator.language.startsWith("hi") ? "hi" : "en"));
-  const L = (k: Key) => t(lang, k);
+  const L: L = (k) => t(lang, k);
   const [view, setView] = useState<View>(parseHash());
   const [settings, setSettings] = useState<Settings | null>(store.get("ss_settings", null));
   const [cats, setCats] = useState<Category[]>(store.get("ss_cats", []));
   const [items, setItems] = useState<MenuItem[]>(store.get("ss_items", []));
   const [offline, setOffline] = useState(false);
   const [cart, setCart] = useState<Line[]>(store.get("ss_cart", []));
-  const table = useMemo(() => new URLSearchParams(location.search).get("table") ?? store.get<string | null>("ss_table", null), []);
-  const [installEvt, setInstallEvt] = useState<Event & { prompt?: () => void } | null>(null);
+  const [table, setTable] = useState<string | null>(() => new URLSearchParams(location.search).get("table") ?? store.get<string | null>("ss_table", null));
+  const [cartOpen, setCartOpen] = useState(false);
+  const [picker, setPicker] = useState<MenuItem | null>(null);
+  const [installEvt, setInstallEvt] = useState<(Event & { prompt?: () => void }) | null>(null);
 
-  useEffect(() => { const f = () => setView(parseHash()); window.addEventListener("hashchange", f); return () => window.removeEventListener("hashchange", f); }, []);
+  useEffect(() => { const f = () => { setView(parseHash()); setCartOpen(false); setPicker(null); }; window.addEventListener("hashchange", f); return () => window.removeEventListener("hashchange", f); }, []);
   useEffect(() => store.set("ss_cart", cart), [cart]);
-  useEffect(() => store.set("ss_lang", lang), [lang]);
-  useEffect(() => { if (table) store.set("ss_table", table); }, [table]);
+  useEffect(() => { store.set("ss_lang", lang); document.documentElement.lang = lang; }, [lang]);
+  useEffect(() => { store.set("ss_table", table); }, [table]);
   useEffect(() => {
     const f = (e: Event) => { e.preventDefault(); setInstallEvt(e); };
     window.addEventListener("beforeinstallprompt", f);
@@ -86,131 +107,207 @@ export default function SiteApp() {
 
   const byId = useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
   const count = cart.reduce((s, l) => s + l.qty, 0);
+  const estimate = cart.reduce((s, l) => {
+    const i = byId[l.itemId]; if (!i) return s;
+    return s + (i.price_paise + i.options.filter((o) => l.optionIds.includes(o.id)).reduce((a, o) => a + o.pricePaise, 0)) * l.qty;
+  }, 0);
   const max = settings?.max_item_quantity ?? 20;
-  const add = (itemId: string, optionIds: string[] = []) => setCart((c) => {
-    const k = c.find((l) => l.itemId === itemId && l.optionIds.join() === optionIds.join());
-    return k ? c.map((l) => (l === k ? { ...l, qty: Math.min(max, l.qty + 1) } : l)) : [...c, { itemId, qty: 1, optionIds }];
+  const change = (itemId: string, optionIds: string[], delta: number) => setCart((c) => {
+    const k = lineKey({ itemId, optionIds });
+    const ex = c.find((l) => lineKey(l) === k);
+    if (!ex) return delta > 0 ? [...c, { itemId, optionIds, qty: Math.min(max, delta) }] : c;
+    const q = Math.min(max, ex.qty + delta);
+    return q <= 0 ? c.filter((l) => l !== ex) : c.map((l) => (l === ex ? { ...l, qty: q } : l));
   });
-  const setQty = (line: Line, q: number) => setCart((c) => (q <= 0 ? c.filter((l) => l !== line) : c.map((l) => (l === line ? { ...l, qty: Math.min(max, q) } : l))));
   const ordering = !!settings && settings.accepting_orders && (settings.pickup_enabled || settings.dine_in_enabled || settings.delivery_enabled) && isOpen(settings);
+  const open = settings ? isOpen(settings) : false;
 
   return (
-    <div className="site">
-      <header className="hero">
-        <div className="hero-top">
-          <div className="logo">SS</div>
-          <div style={{ flex: 1 }}>
-            <h1 onClick={() => go("")}>{settings?.restaurant_name ?? "Swad Sangam"}</h1>
-            <div className="tag">{L("tagline")}</div>
-          </div>
-          <button className="chip light" onClick={() => setLang(lang === "en" ? "hi" : "en")}>{lang === "en" ? "हिन्दी" : "English"}</button>
-        </div>
-        {settings && (
-          <div className="hero-meta">
-            <span className={"dot " + (isOpen(settings) ? "on" : "off")} /> {isOpen(settings) ? L("openNow") : L("closedNow")}
-            {settings.rating != null && <> · ★ {settings.rating} {L("rating")}{settings.review_count ? ` (${settings.review_count} ${L("reviews")})` : ""}</>}
-          </div>
-        )}
-        <div className="hero-actions">
-          {settings && <a className="btn light" href={`tel:${settings.phone}`}>📞 {L("call")}</a>}
-          {settings && <a className="btn light" href={mapsUrl(settings)} target="_blank" rel="noreferrer">📍 {L("directions")}</a>}
-          {installEvt ? <button className="btn gold" onClick={() => installEvt.prompt?.()}>⬇ {L("install")}</button>
-            : <a className="btn gold" href={APK_URL}>⬇ {L("getApp")}</a>}
+    <div className="app">
+      <header className="topbar-s">
+        <button className="brand-s" onClick={() => go("")}>
+          <span className="logo-s">SS</span>
+          <span><b>{settings?.restaurant_name ?? "Swad Sangam"}</b>
+            <small>{settings ? <><i className={"dot " + (open ? "on" : "off")} />{open ? L("openNow") : L("closedNow")}</> : " "}</small></span>
+        </button>
+        <div className="top-actions">
+          {table && <span className="table-chip">🍽 {table}</span>}
+          <button className="icon-btn" onClick={() => setLang(lang === "en" ? "hi" : "en")} aria-label="Language">{lang === "en" ? "हि" : "EN"}</button>
         </div>
       </header>
 
-      {offline && <div className="note warn">{L("offline")}</div>}
-      {settings?.temporarily_closed && <div className="note bad">{settings.closure_message ?? L("closedNow")}</div>}
-      {settings?.announcement && <div className="note">{settings.announcement}</div>}
-      {settings && !ordering && view.name !== "order" && <div className="note">{L("orderingOff")} <a href={`tel:${settings.phone}`}>{settings.phone}</a></div>}
-      {table && <TableBar table={table} lang={lang} />}
+      {offline && <div className="banner-s warn">{L("offline")}</div>}
+      {settings?.temporarily_closed && <div className="banner-s bad">{settings.closure_message ?? L("closedNow")}</div>}
+      {settings?.announcement && <div className="banner-s">{settings.announcement}</div>}
 
-      <main className="site-main">
-        {view.name === "menu" && <MenuView L={L} lang={lang} cats={cats} items={items} cart={cart} onAdd={add} canOrder={ordering} />}
-        {view.name === "cart" && settings && <CartView L={L} cart={cart} byId={byId} settings={settings} table={table} canOrder={ordering}
-          setQty={setQty} onPlaced={(token) => { setCart([]); go("order/" + token); }} />}
-        {view.name === "order" && <OrderView L={L} token={view.token} phone={settings?.phone ?? ""} />}
-        {view.name === "orders" && <OrdersView L={L} onReorder={(o) => { o.items.forEach((i) => byId[i.itemId]?.is_available && add(i.itemId)); go("cart"); }} />}
+      <main className="page">
+        {view.name === "menu" && (
+          <MenuView L={L} lang={lang} settings={settings} cats={cats} items={items} cart={cart} canOrder={ordering}
+            table={table} installEvt={installEvt}
+            onAdd={(i) => (i.options.length ? setPicker(i) : change(i.id, [], 1))}
+            onChange={change} />
+        )}
+        {view.name === "order" && <OrderView L={L} token={view.token} settings={settings} />}
+        {view.name === "orders" && <OrdersView L={L} onReorder={(o) => { o.items.forEach((i) => byId[i.itemId]?.is_available && change(i.itemId, [], i.quantity)); go(""); setCartOpen(true); }} />}
         {view.name === "info" && settings && <InfoView L={L} s={settings} />}
       </main>
 
       {count > 0 && view.name === "menu" && (
-        <button className="cartbar" onClick={() => go("cart")}>
-          <span>{count} {L("items")}</span><b>{L("viewCart")} →</b>
+        <button className="cart-fab" onClick={() => setCartOpen(true)}>
+          <span className="cart-count">{count}</span>
+          <span>{L("viewCart")}</span>
+          <b>{rupees(estimate)} →</b>
         </button>
       )}
-      <nav className="tabbar">
-        {([["", "menu", "🍛"], ["cart", "cart", "🛒"], ["orders", "myOrders", "🧾"], ["info", "info", "ℹ️"]] as [string, Key, string][]).map(([p, k, ic]) => (
-          <button key={p} className={(view.name === (p || "menu")) ? "active" : ""} onClick={() => go(p)}>
-            <span>{ic}{p === "cart" && count > 0 ? <sup>{count}</sup> : null}</span>{L(k)}
-          </button>
+
+      <nav className="tabbar-s">
+        {([["", "menu", "🍛"], ["orders", "myOrders", "🧾"], ["info", "info", "📍"]] as [string, Key, string][]).map(([p, k, ic]) => (
+          <button key={p} className={view.name === (p || "menu") ? "on" : ""} onClick={() => go(p)}><span>{ic}</span>{L(k)}</button>
         ))}
       </nav>
+
+      {picker && <OptionSheet L={L} lang={lang} item={picker} onClose={() => setPicker(null)} onAdd={(ids, q) => { change(picker.id, ids, q); setPicker(null); }} />}
+      {cartOpen && settings && (
+        <CartSheet L={L} lang={lang} cart={cart} byId={byId} settings={settings} table={table} setTable={setTable} canOrder={ordering}
+          onChange={change} onClose={() => setCartOpen(false)}
+          onPlaced={(token) => { setCart([]); setCartOpen(false); go("order/" + token); }} />
+      )}
     </div>
   );
 }
 
-function Veg({ type }: { type: "VEG" | "NON_VEG" }) {
-  return <span className={type === "VEG" ? "veg" : "nonveg"} aria-label={type === "VEG" ? "Vegetarian" : "Non-vegetarian"} />;
-}
-
-function MenuView({ L, lang, cats, items, cart, onAdd, canOrder }: { L: (k: Key) => string; lang: Lang; cats: Category[]; items: MenuItem[]; cart: Line[]; onAdd: (id: string, opt?: string[]) => void; canOrder: boolean }) {
+function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, installEvt, onAdd, onChange }: {
+  L: L; lang: Lang; settings: Settings | null; cats: Category[]; items: MenuItem[]; cart: Line[]; canOrder: boolean; table: string | null;
+  installEvt: (Event & { prompt?: () => void }) | null; onAdd: (i: MenuItem) => void; onChange: (id: string, opts: string[], d: number) => void;
+}) {
   const [q, setQ] = useState("");
-  const [cat, setCat] = useState("");
   const [veg, setVeg] = useState(false);
-  const shown = items.filter((i) => (!cat || i.category_id === cat) && (!veg || i.food_type === "VEG") &&
+  const [active, setActive] = useState<string>("");
+  const refs = useRef<Record<string, HTMLElement | null>>({});
+  const name = (i: { name: string; name_hi?: string | null }) => (lang === "hi" && i.name_hi ? i.name_hi : i.name);
+  const shown = items.filter((i) => (!veg || i.food_type === "VEG") &&
     (!q || (i.name + " " + (i.name_hi ?? "") + " " + (i.description ?? "")).toLowerCase().includes(q.toLowerCase())));
-  const qty = (id: string) => cart.filter((l) => l.itemId === id).reduce((s, l) => s + l.qty, 0);
-  const name = (i: MenuItem) => (lang === "hi" && i.name_hi ? i.name_hi : i.name);
+  const popular = shown.filter((i) => i.is_popular && i.is_available);
+  const groups = cats.map((c) => ({ c, list: shown.filter((i) => i.category_id === c.id) })).filter((g) => g.list.length);
+  const qtyPlain = (id: string) => cart.find((l) => l.itemId === id && l.optionIds.length === 0)?.qty ?? 0;
+  const qtyAny = (id: string) => cart.filter((l) => l.itemId === id).reduce((s, l) => s + l.qty, 0);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver((es) => {
+      const v = es.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      if (v) setActive(v.target.id.replace("cat-", ""));
+    }, { rootMargin: "-120px 0px -60% 0px" });
+    Object.values(refs.current).forEach((el) => el && obs.observe(el));
+    return () => obs.disconnect();
+  }, [groups.length]);
+
   return (
     <>
-      <input className="search" placeholder={L("search")} value={q} onChange={(e) => setQ(e.target.value)} />
-      <div className="chips">
-        <button className={"chip" + (!cat ? " on" : "")} onClick={() => setCat("")}>{L("all")}</button>
-        {cats.map((c) => <button key={c.id} className={"chip" + (cat === c.id ? " on" : "")} onClick={() => setCat(c.id)}>{lang === "hi" && c.name_hi ? c.name_hi : c.name}</button>)}
-        <button className={"chip" + (veg ? " on" : "")} onClick={() => setVeg(!veg)}><Veg type="VEG" /> {L("vegOnly")}</button>
-      </div>
-      {cats.filter((c) => shown.some((i) => i.category_id === c.id)).map((c) => (
-        <section key={c.id}>
-          <h2 className="cat">{lang === "hi" && c.name_hi ? c.name_hi : c.name}</h2>
-          {shown.filter((i) => i.category_id === c.id).map((i) => (
-            <article key={i.id} className={"dish" + (i.is_available ? "" : " off")}>
-              <div className="dish-body">
-                <div><Veg type={i.food_type} /> {i.is_popular && <span className="pill">★ Popular</span>}</div>
-                <h3>{name(i)}</h3>
-                <div className="price">{rupees(i.price_paise)}</div>
-                {(lang === "hi" ? i.description_hi ?? i.description : i.description) && <p>{lang === "hi" ? i.description_hi ?? i.description : i.description}</p>}
-                {i.portion_info && <p className="muted">{i.portion_info}</p>}
-                {!i.is_available && <p className="bad-text">{L("unavailable")}</p>}
-              </div>
-              <div className="dish-side">
-                {i.image_url ? <img src={i.image_url} alt={i.name} loading="lazy" /> : <div className="ph">🍛</div>}
-                {i.is_available && canOrder && (
-                  i.options.length > 0
-                    ? <select className="addbtn" value="" onChange={(e) => e.target.value && onAdd(i.id, [e.target.value])}>
-                        <option value="">{L("add")} {qty(i.id) ? `(${qty(i.id)})` : ""}</option>
-                        {i.options.filter((o) => o.isAvailable !== false).map((o) => <option key={o.id} value={o.id}>{o.name}{o.pricePaise ? ` +${rupees(o.pricePaise)}` : ""}</option>)}
-                      </select>
-                    : <button className="addbtn" onClick={() => onAdd(i.id)}>{L("add")} {qty(i.id) ? `(${qty(i.id)})` : "+"}</button>
-                )}
-              </div>
-            </article>
+      <section className="hero-s">
+        <h1>{settings?.tagline ?? L("tagline")}</h1>
+        <p className="muted-s">{settings?.address}</p>
+        <div className="hero-row">
+          {settings?.rating != null && <span className="pill-s">★ {settings.rating}{settings.review_count ? ` · ${settings.review_count} ${L("reviews")}` : ""}</span>}
+          {settings && <a className="pill-s" href={`tel:${settings.phone}`}>📞 {L("call")}</a>}
+          {settings && <a className="pill-s" href={mapsUrl(settings)} target="_blank" rel="noreferrer">📍 {L("directions")}</a>}
+          {installEvt ? <button className="pill-s gold" onClick={() => installEvt.prompt?.()}>⬇ {L("install")}</button>
+            : <a className="pill-s gold" href={APK_URL}>⬇ {L("getApp")}</a>}
+        </div>
+        {settings && !canOrder && <div className="banner-s inline">{L("orderingOff")} <a href={`tel:${settings.phone}`}>{settings.phone}</a></div>}
+      </section>
+      {table && <TableBar table={table} L={L} lang={lang} />}
+
+      <div className="sticky-tools">
+        <div className="search-s"><span>🔍</span><input placeholder={L("search")} value={q} onChange={(e) => setQ(e.target.value)} />
+          <button className={"veg-toggle" + (veg ? " on" : "")} onClick={() => setVeg(!veg)} aria-pressed={veg}><Veg type="VEG" /> {L("vegOnly")}</button></div>
+        <div className="cat-tabs">
+          {groups.map(({ c }) => (
+            <button key={c.id} className={active === c.id ? "on" : ""}
+              onClick={() => refs.current[c.id]?.scrollIntoView({ behavior: "smooth", block: "start" })}>{name(c)}</button>
           ))}
+        </div>
+      </div>
+
+      {popular.length > 0 && !q && (
+        <section>
+          <h2 className="sec">⭐ {L("bestsellers")}</h2>
+          <div className="pop-row">
+            {popular.map((i) => (
+              <article key={i.id} className="pop-card">
+                {i.image_url ? <img src={i.image_url} alt="" loading="lazy" /> : <div className="ph-s">🍛</div>}
+                <div className="pop-body"><div><Veg type={i.food_type} /> {name(i)}</div><b>{rupees(i.price_paise)}</b></div>
+                {canOrder && <button className="add-s small" onClick={() => onAdd(i)}>{L("add")}</button>}
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {groups.map(({ c, list }) => (
+        <section key={c.id} id={`cat-${c.id}`} ref={(el) => { refs.current[c.id] = el; }} className="cat-sec">
+          <h2 className="sec">{name(c)} <span className="muted-s">{list.length}</span></h2>
+          {list.map((i) => {
+            const plain = qtyPlain(i.id);
+            return (
+              <article key={i.id} className={"dish-s" + (i.is_available ? "" : " sold")}>
+                <div className="dish-info">
+                  <div className="dish-top"><Veg type={i.food_type} />{i.is_popular && <span className="tag-s">★ {L("bestsellers")}</span>}</div>
+                  <h3>{name(i)}</h3>
+                  <div className="price-s">{rupees(i.price_paise)}</div>
+                  {(lang === "hi" ? i.description_hi ?? i.description : i.description) && <p>{lang === "hi" ? i.description_hi ?? i.description : i.description}</p>}
+                  {i.portion_info && <p className="muted-s">{i.portion_info}</p>}
+                  {i.options.length > 0 && <p className="muted-s">{i.options.length} options</p>}
+                </div>
+                <div className="dish-media">
+                  {i.image_url ? <img src={i.image_url} alt={i.name} loading="lazy" /> : <div className="ph-s">🍛</div>}
+                  {!i.is_available ? <span className="sold-badge">{L("soldOut")}</span>
+                    : canOrder && (i.options.length === 0 && plain > 0
+                      ? <div className="stepper-s"><button onClick={() => onChange(i.id, [], -1)}>−</button><b>{plain}</b><button onClick={() => onChange(i.id, [], 1)}>+</button></div>
+                      : <button className="add-s" onClick={() => onAdd(i)}>{L("add")}{qtyAny(i.id) ? ` · ${qtyAny(i.id)}` : ""}<sup>+</sup></button>)}
+                </div>
+              </article>
+            );
+          })}
         </section>
       ))}
+      {groups.length === 0 && <p className="empty-s">—</p>}
     </>
   );
 }
 
-function CartView({ L, cart, byId, settings, table, canOrder, setQty, onPlaced }: {
-  L: (k: Key) => string; cart: Line[]; byId: Record<string, MenuItem>; settings: Settings; table: string | null; canOrder: boolean;
-  setQty: (l: Line, q: number) => void; onPlaced: (token: string) => void;
+function OptionSheet({ L, lang, item, onClose, onAdd }: { L: L; lang: Lang; item: MenuItem; onClose: () => void; onAdd: (ids: string[], qty: number) => void }) {
+  const opts = item.options.filter((o) => o.isAvailable !== false);
+  const [sel, setSel] = useState<string[]>([]);
+  const [qty, setQty] = useState(1);
+  const total = (item.price_paise + opts.filter((o) => sel.includes(o.id)).reduce((s, o) => s + o.pricePaise, 0)) * qty;
+  return (
+    <Sheet title={lang === "hi" && item.name_hi ? item.name_hi : item.name} onClose={onClose}>
+      {item.image_url && <img className="sheet-img" src={item.image_url} alt="" />}
+      <p className="muted-s">{item.description}</p>
+      {opts.map((o) => (
+        <label key={o.id} className="opt-row">
+          <input type="checkbox" checked={sel.includes(o.id)} onChange={(e) => setSel(e.target.checked ? [...sel, o.id] : sel.filter((x) => x !== o.id))} />
+          <span>{o.name}</span><b>{o.pricePaise ? `+${rupees(o.pricePaise)}` : ""}</b>
+        </label>
+      ))}
+      <div className="sheet-foot">
+        <div className="stepper-s big"><button onClick={() => setQty(Math.max(1, qty - 1))}>−</button><b>{qty}</b><button onClick={() => setQty(qty + 1)}>+</button></div>
+        <button className="primary-s" onClick={() => onAdd(sel, qty)}>{L("addToOrder")} · {rupees(total)}</button>
+      </div>
+    </Sheet>
+  );
+}
+
+function CartSheet({ L, lang, cart, byId, settings, table, setTable, canOrder, onChange, onClose, onPlaced }: {
+  L: L; lang: Lang; cart: Line[]; byId: Record<string, MenuItem>; settings: Settings; table: string | null; setTable: (t: string | null) => void;
+  canOrder: boolean; onChange: (id: string, opts: string[], d: number) => void; onClose: () => void; onPlaced: (token: string) => void;
 }) {
-  const types = (["PICKUP", "DINE_IN", "DELIVERY"] as const).filter((x) => (x === "PICKUP" && settings.pickup_enabled) || (x === "DINE_IN" && settings.dine_in_enabled) || (x === "DELIVERY" && settings.delivery_enabled));
+  const types = (["DINE_IN", "PICKUP", "DELIVERY"] as const).filter((x) => (x === "PICKUP" && settings.pickup_enabled) || (x === "DINE_IN" && settings.dine_in_enabled) || (x === "DELIVERY" && settings.delivery_enabled));
   const pays = (["CASH", "UPI_AT_RESTAURANT"] as const).filter((p) => (p === "CASH" && settings.cash_enabled) || (p === "UPI_AT_RESTAURANT" && settings.upi_at_restaurant_enabled));
   const saved = store.get("ss_customer", { name: "", phone: "" });
-  const [f, setF] = useState({ name: saved.name, phone: saved.phone, type: (table && types.includes("DINE_IN") ? "DINE_IN" : types[0]) as string,
-    table: table ?? "", tableCode: store.get("ss_table_code", ""), address: "", notes: "", pay: pays[0] as string, coupon: "", terms: false });
+  const [f, setF] = useState({ name: saved.name, phone: saved.phone, type: (table && types.includes("DINE_IN") ? "DINE_IN" : types.find((x) => x !== "DINE_IN") ?? types[0]) as string,
+    tableCode: store.get("ss_table_code", ""), address: "", notes: "", pay: (pays.includes("UPI_AT_RESTAURANT") ? "UPI_AT_RESTAURANT" : pays[0]) as string, coupon: "", terms: false });
+  const [tables, setTables] = useState<{ name: string; seats: number; free: boolean }[]>([]);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -218,130 +315,169 @@ function CartView({ L, cart, byId, settings, table, canOrder, setQty, onPlaced }
   const items = lines.map((l) => ({ itemId: l.itemId, quantity: l.qty, optionIds: l.optionIds }));
 
   useEffect(() => {
+    if (f.type === "DINE_IN" && !table) supabase.rpc("public_tables").then(({ data }) => setTables((data as typeof tables) ?? []));
+  }, [f.type, table]);
+  useEffect(() => {
     if (!lines.length) { setQuote(null); return; }
     const id = setTimeout(() => {
       supabase.rpc("quote_order", { p_order: { orderType: f.type, items, couponCode: f.coupon || null } }).then(({ data }) => data && setQuote(data as Quote));
-    }, 300);
+    }, 250);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(items), f.type, f.coupon]);
 
   async function place() {
     setErr(null);
-    if (!/^[6-9]\d{9}$/.test(f.phone.replace(/\D/g, "").slice(-10)) || f.name.trim().length < 2 || !f.terms) { setErr("Please fill your name, a valid mobile number and accept the terms."); return; }
+    const ph = f.phone.replace(/\D/g, "").slice(-10);
+    if (!/^[6-9]\d{9}$/.test(ph) || f.name.trim().length < 2) return setErr(lang === "hi" ? "नाम और सही मोबाइल नंबर लिखें।" : "Please enter your name and a valid 10-digit mobile number.");
+    if (f.type === "DINE_IN" && !table) return setErr(L("chooseTable"));
+    if (!f.terms) return setErr(L("terms"));
     setBusy(true);
     const key = store.get<string | null>("ss_pending_key", null) ?? crypto.randomUUID();
-    store.set("ss_pending_key", key); // reused on retry → no duplicate orders
+    store.set("ss_pending_key", key);
     try {
       const { data, error } = await supabase.rpc("place_order", { p_order: {
         idempotencyKey: key, customerName: f.name, customerPhone: f.phone, orderType: f.type, paymentMethod: f.pay, items,
-        termsAccepted: f.terms, tableNumber: f.type === "DINE_IN" ? f.table : null, tableCode: f.type === "DINE_IN" ? f.tableCode : null, deliveryAddress: f.type === "DELIVERY" ? f.address : null,
-        notes: f.notes || null, couponCode: f.coupon || null, expectedTotalPaise: quote?.totalPaise } });
+        termsAccepted: f.terms, tableNumber: f.type === "DINE_IN" ? table : null, tableCode: f.type === "DINE_IN" ? f.tableCode : null,
+        deliveryAddress: f.type === "DELIVERY" ? f.address : null, notes: f.notes || null, couponCode: f.coupon || null,
+        expectedTotalPaise: quote?.totalPaise } });
       if (error) throw new Error(error.message);
       const r = data as { ok: boolean; error?: string; message?: string; order?: { accessToken: string } };
-      if (!r.ok) {
-        localStorage.removeItem("ss_pending_key");
-        setErr(r.message ?? "Order could not be placed");
-        if (r.error === "PRICE_CHANGED") setQuote(null);
-        return;
-      }
       localStorage.removeItem("ss_pending_key");
+      if (!r.ok) { setErr(r.message ?? "Order could not be placed"); if (r.error === "PRICE_CHANGED") setQuote(null); return; }
       store.set("ss_customer", { name: f.name, phone: f.phone });
       store.set("ss_tokens", [r.order!.accessToken, ...store.get<string[]>("ss_tokens", [])].slice(0, 50));
       onPlaced(r.order!.accessToken);
     } catch {
-      setErr("No internet connection. Your order was NOT confirmed — tap Place order again (it will not be duplicated).");
+      setErr(lang === "hi" ? "इंटरनेट नहीं है। ऑर्डर अभी पक्का नहीं हुआ — फिर से दबाएँ (दो बार नहीं बनेगा)।"
+        : "No internet. Your order is NOT confirmed yet — tap again (it will not be duplicated).");
     } finally { setBusy(false); }
   }
 
-  if (!lines.length) return <p className="empty">{L("emptyCart")}</p>;
   return (
-    <div className="card-s">
-      <h2>{L("cart")}</h2>
-      {lines.map((l, k) => {
+    <Sheet title={L("cart")} onClose={onClose}>
+      {!lines.length && <p className="empty-s">{L("emptyCart")}</p>}
+      {lines.map((l) => {
         const i = byId[l.itemId];
         const opts = i.options.filter((o) => l.optionIds.includes(o.id));
         const unit = i.price_paise + opts.reduce((s, o) => s + o.pricePaise, 0);
         return (
-          <div key={k} className="cline">
-            <div style={{ flex: 1 }}><Veg type={i.food_type} /> {i.name}{opts.length ? <small> ({opts.map((o) => o.name).join(", ")})</small> : null}
-              {!i.is_available && <div className="bad-text">{L("unavailable")}</div>}<div className="muted">{rupees(unit)} × {l.qty}</div></div>
-            <div className="stepper"><button onClick={() => setQty(l, l.qty - 1)}>−</button><b>{l.qty}</b><button onClick={() => setQty(l, l.qty + 1)}>+</button></div>
+          <div key={lineKey(l)} className="cart-line">
+            <Veg type={i.food_type} />
+            <div className="grow">{lang === "hi" && i.name_hi ? i.name_hi : i.name}
+              {opts.length > 0 && <small> · {opts.map((o) => o.name).join(", ")}</small>}
+              {!i.is_available && <div className="bad-s">{L("soldOut")}</div>}</div>
+            <div className="stepper-s"><button onClick={() => onChange(l.itemId, l.optionIds, -1)}>−</button><b>{l.qty}</b><button onClick={() => onChange(l.itemId, l.optionIds, 1)}>+</button></div>
+            <b className="amt">{rupees(unit * l.qty)}</b>
           </div>
         );
       })}
-      {quote && (
-        <table className="sum"><tbody>
-          <tr><td>{L("subtotal")}</td><td>{rupees(quote.subtotalPaise)}</td></tr>
-          {quote.discountPaise > 0 && <tr><td>{L("discount")}</td><td>−{rupees(quote.discountPaise)}</td></tr>}
-          {quote.taxPaise > 0 && <tr><td>{L("tax")}</td><td>{rupees(quote.taxPaise)}</td></tr>}
-          {quote.packagingFeePaise > 0 && <tr><td>{L("packaging")}</td><td>{rupees(quote.packagingFeePaise)}</td></tr>}
-          {quote.deliveryFeePaise > 0 && <tr><td>{L("deliveryFee")}</td><td>{rupees(quote.deliveryFeePaise)}</td></tr>}
-          <tr className="tot"><td>{L("total")}</td><td>{rupees(quote.totalPaise)}</td></tr>
-        </tbody></table>
-      )}
-      {quote && quote.subtotalPaise < quote.minOrderPaise && <p className="bad-text">{L("minOrder")}: {rupees(quote.minOrderPaise)}</p>}
-      {!canOrder ? <div className="note">{L("orderingOff")} <a href={`tel:${settings.phone}`}>{settings.phone}</a></div> : (
-        <div className="form">
-          <label>{L("name")}<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} autoComplete="name" /></label>
-          <label>{L("phone")}<input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} inputMode="tel" autoComplete="tel" /></label>
-          <label>{L("orderType")}</label>
-          <div className="chips">{types.map((x) => <button key={x} className={"chip" + (f.type === x ? " on" : "")} onClick={() => setF({ ...f, type: x })}>{L(x)}</button>)}</div>
-          {f.type === "DINE_IN" && <label>{L("table")}<input value={f.table} onChange={(e) => setF({ ...f, table: e.target.value })} /></label>}
-          {f.type === "DINE_IN" && <label>Table code (ask our staff)<input inputMode="numeric" maxLength={4} value={f.tableCode}
-            onChange={(e) => { setF({ ...f, tableCode: e.target.value }); store.set("ss_table_code", e.target.value); }} /></label>}
+
+      {lines.length > 0 && !canOrder && <div className="banner-s inline">{L("orderingOff")} <a href={`tel:${settings.phone}`}>{settings.phone}</a></div>}
+      {lines.length > 0 && canOrder && (
+        <div className="form-s">
+          <div className="seg">{types.map((x) => <button key={x} className={f.type === x ? "on" : ""} onClick={() => setF({ ...f, type: x })}>{L(x)}</button>)}</div>
+          {f.type === "DINE_IN" && (table
+            ? <div className="row-s">🍽 {L("table")} <b>{table}</b> <button className="link-s" onClick={() => setTable(null)}>change</button></div>
+            : <div><div className="lbl">{L("chooseTable")}</div>
+                <div className="table-grid">{tables.map((x) => (
+                  <button key={x.name} className={x.free ? "" : "busy"} onClick={() => setTable(x.name)}>{x.name}<small>{x.seats} · {x.free ? L("free") : "—"}</small></button>
+                ))}</div></div>)}
+          {f.type === "DINE_IN" && settings.require_table_code && (
+            <label>{L("tableCode")}<input inputMode="numeric" maxLength={4} value={f.tableCode} onChange={(e) => { setF({ ...f, tableCode: e.target.value }); store.set("ss_table_code", e.target.value); }} /></label>)}
+          <h3>{L("details")}</h3>
+          <label>{L("name")}<input value={f.name} autoComplete="name" onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
+          <label>{L("phone")}<input value={f.phone} inputMode="tel" autoComplete="tel" onChange={(e) => setF({ ...f, phone: e.target.value })} /></label>
           {f.type === "DELIVERY" && <label>{L("address")}<textarea value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} />{settings.delivery_area_note && <small>{settings.delivery_area_note}</small>}</label>}
           <label>{L("notes")}<input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
           <label>{L("coupon")}<input value={f.coupon} onChange={(e) => setF({ ...f, coupon: e.target.value.toUpperCase() })} />
-            {quote?.couponError && f.coupon && <small className="bad-text">Coupon not valid</small>}</label>
-          <label>{L("payment")}</label>
-          {pays.map((p) => <label key={p} className="radio"><input type="radio" checked={f.pay === p} onChange={() => setF({ ...f, pay: p })} /> {L(p)}{p === "UPI_AT_RESTAURANT" && settings.upi_id ? ` (${settings.upi_id})` : ""}</label>)}
-          <label className="radio"><input type="checkbox" checked={f.terms} onChange={(e) => setF({ ...f, terms: e.target.checked })} /> <span>{L("terms")} — <a href="./terms.html" target="_blank">{L("orderTerms")}</a></span></label>
-          {err && <p className="bad-text">{err}</p>}
-          <button className="primary" disabled={busy || !quote || quote.subtotalPaise < quote.minOrderPaise} onClick={() => void place()}>
+            {quote?.couponError && f.coupon && <small className="bad-s">Coupon not valid</small>}</label>
+          <div className="lbl">{L("payment")}</div>
+          <div className="pay-opts">{pays.map((p) => (
+            <button key={p} className={f.pay === p ? "on" : ""} onClick={() => setF({ ...f, pay: p })}>{p === "UPI_AT_RESTAURANT" ? "📱 UPI" : "💵 " + (lang === "hi" ? "नकद" : "Cash")}<small>{L(p)}</small></button>
+          ))}</div>
+          {quote && (
+            <table className="bill-s"><tbody>
+              <tr><td>{L("subtotal")}</td><td>{rupees(quote.subtotalPaise)}</td></tr>
+              {quote.discountPaise > 0 && <tr><td>{L("discount")}</td><td>−{rupees(quote.discountPaise)}</td></tr>}
+              {quote.taxPaise > 0 && <tr><td>{L("tax")}</td><td>{rupees(quote.taxPaise)}</td></tr>}
+              {quote.packagingFeePaise > 0 && <tr><td>{L("packaging")}</td><td>{rupees(quote.packagingFeePaise)}</td></tr>}
+              {quote.deliveryFeePaise > 0 && <tr><td>{L("deliveryFee")}</td><td>{rupees(quote.deliveryFeePaise)}</td></tr>}
+              <tr className="tot"><td>{L("total")}</td><td>{rupees(quote.totalPaise)}</td></tr>
+            </tbody></table>
+          )}
+          {quote && quote.subtotalPaise < quote.minOrderPaise && <p className="bad-s">{L("minOrder")}: {rupees(quote.minOrderPaise)}</p>}
+          <label className="check-s"><input type="checkbox" checked={f.terms} onChange={(e) => setF({ ...f, terms: e.target.checked })} />
+            <span>{L("terms")} — <a href="./terms.html" target="_blank">{L("orderTerms")}</a></span></label>
+          {err && <p className="bad-s">{err}</p>}
+          <button className="primary-s wide" disabled={busy || !quote || quote.subtotalPaise < quote.minOrderPaise} onClick={() => void place()}>
             {busy ? "…" : `${L("placeOrder")} · ${rupees(quote?.totalPaise ?? 0)}`}
           </button>
-          <p className="muted small">{L("priceNote")}</p>
+          <p className="muted-s small">{L("priceNote")}</p>
         </div>
       )}
-    </div>
+    </Sheet>
   );
 }
 
 const STEPS = ["PLACED", "ACCEPTED", "PREPARING", "READY", "COMPLETED"] as const;
 
-function OrderView({ L, token, phone }: { L: (k: Key) => string; token: string; phone: string }) {
+function OrderView({ L, token, settings }: { L: L; token: string; settings: Settings | null }) {
   const [o, setO] = useState<(Order & { canCancel: boolean; restaurantPhone: string }) | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [qr, setQr] = useState<string | null>(null);
   const load = useCallback(async () => {
     const { data, error } = await supabase.rpc("get_order_by_token", { p_token: token });
-    if (error) setErr("Offline — last known status shown."); else { setErr(null); setO(data); }
-  }, [token]);
+    if (error) setErr(L("offline")); else { setErr(null); setO(data); }
+  }, [token, L]);
   useEffect(() => {
     void load();
-    const id = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 15000);
+    const id = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 10000);
     return () => clearInterval(id);
   }, [load]);
-  if (!o) return <p className="empty">{err ?? "…"}</p>;
+  const canPay = !!o && !!settings?.upi_id && o.paymentStatus === "PENDING" && !["REJECTED", "CANCELLED"].includes(o.orderStatus);
+  const link = canPay ? upiLink(settings!.upi_id!, settings!.restaurant_name, o!.totalPaise, o!.orderNumber) : null;
+  useEffect(() => { if (link) void QRCode.toDataURL(link, { width: 220, margin: 1 }).then(setQr); else setQr(null); }, [link]);
+
+  if (!o) return <p className="empty-s">{err ?? "…"}</p>;
   const reached = Object.fromEntries(o.history.map((h) => [h.status, h.at]));
-  const waiting = o.orderStatus === "PLACED" && Date.now() - new Date(o.createdAt).getTime() > 120000;
   const failed = o.orderStatus === "REJECTED" || o.orderStatus === "CANCELLED";
+  const stepIdx = STEPS.indexOf(o.orderStatus as (typeof STEPS)[number]);
+  const waiting = o.orderStatus === "PLACED" && Date.now() - new Date(o.createdAt).getTime() > 120000;
   return (
-    <div className="card-s">
-      <h2>{o.orderNumber}</h2>
-      {err && <div className="note warn">{err}</div>}
-      <div className={"status " + (failed ? "bad" : "")}>{L(o.orderStatus as Key)}</div>
-      {o.orderStatus === "PLACED" && <p>{L("awaiting")}</p>}
-      {waiting && <div className="note">{L("notConfirmed")} <a href={`tel:${o.restaurantPhone || phone}`}>📞 {o.restaurantPhone || phone}</a></div>}
-      {o.rejectionReason && <p className="bad-text">{o.rejectionReason}</p>}
-      {o.cancelReason && <p className="bad-text">{o.cancelReason}</p>}
-      {o.estimatedReadyAt && ["ACCEPTED", "PREPARING"].includes(o.orderStatus) && <p>{L("estimated")} {time(o.estimatedReadyAt)}</p>}
-      {!failed && <ol className="timeline">{STEPS.map((s) => <li key={s} className={reached[s] ? "done" : ""}>{L(s)} {reached[s] && <small>{time(reached[s])}</small>}</li>)}</ol>}
-      <table className="sum"><tbody>
-        {o.items.map((i, k) => <tr key={k}><td>{i.quantity} × {i.nameSnapshot}</td><td>{rupees(i.lineTotalPaise)}</td></tr>)}
-        <tr className="tot"><td>{L("total")}</td><td>{rupees(o.totalPaise)}</td></tr>
-      </tbody></table>
-      {o.canCancel && <button className="ghost" onClick={async () => {
+    <div className="stack">
+      <div className="card-s2 status-card">
+        <div className="muted-s">{o.orderNumber}{o.tableNumber ? ` · ${L("table")} ${o.tableNumber}` : ""}</div>
+        <div className={"status-big" + (failed ? " bad" : "")}>{L(o.orderStatus as Key)}</div>
+        {o.orderStatus === "PLACED" && <p>{L("awaiting")}</p>}
+        {waiting && <div className="banner-s inline">{L("notConfirmed")} <a href={`tel:${o.restaurantPhone}`}>📞 {o.restaurantPhone}</a></div>}
+        {(o.rejectionReason || o.cancelReason) && <p className="bad-s">{o.rejectionReason ?? o.cancelReason}</p>}
+        {o.estimatedReadyAt && ["ACCEPTED", "PREPARING"].includes(o.orderStatus) && <p>{L("estimated")} <b>{time(o.estimatedReadyAt)}</b></p>}
+        {!failed && (
+          <ol className="progress-s">
+            {STEPS.map((s, idx) => (
+              <li key={s} className={idx <= stepIdx ? "done" : ""}><i />{L(s)}{reached[s] && <small>{time(reached[s])}</small>}</li>
+            ))}
+          </ol>
+        )}
+        {err && <div className="banner-s warn inline">{err}</div>}
+      </div>
+
+      {canPay && (
+        <div className="card-s2 pay-card">
+          <h3>{L("payNow")} · {rupees(o.totalPaise)}</h3>
+          {qr && <img src={qr} alt="UPI QR" />}
+          <a className="primary-s wide" href={link!}>{L("openUpi")}</a>
+          <p className="muted-s small">{L("scanToPay")}</p>
+        </div>
+      )}
+      {o.paymentStatus === "PAID" && <div className="card-s2 paid">{L("paid")}</div>}
+
+      <div className="card-s2">
+        {o.items.map((i, k) => <div key={k} className="row-s between"><span>{i.quantity} × {i.nameSnapshot}</span><span>{rupees(i.lineTotalPaise)}</span></div>)}
+        <div className="row-s between tot"><span>{L("total")}</span><b>{rupees(o.totalPaise)}</b></div>
+      </div>
+      {o.canCancel && <button className="ghost-s" onClick={async () => {
         if (!confirm(L("cancelOrder") + "?")) return;
         await supabase.rpc("cancel_order_by_customer", { p_token: token, p_reason: "Cancelled by customer" }); void load();
       }}>{L("cancelOrder")}</button>}
@@ -349,71 +485,77 @@ function OrderView({ L, token, phone }: { L: (k: Key) => string; token: string; 
   );
 }
 
-function OrdersView({ L, onReorder }: { L: (k: Key) => string; onReorder: (o: Order) => void }) {
+function OrdersView({ L, onReorder }: { L: L; onReorder: (o: Order) => void }) {
   const [list, setList] = useState<(Order & { accessToken: string })[] | null>(null);
   useEffect(() => {
     const tokens = store.get<string[]>("ss_tokens", []);
     if (!tokens.length) { setList([]); return; }
     supabase.rpc("get_orders_by_tokens", { p_tokens: tokens }).then(({ data }) => setList((data as (Order & { accessToken: string })[]) ?? []));
   }, []);
-  if (!list) return <p className="empty">…</p>;
-  if (!list.length) return <p className="empty">{L("noOrders")}</p>;
+  if (!list) return <p className="empty-s">…</p>;
+  if (!list.length) return <p className="empty-s">{L("noOrders")}</p>;
   return (
-    <>
+    <div className="stack">
+      <h2 className="sec">{L("myOrders")}</h2>
       {list.map((o) => (
-        <div key={o.id} className="card-s" onClick={() => go("order/" + o.accessToken)} style={{ cursor: "pointer" }}>
-          <div className="row-s"><b>{o.orderNumber}</b><span className="pill">{L(o.orderStatus as Key)}</span></div>
-          <div className="muted">{new Date(o.createdAt).toLocaleString("en-IN")} · {rupees(o.totalPaise)}</div>
-          <div>{o.items.map((i) => `${i.quantity}× ${i.nameSnapshot}`).join(", ")}</div>
+        <div key={o.id} className="card-s2 tap" onClick={() => go("order/" + o.accessToken)}>
+          <div className="row-s between"><b>{o.orderNumber}</b><span className="tag-s">{L(o.orderStatus as Key)}</span></div>
+          <div className="muted-s small">{new Date(o.createdAt).toLocaleString("en-IN")} · {rupees(o.totalPaise)}</div>
+          <div className="small">{o.items.map((i) => `${i.quantity}× ${i.nameSnapshot}`).join(", ")}</div>
           {!["PLACED", "ACCEPTED", "PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(o.orderStatus) &&
-            <button className="ghost" onClick={(e) => { e.stopPropagation(); onReorder(o); }}>{L("reorder")}</button>}
+            <button className="ghost-s" onClick={(e) => { e.stopPropagation(); onReorder(o); }}>{L("reorder")}</button>}
         </div>
       ))}
-    </>
-  );
-}
-
-function InfoView({ L, s }: { L: (k: Key) => string; s: Settings }) {
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  return (
-    <div className="card-s">
-      <h2>{s.restaurant_name}</h2>
-      <p>{s.address}</p>
-      <p><a href={`tel:${s.phone}`}>📞 {s.phone}</a> · <a href={mapsUrl(s)} target="_blank" rel="noreferrer">📍 {L("directions")}</a></p>
-      <h3>{L("hours")}</h3>
-      <table className="sum"><tbody>{days.map((d, i) => <tr key={d}><td>{d}</td><td>{(s.opening_hours[String(i + 1)] ?? []).map((x) => `${x.open}–${x.close}`).join(", ") || "Closed"}</td></tr>)}</tbody></table>
-      {s.reviews_url && <p><a href={s.reviews_url} target="_blank" rel="noreferrer">★ {s.rating} — Google reviews</a></p>}
-      {s.fssai_number && <p className="muted">FSSAI Lic. No. {s.fssai_number}</p>}
-      <p><a href={APK_URL}>⬇ {L("getApp")} (APK)</a></p>
-      <p className="muted small"><a href="./privacy.html">{L("privacy")}</a> · <a href="./terms.html">{L("orderTerms")}</a> · <a href="./admin.html">{L("staffLogin")}</a></p>
     </div>
   );
 }
 
-/** Table guests: call a waiter or ask for the bill from the phone. */
-function TableBar({ table, lang }: { table: string; lang: Lang }) {
+function InfoView({ L, s }: { L: L; s: Settings }) {
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  return (
+    <div className="stack">
+      <div className="card-s2">
+        <h2 className="sec" style={{ marginTop: 0 }}>{s.restaurant_name}</h2>
+        <p>{s.address}</p>
+        <div className="hero-row"><a className="pill-s" href={`tel:${s.phone}`}>📞 {s.phone}</a><a className="pill-s" href={mapsUrl(s)} target="_blank" rel="noreferrer">📍 {L("directions")}</a></div>
+      </div>
+      <div className="card-s2">
+        <h3>{L("hours")}</h3>
+        {days.map((d, i) => <div key={d} className="row-s between"><span>{d}</span><span>{(s.opening_hours[String(i + 1)] ?? []).map((x) => `${x.open}–${x.close}`).join(", ") || "Closed"}</span></div>)}
+      </div>
+      <div className="card-s2">
+        {s.reviews_url && <p><a href={s.reviews_url} target="_blank" rel="noreferrer">★ {s.rating} — Google reviews</a></p>}
+        {s.fssai_number && <p className="muted-s">FSSAI Lic. No. {s.fssai_number}</p>}
+        <p><a href={APK_URL}>⬇ {L("getApp")} (APK)</a></p>
+        <p className="muted-s small"><a href="./privacy.html">{L("privacy")}</a> · <a href="./terms.html">{L("orderTerms")}</a> · <a href="./admin.html">{L("staffLogin")}</a></p>
+      </div>
+    </div>
+  );
+}
+
+/** Table guests: call a waiter, ask for the bill or water. */
+function TableBar({ table, L, lang }: { table: string; L: L; lang: Lang }) {
   const [msg, setMsg] = useState<string | null>(null);
-  const hi = lang === "hi";
   async function ask(type: string) {
     let code = store.get("ss_table_code", "");
-    const first = await supabase.rpc("request_service", { p_table: table, p_type: type, p_code: code || null });
-    let r = first.data as { ok: boolean; error?: string; message?: string } | null;
+    let r = (await supabase.rpc("request_service", { p_table: table, p_type: type, p_code: code || null })).data as { ok: boolean; error?: string; message?: string } | null;
     if (r && !r.ok && r.error === "TABLE_CODE_REQUIRED") {
-      code = prompt(hi ? "स्टाफ़ द्वारा बताया गया 4 अंकों का टेबल कोड" : "Enter the 4-digit table code from our staff") ?? "";
+      code = prompt(L("tableCode")) ?? "";
       store.set("ss_table_code", code);
       r = (await supabase.rpc("request_service", { p_table: table, p_type: type, p_code: code })).data;
     }
-    setMsg(r?.ok ? (hi ? "स्टाफ़ को सूचना भेज दी गई ✓" : "Staff has been notified ✓") : (r?.message ?? "Please call the staff"));
+    setMsg(r?.ok ? (lang === "hi" ? "स्टाफ़ को सूचना भेज दी गई ✓" : "Staff has been notified ✓") : (r?.message ?? "Please call the staff"));
+    setTimeout(() => setMsg(null), 5000);
   }
   return (
-    <div className="note">
-      🍽 {hi ? "टेबल" : "Table"} <b>{table}</b>
-      <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-        <button className="chip" onClick={() => void ask("CALL_WAITER")}>🙋 {hi ? "वेटर बुलाएँ" : "Call waiter"}</button>
-        <button className="chip" onClick={() => void ask("REQUEST_BILL")}>🧾 {hi ? "बिल लाएँ" : "Request bill"}</button>
-        <button className="chip" onClick={() => void ask("WATER")}>💧 {hi ? "पानी" : "Water"}</button>
+    <div className="table-bar">
+      <span>🍽 {L("table")} <b>{table}</b></span>
+      <div className="row-s">
+        <button className="pill-s" onClick={() => void ask("CALL_WAITER")}>🙋 {L("callWaiter")}</button>
+        <button className="pill-s" onClick={() => void ask("REQUEST_BILL")}>🧾 {L("requestBill")}</button>
+        <button className="pill-s" onClick={() => void ask("WATER")}>💧 {L("water")}</button>
       </div>
-      {msg && <div className="small" style={{ marginTop: 6 }}>{msg}</div>}
+      {msg && <div className="small toast-s">{msg}</div>}
     </div>
   );
 }
