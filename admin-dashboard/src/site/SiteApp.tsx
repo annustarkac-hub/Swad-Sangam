@@ -272,6 +272,14 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
       </section>
       {table && <TableBar table={table} L={L} lang={lang} />}
 
+      {!q && (
+        <button className="promo" onClick={() => { const first = cats.find((c) => items.some((i) => i.category_id === c.id)); if (first) jump(first.id); }}
+          aria-label={hi ? "मेन्यू देखें" : "See the menu"}>
+          <img src={`${import.meta.env.BASE_URL}promo-banner.webp`} alt="Swad Sangam — Restaurant & Fast Food: burger, momos, spring rolls, paratha, tea" loading="lazy" width={1600} height={533}
+            onError={(e) => { ((e.target as HTMLImageElement).parentElement as HTMLElement).style.display = "none"; }} />
+        </button>
+      )}
+
       {!q && cats.length > 0 && (
         <section>
           <h2 className="sec">{hi ? "आज क्या खाएँगे?" : "What's on your mind?"}</h2>

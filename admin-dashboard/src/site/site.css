@@ -267,3 +267,8 @@ h2.sec .muted-s { font-size: .85rem; font-weight: 500; }
 .variant-row button.on { border: 2px solid var(--brand); background: var(--brand-50); }
 .price-s { font-size: .95rem; }
 @media (prefers-color-scheme: dark) { :root { --brand: #ff7a2f; --brand-600: #ff8f4f; --brand-50: #3a2214; } }
+
+/* Owner's promo poster (already has its own text, so no overlay) */
+.promo { display: block; width: calc(100% - 24px); margin: 14px 12px 0; padding: 0; border: 0; border-radius: 18px; overflow: hidden; background: #5c1d15; box-shadow: var(--shadow); cursor: pointer; }
+.promo img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 1; object-fit: cover; }
+.banner-img { object-position: center 22%; }
