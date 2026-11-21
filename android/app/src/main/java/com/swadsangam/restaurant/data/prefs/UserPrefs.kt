@@ -24,6 +24,11 @@ class UserPrefs @Inject constructor(@ApplicationContext private val context: Con
     private val PENDING_KEY = stringPreferencesKey("pending_idempotency_key")
     private val ASKED_NOTIF = booleanPreferencesKey("asked_notification_permission")
     private val FCM = stringPreferencesKey("fcm_token")
+    private val PURE_VEG = booleanPreferencesKey("pure_veg")
+
+    /** "Pure Veg Mode": show only vegetarian dishes on Home and Menu. */
+    val pureVeg: Flow<Boolean> = context.dataStore.data.map { it[PURE_VEG] ?: false }
+    suspend fun setPureVeg(on: Boolean) { context.dataStore.edit { it[PURE_VEG] = on } }
 
     val customer: Flow<SavedCustomer> = context.dataStore.data.map {
         SavedCustomer(it[NAME].orEmpty(), it[PHONE].orEmpty())

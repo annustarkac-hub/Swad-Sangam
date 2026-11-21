@@ -97,6 +97,8 @@ export default function SiteApp() {
   const setMode = (m: Mode) => { setModeState(m); store.set("ss_mode", m); };
   const [installEvt, setInstallEvt] = useState<(Event & { prompt?: () => void }) | null>(null);
   const [customer, reloadCustomer, recovery] = useCustomer();
+  const [pureVeg, setPureVeg] = useState<boolean>(store.get("ss_pure_veg", false));
+  useEffect(() => store.set("ss_pure_veg", pureVeg), [pureVeg]);
   useEffect(() => { if (recovery) go("account"); }, [recovery]);
 
   useEffect(() => { const f = () => { setView(parseHash()); setCartOpen(false); setPicker(null); }; window.addEventListener("hashchange", f); return () => window.removeEventListener("hashchange", f); }, []);
@@ -152,6 +154,8 @@ export default function SiteApp() {
         </button>
         <div className="top-actions">
           {table && <span className="table-chip">🍽 {table}</span>}
+          <button className={"pure-veg" + (pureVeg ? " on" : "")} role="switch" aria-checked={pureVeg} onClick={() => setPureVeg(!pureVeg)}
+            title={lang === "hi" ? "केवल शाकाहारी दिखाएँ" : "Show vegetarian dishes only"}><i />{lang === "hi" ? "शुद्ध शाकाहारी" : "Pure Veg"}</button>
           <button className="icon-btn" onClick={() => setLang(lang === "en" ? "hi" : "en")} aria-label="Language">{lang === "en" ? "हि" : "EN"}</button>
         </div>
       </header>
@@ -164,7 +168,7 @@ export default function SiteApp() {
         {view.name === "menu" && (
           <div className="layout">
             <div className="col-main">
-              <MenuView L={L} lang={lang} settings={settings} cats={cats} items={items} cart={cart} canOrder={ordering}
+              <MenuView L={L} lang={lang} settings={settings} cats={cats} items={pureVeg ? items.filter((i) => i.food_type === "VEG") : items} cart={cart} canOrder={ordering}
                 table={table} installEvt={installEvt} mode={mode} setMode={setMode} onOpen={(i) => setPicker(i)} onChange={change} />
             </div>
             <DeskCart L={L} lang={lang} cart={cart} byId={byId} estimate={estimate} onChange={change} onCheckout={() => setCartOpen(true)} />
@@ -209,6 +213,10 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
   onOpen: (i: MenuItem) => void; onChange: (id: string, opts: string[], d: number) => void;
 }) {
   const [q, setQ] = useState("");
+  const [recent, setRecent] = useState<string[]>(store.get("ss_recent_search", []));
+  const [searchFocus, setSearchFocus] = useState(false);
+  const remember = (s: string) => { const v = s.trim(); if (v.length < 2) return;
+    const next = [v, ...recent.filter((x) => x.toLowerCase() !== v.toLowerCase())].slice(0, 6); setRecent(next); store.set("ss_recent_search", next); };
   const [filters, setFilters] = useState<Filter[]>([]);
   const [sort, setSort] = useState<"" | "asc" | "desc">("");
   const [active, setActive] = useState<string>("");
@@ -304,7 +312,15 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
       )}
 
       <div className="sticky-tools">
-        <div className="search-s"><span>🔍</span><input placeholder={L("search")} value={q} onChange={(e) => setQ(e.target.value)} />{q && <button className="link-s" onClick={() => setQ("")}>✕</button>}</div>
+        <div className="search-s"><span>🔍</span><input placeholder={L("search")} value={q} onChange={(e) => setQ(e.target.value)} enterKeyHint="search"
+          onFocus={() => setSearchFocus(true)} onBlur={() => { remember(q); setTimeout(() => setSearchFocus(false), 150); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { remember(q); (e.target as HTMLInputElement).blur(); } }} />
+          {q && <button className="link-s" aria-label="Clear search" onClick={() => setQ("")}>✕</button>}</div>
+        {searchFocus && !q && recent.length > 0 && (
+          <div className="recent-s"><span className="muted-s small">{hi ? "हाल की खोज" : "Recent searches"}</span>
+            {recent.map((r) => <button key={r} onMouseDown={(e) => e.preventDefault()} onClick={() => setQ(r)}>↺ {r}</button>)}
+            <button className="link-s small" onMouseDown={(e) => e.preventDefault()} onClick={() => { setRecent([]); store.set("ss_recent_search", []); }}>{hi ? "साफ़ करें" : "Clear"}</button>
+          </div>)}
         <div className="filter-row">
           <button className={"chip-f" + (has("veg") ? " on veg-on" : "")} onClick={() => toggle("veg")}><Veg type="VEG" /> {hi ? "शाकाहारी" : "Veg"}</button>
           <button className={"chip-f" + (has("nonveg") ? " on" : "")} onClick={() => toggle("nonveg")}><Veg type="NON_VEG" /> {hi ? "मांसाहारी" : "Non-veg"}</button>
@@ -432,7 +448,7 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
   const [addrId, setAddrId] = useState<number | "new">(defAddr ? defAddr.id : "new");
   const [saveAddr, setSaveAddr] = useState(true);
   const [f, setF] = useState({ name: saved.name, phone: saved.phone, landmark: "", type: ((types as readonly string[]).includes(mode) ? mode : table && types.includes("DINE_IN") ? "DINE_IN" : types.find((x) => x !== "DINE_IN") ?? types[0]) as string,
-    tableCode: store.get("ss_table_code", ""), address: "", notes: "", pay: (pays.includes("UPI_AT_RESTAURANT") ? "UPI_AT_RESTAURANT" : pays[0]) as string, coupon: "", terms: false });
+    tableCode: store.get("ss_table_code", ""), address: "", notes: "", noCutlery: store.get("ss_no_cutlery", false), pay: (pays.includes("UPI_AT_RESTAURANT") ? "UPI_AT_RESTAURANT" : pays[0]) as string, coupon: "", terms: false });
   const [tables, setTables] = useState<{ name: string; seats: number; free: boolean }[]>([]);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -469,7 +485,7 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
       const { data, error } = await supabase.rpc("place_order", { p_order: {
         idempotencyKey: key, customerName: f.name, customerPhone: f.phone, orderType: f.type, paymentMethod: f.pay, items,
         termsAccepted: f.terms, tableNumber: f.type === "DINE_IN" ? table : null, tableCode: f.type === "DINE_IN" ? f.tableCode : null,
-        deliveryAddress: f.type === "DELIVERY" ? address : null, deliveryLandmark: f.type === "DELIVERY" ? landmark : null, notes: f.notes || null, couponCode: f.coupon || null,
+        deliveryAddress: f.type === "DELIVERY" ? address : null, deliveryLandmark: f.type === "DELIVERY" ? landmark : null, notes: [f.notes.trim(), f.noCutlery && f.type !== "DINE_IN" ? "No cutlery please" : ""].filter(Boolean).join(" · ") || null, couponCode: f.coupon || null,
         expectedTotalPaise: quote?.totalPaise } });
       if (error) throw new Error(error.message);
       const r = data as { ok: boolean; error?: string; message?: string; order?: { accessToken: string } };
@@ -534,7 +550,11 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
             {settings.delivery_area_note && <small className="muted-s">{settings.delivery_area_note}</small>}
             {!customer && <p className="muted-s small">{lang === "hi" ? "पते सेव करने के लिए " : "To save addresses, "}<a href="#/account">{lang === "hi" ? "लॉगिन करें" : "log in"}</a>.</p>}
           </>}
-          <label>{L("notes")}<input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
+          <label>{lang === "hi" ? "खाना बनाने के निर्देश (वैकल्पिक)" : "Cooking instructions (optional)"}<input value={f.notes} maxLength={250}
+            placeholder={lang === "hi" ? "जैसे: कम तीखा, प्याज़ नहीं" : "e.g. less spicy, no onion"} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
+          {f.type !== "DINE_IN" && <label className="check-s"><input type="checkbox" checked={f.noCutlery}
+            onChange={(e) => { setF({ ...f, noCutlery: e.target.checked }); store.set("ss_no_cutlery", e.target.checked); }} />
+            <span>🌱 {lang === "hi" ? "प्लास्टिक कटलरी न भेजें" : "Don't send plastic cutlery"}</span></label>}
           <label>{L("coupon")}<input value={f.coupon} onChange={(e) => setF({ ...f, coupon: e.target.value.toUpperCase() })} />
             {quote?.couponError && f.coupon && <small className="bad-s">Coupon not valid</small>}</label>
           <div className="lbl">{L("payment")}</div>
@@ -542,13 +562,14 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
             <button key={p} className={f.pay === p ? "on" : ""} onClick={() => setF({ ...f, pay: p })}>{p === "UPI_AT_RESTAURANT" ? "📱 UPI" : "💵 " + (lang === "hi" ? "नकद" : "Cash")}<small>{L(p)}</small></button>
           ))}</div>
           {quote && (
-            <table className="bill-s"><tbody>
-              <tr><td>{L("subtotal")}</td><td>{rupees(quote.subtotalPaise)}</td></tr>
+            <table className="bill-s"><caption>{lang === "hi" ? "बिल का विवरण" : "Bill details"}</caption><tbody>
+              <tr><td>{lang === "hi" ? "आइटम का कुल" : "Item total"}</td><td>{rupees(quote.subtotalPaise)}</td></tr>
               {quote.discountPaise > 0 && <tr><td>{L("discount")}</td><td>−{rupees(quote.discountPaise)}</td></tr>}
               {quote.taxPaise > 0 && <tr><td>{L("tax")}</td><td>{rupees(quote.taxPaise)}</td></tr>}
               {quote.packagingFeePaise > 0 && <tr><td>{L("packaging")}</td><td>{rupees(quote.packagingFeePaise)}</td></tr>}
               {quote.deliveryFeePaise > 0 && <tr><td>{L("deliveryFee")}</td><td>{rupees(quote.deliveryFeePaise)}</td></tr>}
-              <tr className="tot"><td>{L("total")}</td><td>{rupees(quote.totalPaise)}</td></tr>
+              <tr className="tot"><td>{lang === "hi" ? "कुल देय" : "To pay"}</td><td>{rupees(quote.totalPaise)}</td></tr>
+              {quote.discountPaise > 0 && <tr className="save"><td colSpan={2}>🎉 {lang === "hi" ? `आपने ${rupees(quote.discountPaise)} बचाए` : `You saved ${rupees(quote.discountPaise)} on this order`}</td></tr>}
             </tbody></table>
           )}
           {quote && quote.subtotalPaise < quote.minOrderPaise && <p className="bad-s">{L("minOrder")}: {rupees(quote.minOrderPaise)}</p>}
