@@ -70,6 +70,7 @@ object Routes {
     const val MORE = "more"
     const val INFO = "info"
     const val FEEDBACK = "feedback?token={token}"
+    const val ACCOUNT = "account"
 
     fun menu(category: String? = null, search: Boolean = false) = "menu?category=${category.orEmpty()}&search=$search"
     fun item(id: String) = "item/$id"
@@ -124,6 +125,7 @@ fun AppNav(appVm: AppViewModel, prefs: UserPrefs, deepLink: String?, onDeepLinkH
         Routes.CART -> stringResource(R.string.tab_cart)
         Routes.ORDERS -> stringResource(R.string.my_orders)
         Routes.MORE -> stringResource(R.string.tab_more)
+        Routes.ACCOUNT -> stringResource(R.string.acc_account)
         else -> null
     }
 
@@ -218,7 +220,10 @@ fun AppNav(appVm: AppViewModel, prefs: UserPrefs, deepLink: String?, onDeepLinkH
             }
             composable(Routes.MORE) {
                 MoreScreen(onInfo = { nav.navigate(Routes.INFO) }, onMenu = { nav.navigateTab(Routes.menu()) },
-                    onFeedback = { nav.navigate(Routes.feedback()) })
+                    onFeedback = { nav.navigate(Routes.feedback()) }, onAccount = { nav.navigate(Routes.ACCOUNT) })
+            }
+            composable(Routes.ACCOUNT) {
+                com.swadsangam.restaurant.ui.account.AccountScreen(onMyOrders = { nav.navigateTab(Routes.ORDERS) })
             }
             composable(Routes.INFO) { RestaurantInfoScreen(onMenu = { nav.navigateTab(Routes.menu()) }) }
             composable(Routes.FEEDBACK, arguments = listOf(navArgument("token") { type = NavType.StringType; defaultValue = "" })) {

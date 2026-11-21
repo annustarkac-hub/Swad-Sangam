@@ -31,7 +31,7 @@ object AppModule {
     }
 
     @Provides @Singleton
-    fun okHttp(): OkHttpClient {
+    fun okHttp(session: com.swadsangam.restaurant.data.auth.SessionHolder): OkHttpClient {
         val key = BuildConfig.SUPABASE_ANON_KEY
         val builder = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
@@ -42,8 +42,10 @@ object AppModule {
                 val req = chain.request().newBuilder()
                     .header("apikey", key)
                     .header("Accept", "application/json")
-                // Legacy anon keys are JWTs and also go in Authorization; new publishable keys do not.
-                if (key.startsWith("eyJ")) req.header("Authorization", "Bearer $key")
+                // A signed-in customer's token wins; otherwise legacy anon keys (JWTs) also go in Authorization.
+                val user = session.bearer()
+                if (user != null) req.header("Authorization", "Bearer $user")
+                else if (key.startsWith("eyJ")) req.header("Authorization", "Bearer $key")
                 chain.proceed(req.build())
             }
         if (BuildConfig.DEBUG) {

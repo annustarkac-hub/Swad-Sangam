@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -79,7 +80,7 @@ class MoreViewModel @Inject constructor(
 }
 
 @Composable
-fun MoreScreen(onInfo: () -> Unit, onMenu: () -> Unit, onFeedback: () -> Unit,
+fun MoreScreen(onInfo: () -> Unit, onMenu: () -> Unit, onFeedback: () -> Unit, onAccount: () -> Unit,
                vm: MoreViewModel = androidx.hilt.navigation.compose.hiltViewModel()) {
     val info by vm.info.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -88,6 +89,7 @@ fun MoreScreen(onInfo: () -> Unit, onMenu: () -> Unit, onFeedback: () -> Unit,
     val i = info ?: return
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Entry(Icons.Default.AccountCircle, stringResource(R.string.acc_account), onAccount)
         Entry(Icons.Default.Info, stringResource(R.string.restaurant_info), onInfo)
         Entry(Icons.Default.RestaurantMenu, stringResource(R.string.view_menu), onMenu)
         Entry(Icons.Default.Call, stringResource(R.string.call_restaurant)) { vm.track(Analytics.CALL); Intents.call(context, i.phone) }

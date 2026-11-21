@@ -50,10 +50,14 @@ class OrdersViewModel @Inject constructor(
     private val orders: OrderRepository,
     private val cart: CartRepository,
     private val menu: MenuRepository,
+    private val auth: com.swadsangam.restaurant.data.auth.AuthRepository,
 ) : ViewModel() {
     val list = orders.myOrders.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    suspend fun refresh() { orders.refreshAllAndCollectChanges() }
+    suspend fun refresh() {
+        auth.syncOrders { orders.saveFromAccount(it) } // orders from the customer's account (any phone)
+        orders.refreshAllAndCollectChanges()
+    }
 
     /** Reorder previous purchases (repeat business). Unavailable dishes are skipped. */
     fun reorder(o: Order, onDone: (added: Int) -> Unit) = viewModelScope.launch {

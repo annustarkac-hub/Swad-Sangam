@@ -60,7 +60,10 @@ class CheckoutViewModel @Inject constructor(
     private val prefs: UserPrefs,
     private val draft: CheckoutDraft,
     private val analytics: Analytics,
+    private val auth: com.swadsangam.restaurant.data.auth.AuthRepository,
 ) : ViewModel() {
+    /** Saved addresses of a signed-in customer (empty for guests). */
+    val addresses = auth.account
     private val _ui = MutableStateFlow(CheckoutUi())
     val ui: StateFlow<CheckoutUi> = _ui.asStateFlow()
     val info: StateFlow<RestaurantInfo?> = menu.restaurant.stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -81,6 +84,15 @@ class CheckoutViewModel @Inject constructor(
                 payment = i.enabledPaymentMethods.firstOrNull() ?: PaymentMethod.CASH, tableNumber = table.orEmpty())
         }
         requote()
+        // Signed-in customer: fill name, number and default address from the account
+        auth.reload()
+        auth.account.value?.let { acc ->
+            val def = acc.addresses.firstOrNull { it.isDefault } ?: acc.addresses.firstOrNull()
+            _ui.update {
+                it.copy(name = it.name.ifBlank { acc.profile?.fullName.orEmpty() }, phone = it.phone.ifBlank { acc.profile?.phone.orEmpty() },
+                    address = it.address.ifBlank { def?.address.orEmpty() }, landmark = it.landmark.ifBlank { def?.landmark.orEmpty() })
+            }
+        }
     }
 
     private suspend fun requote() {

@@ -1,8 +1,18 @@
-# Creates the Android release signing key ONCE. Run manually, then:
-#  1. Download the "signing-key" artifact (it is deleted automatically after 1 day).
-#  2. Keep release.jks and the passwords somewhere safe (e.g. Google Drive + a printed copy).
-#     If this key is lost you cannot update the app on Play Store without Google's help.
-#  3. Add the four secrets printed in KEY-INFO.txt to the repository secrets.
+# Creates the Android release signing key ONCE.
+#
+# This repository is PUBLIC, so anything this workflow uploads can be downloaded by anyone for a day.
+# The key is therefore protected by a password that only exists as a repository SECRET, and the
+# password is never written to the download.
+#
+# Steps (owner, one time):
+#  1. Settings > Secrets and variables > Actions > New repository secret
+#       Name:  ANDROID_KEYSTORE_PASSWORD
+#       Value: a long password you make up (at least 16 letters/numbers). Write it on paper and keep it safe.
+#  2. Actions > "Create signing key (run once)" > Run workflow > type YES.
+#  3. Open the finished run > download the "signing-key" artifact > open release.jks.base64.txt > copy ALL of it.
+#  4. New repository secret:  Name ANDROID_KEYSTORE_BASE64   Value: the text you copied.
+#  Done. The next "Release Android APK" run publishes the app. Keep the downloaded file safe (e.g. Google Drive):
+#  without it and the password you cannot publish updates that install over the old app.
 name: Create signing key (run once)
 
 on:
@@ -24,23 +34,29 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Generate key
+      - name: Generate key (protected by the ANDROID_KEYSTORE_PASSWORD secret)
+        env:
+          PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          EXISTING: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           set -euo pipefail
+          if [ -n "$EXISTING" ]; then
+            echo "::error::A signing key already exists (ANDROID_KEYSTORE_BASE64 is set). Creating a new one would stop updates from installing. Delete that secret first only if you really want a new key."
+            exit 1
+          fi
+          if [ ${#PASS} -lt 16 ]; then
+            echo "::error::First add the repository secret ANDROID_KEYSTORE_PASSWORD (at least 16 characters). See the steps at the top of this file."
+            exit 1
+          fi
           umask 077
           mkdir out
-          PASS=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 24)
-          keytool -genkeypair -v -keystore out/release.jks -alias swadsangam -keyalg RSA -keysize 4096 \
+          keytool -genkeypair -keystore out/release.jks -storetype PKCS12 -alias swadsangam -keyalg RSA -keysize 4096 \
             -validity 10000 -storepass "$PASS" -keypass "$PASS" \
             -dname "CN=Swad Sangam, O=Swad Sangam, L=Srinagar, ST=Uttarakhand, C=IN"
           base64 -w0 out/release.jks > out/release.jks.base64.txt
-          {
-            echo "Add these repository secrets (Settings > Secrets and variables > Actions):"
-            echo "ANDROID_KEYSTORE_BASE64 = contents of release.jks.base64.txt"
-            echo "ANDROID_KEYSTORE_PASSWORD = $PASS"
-            echo "ANDROID_KEY_PASSWORD = $PASS"
-            echo "ANDROID_KEY_ALIAS = swadsangam"
-          } > out/KEY-INFO.txt
+          rm out/release.jks
+          printf '%s\n' "Add a repository secret named ANDROID_KEYSTORE_BASE64 with the full contents of release.jks.base64.txt." \
+            "The password is your ANDROID_KEYSTORE_PASSWORD secret; the key alias is swadsangam. Keep this file safe." > out/README.txt
       - uses: actions/upload-artifact@v4
         with:
           name: signing-key

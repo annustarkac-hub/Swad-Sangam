@@ -128,6 +128,12 @@ class OrderRepository @Inject constructor(
         }
     }
 
+    /** Adds an order from the customer's account (placed on another phone) to this phone's list. */
+    suspend fun saveFromAccount(dto: OrderDto) {
+        val token = dto.accessToken ?: return
+        save(dto, token, notified = if (dao.byTokenNow(token) == null) dto.orderStatus else null)
+    }
+
     private suspend fun save(dto: OrderDto, token: String, notified: String? = null) {
         val existing = dao.byTokenNow(token)
         dao.upsert(
