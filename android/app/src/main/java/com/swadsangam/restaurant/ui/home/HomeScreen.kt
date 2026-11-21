@@ -1,5 +1,9 @@
 package com.swadsangam.restaurant.ui.home
 
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.heightIn
 import com.swadsangam.restaurant.ui.theme.Dimens
 import androidx.compose.foundation.background
@@ -103,6 +107,17 @@ fun HomeScreen(
                         Column(Modifier.weight(1f)) {
                             Text(info?.name ?: stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall, color = Color.White)
                             Text(stringResource(R.string.home_tagline), color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        // Pure Veg Mode (remembered on this phone)
+                        Column(
+                            Modifier.toggleable(value = s.pureVeg, role = Role.Switch, onValueChange = { vm.setPureVeg(it) }).padding(start = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Switch(checked = s.pureVeg, onCheckedChange = null,
+                                colors = SwitchDefaults.colors(checkedTrackColor = com.swadsangam.restaurant.ui.theme.SuccessGreen,
+                                    checkedThumbColor = Color.White, uncheckedTrackColor = Color.White.copy(alpha = 0.25f),
+                                    uncheckedThumbColor = Color.White, uncheckedBorderColor = Color.White.copy(alpha = 0.6f)))
+                            Text(stringResource(R.string.pure_veg), color = Color.White, style = MaterialTheme.typography.labelSmall)
                         }
                     }
                     Spacer(Modifier.height(8.dp))

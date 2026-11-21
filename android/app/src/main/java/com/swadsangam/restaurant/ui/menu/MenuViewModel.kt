@@ -81,10 +81,12 @@ class MenuViewModel @Inject constructor(
     private val menu: MenuRepository,
     private val cart: CartRepository,
     private val analytics: Analytics,
+    private val prefs: com.swadsangam.restaurant.data.prefs.UserPrefs,
 ) : ViewModel() {
     private val filters = MutableStateFlow(MenuFilters(categoryId = savedState.get<String>("category")?.takeIf { it.isNotBlank() }))
 
-    val state: StateFlow<MenuState> = combine(menu.categories, menu.items, filters, cart.lines, menu.restaurant) { cats, items, f, lines, info ->
+    val state: StateFlow<MenuState> = combine(menu.categories, combine(menu.items, prefs.pureVeg) { i, v -> if (v) i.filter { it.foodType == com.swadsangam.restaurant.domain.FoodType.VEG } else i },
+        filters, cart.lines, menu.restaurant) { cats, items, f, lines, info ->
         val filtered = MenuFilter.apply(items, cats, f)
         MenuState(
             categories = cats,

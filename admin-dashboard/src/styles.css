@@ -1,11 +1,15 @@
 /* Swad Sangam admin — clean, mobile-first restaurant POS design system.
    Tokens first; every page uses the shared classes below (card, stat, table, badge, buttons). */
 :root {
-  --brand: #c94a07;      /* Swad Sangam orange (signboard), AA contrast with white text */
-  --brand-600: #a83d05;
-  --brand-50: #fff0e6;
+  /* Partner-app design language (licensed): vivid orange #FD4E11 accent, near-black #131217 navigation, Plus Jakarta Sans.
+     --brand is the AA-safe orange for buttons and text (4.6:1 with white). */
+  --brand: #d63b06;
+  --brand-600: #b83204;
+  --brand-50: #fff0e8;
+  --accent: #fd4e11;
+  --nav-bg: #131217; --nav-text: #c9c5cc; --nav-muted: #7d7884; --nav-hover: #201f26; --nav-active: #2a1a14;
   --saffron: #e8a13b;
-  --bg: #f6f5f3;
+  --bg: #f8f6f4;
   --surface: #ffffff;
   --surface-2: #faf8f6;
   --text: #1f1a17;
@@ -17,19 +21,20 @@
   --red: #c8392f;
   --red-50: #fdecea;
   --blue-50: #e9f0fd;
-  --radius: 12px;
+  --radius: 14px;
   --shadow: 0 1px 2px rgba(20, 12, 8, .05), 0 1px 3px rgba(20, 12, 8, .06);
   --shadow-lg: 0 10px 30px rgba(20, 12, 8, .12);
   --sidebar: 240px;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 15px;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
 }
 :root[data-theme="dark"] {
-  --brand: #ff9a5c; --brand-600: #ffb183; --brand-50: #3a2216;
-  --bg: #121010; --surface: #1b1817; --surface-2: #221e1d; --text: #f2ece8; --muted: #a8a09a; --line: #2f2a28;
+  --brand: #ff7a45; --brand-600: #ff9466; --brand-50: #2a1a14; --accent: #ff7a45;
+  --nav-bg: #0d0c10; --nav-hover: #1b1a20; --nav-active: #2a1a14;
+  --bg: #131217; --surface: #1c1b21; --surface-2: #25232b; --text: #f4f1f3; --muted: #a7a2ab; --line: #2e2c34;
   --green: #4cc27e; --green-50: #16301f; --amber-50: #3a2d14; --red: #ff7b72; --red-50: #3b1b19; --blue-50: #17243b;
   --shadow: 0 1px 2px rgba(0,0,0,.4); --shadow-lg: 0 10px 30px rgba(0,0,0,.5);
 }
@@ -240,3 +245,17 @@ tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 70%, transpa
 /* Dark mode: the brand colour is light, so filled brand buttons need dark text (AA contrast) */
 :where(:root[data-theme="dark"]) button { color: #1c1917; }
 :where(:root[data-theme="dark"]) .brand .logo { color: #1c1917; }
+
+/* ===== Partner-app design language: dark navigation rail, orange accents ===== */
+.sidebar { background: var(--nav-bg); border-right: 0; color: var(--nav-text); }
+.sidebar .brand { color: #fff; }
+.sidebar .brand small, .sidebar .nav-group { color: var(--nav-muted); }
+.sidebar .nav-link { color: var(--nav-text); border-radius: 12px; }
+.sidebar .nav-link svg { color: var(--nav-muted); }
+.sidebar .nav-link:hover { background: var(--nav-hover); color: #fff; }
+.sidebar .nav-link.active { background: var(--nav-active); color: #fff; box-shadow: inset 3px 0 0 var(--accent); }
+.sidebar .nav-link.active svg { color: var(--accent); }
+.brand .logo { background: var(--accent); color: #fff; border-radius: 12px; }
+h1 { font-weight: 800; letter-spacing: -.02em; }
+.card, .stat { border-radius: 18px; }
+.bottom-bar a.active, .bottom-bar a[aria-current="page"] { color: var(--brand); }

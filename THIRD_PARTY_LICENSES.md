@@ -18,3 +18,11 @@ No source code from other restaurant POS projects (including the AGPL-3.0 NodeDR
 | Firebase Android SDK (Messaging, Crashlytics) — optional | Apache-2.0 (service terms apply) |
 | PostgreSQL extensions pg_net, pg_cron (on Supabase) | PostgreSQL Licence |
 | GitHub Actions used: actions/*, gradle/actions, supabase/setup-cli, softprops/action-gh-release | MIT |
+
+## Plus Jakarta Sans (font)
+Copyright 2020 The Plus Jakarta Sans Project Authors. SIL Open Font License 1.1 — full text in `licenses/PlusJakartaSans-OFL.txt`.
+Used in the Android app (`android/app/src/main/res/font/`) and the website/admin (`@fontsource/plus-jakarta-sans`, same licence).
+
+## Design language reference
+The colour palette, type choice and screen patterns follow the FoodGenz user/partner apps, which the owner states are licensed to them.
+No FoodGenz code, logos, illustrations, names or images are included in this repository.

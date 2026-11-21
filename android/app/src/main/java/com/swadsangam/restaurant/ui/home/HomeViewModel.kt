@@ -34,6 +34,7 @@ data class HomeState(
     val heroItem: MenuItem? = null,
     val sync: SyncState = SyncState.Idle,
     val hasMenu: Boolean = false,
+    val pureVeg: Boolean = false,
 )
 
 @HiltViewModel
@@ -41,13 +42,14 @@ class HomeViewModel @Inject constructor(
     private val menu: MenuRepository,
     private val cart: CartRepository,
     private val analytics: Analytics,
+    private val prefs: com.swadsangam.restaurant.data.prefs.UserPrefs,
 ) : ViewModel() {
 
     val state: StateFlow<HomeState> = combine(
-        menu.restaurant, menu.categories, menu.items, menu.offers,
+        menu.restaurant, menu.categories, combine(menu.items, prefs.pureVeg) { i, v -> i to v }, menu.offers,
         combine(menu.sync, menu.status) { a, b -> a to b },
-    ) { info, cats, items, offers, (sync, status) ->
-        val available = items.filter { it.isAvailable }
+    ) { info, cats, (items, pureVeg), offers, (sync, status) ->
+        val available = items.filter { it.isAvailable && (!pureVeg || it.foodType == FoodType.VEG) }
         HomeState(
             info = info,
             status = status,
@@ -64,12 +66,14 @@ class HomeViewModel @Inject constructor(
                 ?: available.firstOrNull { it.imageUrl != null },
             sync = sync,
             hasMenu = items.isNotEmpty(),
+            pureVeg = pureVeg,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeState())
 
     init { analytics.track(Analytics.HOME_VIEWED) }
 
     fun refresh() = viewModelScope.launch { menu.refresh() }
+    fun setPureVeg(on: Boolean) = viewModelScope.launch { prefs.setPureVeg(on) }
 
     fun quickAdd(item: MenuItem, max: Int) = viewModelScope.launch {
         cart.add(item.id, emptyList(), 1, max)
