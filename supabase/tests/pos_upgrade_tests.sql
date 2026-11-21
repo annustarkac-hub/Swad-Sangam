@@ -109,4 +109,7 @@ select public.request_service('T1','REQUEST_BILL',(select c from code));
 reset role;
 select pg_temp.check((select count(*) from public.service_requests where status = 'OPEN') = 1, 'duplicate request ignored');
 select pg_temp.check(not exists (select 1 from public.journal_lines group by entry_id having sum(debit_paise) <> sum(credit_paise)), 'books still balanced');
+set role anon;
+select pg_temp.check(jsonb_array_length(public.public_tables()) >= 2 and not (public.public_tables()->0 ? 'session_code'), 'guests see table list without codes');
+reset role;
 \echo ALL POS UPGRADE TESTS PASSED

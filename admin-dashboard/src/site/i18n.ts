@@ -67,6 +67,22 @@ const T = {
   minOrder: ["Minimum order", "न्यूनतम ऑर्डर"],
   rating: ["rating", "रेटिंग"],
   reviews: ["reviews", "समीक्षाएँ"],
+  soldOut: ["Sold out", "ख़त्म"],
+  chooseTable: ["Choose your table", "अपनी टेबल चुनें"],
+  free: ["free", "खाली"],
+  payNow: ["Pay now by UPI", "अभी UPI से भुगतान करें"],
+  scanToPay: ["Scan with any UPI app or tap the button. Staff will confirm when the money arrives.", "किसी भी UPI ऐप से स्कैन करें या बटन दबाएँ। पैसा आने पर स्टाफ़ पुष्टि करेगा।"],
+  openUpi: ["Pay with UPI app", "UPI ऐप से भुगतान करें"],
+  paid: ["Paid ✓", "भुगतान हो गया ✓"],
+  addToOrder: ["Add to order", "ऑर्डर में जोड़ें"],
+  checkout: ["Checkout", "चेकआउट"],
+  details: ["Your details", "आपकी जानकारी"],
+  bestsellers: ["Popular", "लोकप्रिय"],
+  close: ["Close", "बंद करें"],
+  tableCode: ["Table code (ask our staff)", "टेबल कोड (स्टाफ़ से पूछें)"],
+  callWaiter: ["Call waiter", "वेटर बुलाएँ"],
+  requestBill: ["Request bill", "बिल लाएँ"],
+  water: ["Water", "पानी"],
 } as const;
 
 export type Key = keyof typeof T;

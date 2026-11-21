@@ -1,7 +1,7 @@
 # Third-party software
 
 This project uses these open-source libraries (installed through npm / Gradle, not copied into the repository).
-No source code from other restaurant POS projects (including the AGPL-3.0 NodeDR OrderRestro) has been copied; their feature lists were used only as a checklist (see docs/ARCHITECTURE_DECISIONS.md, ADR-5).
+No source code from other restaurant POS projects (including the AGPL-3.0 NodeDR OrderRestro and ElitaleRestro / tirforge/restro) has been copied; their feature lists were used only as a checklist (see docs/ARCHITECTURE_DECISIONS.md, ADR-5).
 
 | Component | Licence |
 |---|---|
