@@ -57,7 +57,7 @@ jobs:
           rm out/release.jks
           printf '%s\n' "Add a repository secret named ANDROID_KEYSTORE_BASE64 with the full contents of release.jks.base64.txt." \
             "The password is your ANDROID_KEYSTORE_PASSWORD secret; the key alias is swadsangam. Keep this file safe." > out/README.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: signing-key
           path: out/
