@@ -85,7 +85,7 @@ export default function MenuPage() {
                         <FoodDot type={it.food_type} /> <b>{it.name}</b> {it.is_popular && <span className="badge">Popular</span>}
                         {!it.details_verified && <span className="badge" title="Not verified by owner">Unverified</span>}
                         <div className="small muted">{it.description}</div>
-                        {it.options.length > 0 && <div className="small">Options: {it.options.map((o) => `${o.name} (+${rupees(o.pricePaise)})`).join(", ")}</div>}
+                        {it.options.length > 0 && <div className="small">{it.variant_base_label ? `${it.variant_base_label} ${rupees(it.price_paise)} · ` : "Options: "}{it.options.map((o) => `${o.name} ${o.group ? rupees(it.price_paise + o.pricePaise) : "+" + rupees(o.pricePaise)}`).join(" · ")}</div>}
                       </td>
                       <td className="right"><b>{rupees(it.price_paise)}</b></td>
                       <td style={{ width: 170 }}>
@@ -228,11 +228,18 @@ function ItemEditor({ item, cats, onClose, onSaved }: { item: MenuItem; cats: Ca
         <div className="row" key={i} style={{ marginBottom: 6 }}>
           <input style={{ maxWidth: 220 }} placeholder="Option name" value={o.name} onChange={(e) => setOption(i, { name: e.target.value })} />
           <input style={{ maxWidth: 110 }} placeholder="+₹" value={fromPaise(o.pricePaise)} onChange={(e) => setOption(i, { pricePaise: toPaise(e.target.value || "0") ?? 0 })} />
+          <select style={{ maxWidth: 150 }} value={o.group ?? ""} onChange={(e) => setOption(i, { group: e.target.value || undefined })} title="Options in the same group are alternatives">
+            <option value="">Add-on (any)</option><option value="size">Size (Half/Full)</option><option value="style">Style (Dry/Gravy…)</option>
+            <option value="base">Base (Rice/Noodles)</option><option value="pasta">Pasta type</option><option value="egg">Egg style</option>
+          </select>
           <label className="check" style={{ margin: 0 }}><input type="checkbox" checked={o.isAvailable !== false} onChange={(e) => setOption(i, { isAvailable: e.target.checked })} /> available</label>
           <button className="link" onClick={() => set({ options: it.options.filter((_, j) => j !== i) })}>Remove</button>
         </div>
       ))}
       <button className="secondary small" onClick={() => set({ options: [...it.options, { id: "", name: "", pricePaise: 0 }] })}>Add option</button>
+      <label style={{ marginTop: 8 }}>Name of the base variant (when no option is chosen, e.g. Half, Dry, Fried Rice)
+        <input value={it.variant_base_label ?? ""} onChange={(e) => set({ variant_base_label: e.target.value || null })} /></label>
+      <p className="small muted">Price above = base variant price. A “Full” option with +₹79 means Full costs base + ₹79. Options in the same group can’t be chosen together.</p>
 
       <h3 style={{ marginTop: 12 }}>Status</h3>
       <label className="check"><input type="checkbox" checked={it.is_available} onChange={(e) => set({ is_available: e.target.checked })} /> Available today</label>

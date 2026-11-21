@@ -113,4 +113,16 @@ set role anon;
 select pg_temp.check(jsonb_array_length(public.public_tables()) >= 2 and not (public.public_tables()->0 ? 'session_code'), 'guests see table list without codes');
 reset role;
 select pg_temp.check((select count(*) from information_schema.columns where table_name='menu_items' and column_name in ('image_is_representative','image_credit')) = 2, 'menu media columns');
+-- variant groups: only one option per group
+reset role;
+update public.menu_items set options = '[{"id":"full","name":"Full","pricePaise":7900,"group":"size"},{"id":"xl","name":"XL","pricePaise":9000,"group":"size"},{"id":"butter","name":"Butter","pricePaise":1000}]', variant_base_label = 'Half' where id = 'dish_008';
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+do $$ begin
+  perform public.pos_create_order('{"idempotencyKey":"eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee","items":[{"itemId":"dish_008","quantity":1,"optionIds":["full","xl"]}]}');
+  raise exception 'two sizes accepted';
+exception when sqlstate '22023' then null; end $$;
+select pg_temp.check(true, 'only one variant per group');
+select pg_temp.check((public.pos_create_order('{"idempotencyKey":"ffffffff-ffff-ffff-ffff-ffffffffffff","items":[{"itemId":"dish_008","quantity":1,"optionIds":["full","butter"]}]}')->>'totalPaise')::int = 14000 + 7900 + 1000, 'variant + add-on priced on server');
+reset role;
 \echo ALL POS UPGRADE TESTS PASSED

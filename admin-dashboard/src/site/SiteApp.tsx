@@ -48,6 +48,17 @@ function isOpen(s: Settings): boolean {
     || prev.some((x) => m(x.close) <= m(x.open) && mins < m(x.close)));
 }
 
+/** "Half ₹120 · Full ₹199" for size variants, otherwise the base price. */
+function priceText(i: MenuItem): string {
+  const sizes = i.options.filter((o) => o.group === "size");
+  if (sizes.length) return [`${i.variant_base_label ?? "Regular"} ${rupees(i.price_paise)}`, ...sizes.map((o) => `${o.name} ${rupees(i.price_paise + o.pricePaise)}`)].join(" · ");
+  return rupees(i.price_paise);
+}
+function variantHint(i: MenuItem): string | null {
+  const g = i.options.filter((o) => o.group && o.group !== "size");
+  return g.length ? [i.variant_base_label, ...g.map((o) => o.name)].filter(Boolean).join(" / ") : null;
+}
+
 function Veg({ type }: { type: "VEG" | "NON_VEG" }) {
   return <span className={type === "VEG" ? "veg" : "nonveg"} role="img" aria-label={type === "VEG" ? "Vegetarian" : "Non-vegetarian"} />;
 }
@@ -282,7 +293,7 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
               <article key={i.id} className="feat-card" onClick={() => onOpen(i)}>
                 <img src={i.image_url!} alt={i.name} loading="lazy" />
                 <div className="feat-shade" />
-                <div className="feat-text"><Veg type={i.food_type} /><b>{name(i)}</b><span>{rupees(i.price_paise)}</span></div>
+                <div className="feat-text"><Veg type={i.food_type} /><b>{name(i)}</b><span>{i.options.some((o) => o.group === "size") ? "from " : ""}{rupees(i.price_paise)}</span></div>
                 {i.image_is_representative && <span className="rep-tag">Representative image</span>}
               </article>
             ))}
@@ -315,9 +326,9 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
                 <div className="dish-info" onClick={() => onOpen(i)}>
                   <div className="dish-top"><Veg type={i.food_type} />{i.is_popular && <span className="tag-s">★ {L("bestsellers")}</span>}</div>
                   <h3>{name(i)}</h3>
-                  <div className="price-s">{rupees(i.price_paise)}</div>
+                  <div className="price-s">{priceText(i)}</div>
                   {desc(i) && <p>{desc(i)}</p>}
-                  {i.options.length > 0 && <span className="custom-s">{hi ? "विकल्प उपलब्ध" : "Customisable"}</span>}
+                  {variantHint(i) && <span className="custom-s">{variantHint(i)}</span>}
                 </div>
                 <div className="dish-media">
                   <button className="img-btn" onClick={() => onOpen(i)} aria-label={name(i)}>
@@ -342,7 +353,10 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
 
 function DishSheet({ L, lang, item, canOrder, onClose, onAdd }: { L: L; lang: Lang; item: MenuItem; canOrder: boolean; onClose: () => void; onAdd: (ids: string[], qty: number) => void }) {
   const opts = item.options.filter((o) => o.isAvailable !== false);
+  const groups = [...new Set(opts.filter((o) => o.group).map((o) => o.group!))];
+  const addons = opts.filter((o) => !o.group);
   const [sel, setSel] = useState<string[]>([]);
+  const pick = (g: string, id: string | null) => setSel((x) => [...x.filter((y) => opts.find((o) => o.id === y)?.group !== g), ...(id ? [id] : [])]);
   const [qty, setQty] = useState(1);
   const hi = lang === "hi";
   const total = (item.price_paise + opts.filter((o) => sel.includes(o.id)).reduce((s, o) => s + o.pricePaise, 0)) * qty;
@@ -355,8 +369,20 @@ function DishSheet({ L, lang, item, canOrder, onClose, onAdd }: { L: L; lang: La
       {item.portion_info && <p className="small"><b>{hi ? "मात्रा" : "Portion"}:</b> {item.portion_info}</p>}
       {item.preparation_minutes && <p className="small"><b>{hi ? "समय" : "Ready in"}:</b> ~{item.preparation_minutes} min</p>}
       <p className="small"><b>{hi ? "एलर्जी" : "Allergens"}:</b> {item.allergens ?? (hi ? "एलर्जी हो तो स्टाफ़ को बताएँ" : "Ask our staff if you have an allergy")}</p>
-      {opts.length > 0 && <div className="lbl">{hi ? "विकल्प चुनें" : "Customise"}</div>}
-      {opts.map((o) => (
+      {groups.map((g) => (
+        <div key={g}>
+          <div className="lbl">{g === "size" ? (hi ? "मात्रा चुनें" : "Choose portion") : (hi ? "विकल्प चुनें" : "Choose one")}</div>
+          <div className="variant-row">
+            <button className={!sel.some((id) => opts.find((o) => o.id === id)?.group === g) ? "on" : ""} onClick={() => pick(g, null)}>
+              {item.variant_base_label ?? (hi ? "सामान्य" : "Regular")}<small>{rupees(item.price_paise)}</small></button>
+            {opts.filter((o) => o.group === g).map((o) => (
+              <button key={o.id} className={sel.includes(o.id) ? "on" : ""} onClick={() => pick(g, o.id)}>{o.name}<small>{rupees(item.price_paise + o.pricePaise)}</small></button>
+            ))}
+          </div>
+        </div>
+      ))}
+      {addons.length > 0 && <div className="lbl">{hi ? "अतिरिक्त" : "Add-ons"}</div>}
+      {addons.map((o) => (
         <label key={o.id} className="opt-row">
           <input type="checkbox" checked={sel.includes(o.id)} onChange={(e) => setSel(e.target.checked ? [...sel, o.id] : sel.filter((x) => x !== o.id))} />
           <span>{o.name}</span><b>{o.pricePaise ? `+${rupees(o.pricePaise)}` : ""}</b>
@@ -460,7 +486,7 @@ function CartSheet({ L, lang, cart, byId, settings, table, setTable, canOrder, m
           <div key={lineKey(l)} className="cart-line">
             <Veg type={i.food_type} />
             <div className="grow">{lang === "hi" && i.name_hi ? i.name_hi : i.name}
-              {opts.length > 0 && <small> · {opts.map((o) => o.name).join(", ")}</small>}
+              {(opts.length > 0 || i.variant_base_label) && <small> · {[...(i.options.some((o) => o.group) && !opts.some((o) => o.group) ? [i.variant_base_label] : []), ...opts.map((o) => o.name)].filter(Boolean).join(", ")}</small>}
               {!i.is_available && <div className="bad-s">{L("soldOut")}</div>}</div>
             <div className="stepper-s"><button onClick={() => onChange(l.itemId, l.optionIds, -1)}>−</button><b>{l.qty}</b><button onClick={() => onChange(l.itemId, l.optionIds, 1)}>+</button></div>
             <b className="amt">{rupees(unit * l.qty)}</b>
