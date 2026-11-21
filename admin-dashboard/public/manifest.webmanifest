@@ -1,0 +1,9 @@
+{
+  "name": "Swad Sangam Admin",
+  "short_name": "SS Admin",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#FFF8EF",
+  "theme_color": "#9E3528",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

@@ -1,0 +1,48 @@
+# Creates the Android release signing key ONCE. Run manually, then:
+#  1. Download the "signing-key" artifact (it is deleted automatically after 1 day).
+#  2. Keep release.jks and the passwords somewhere safe (e.g. Google Drive + a printed copy).
+#     If this key is lost you cannot update the app on Play Store without Google's help.
+#  3. Add the four secrets printed in KEY-INFO.txt to the repository secrets.
+name: Create signing key (run once)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type YES to create a new key"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  create:
+    if: inputs.confirm == 'YES'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Generate key
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir out
+          PASS=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 24)
+          keytool -genkeypair -v -keystore out/release.jks -alias swadsangam -keyalg RSA -keysize 4096 \
+            -validity 10000 -storepass "$PASS" -keypass "$PASS" \
+            -dname "CN=Swad Sangam, O=Swad Sangam, L=Srinagar, ST=Uttarakhand, C=IN"
+          base64 -w0 out/release.jks > out/release.jks.base64.txt
+          {
+            echo "Add these repository secrets (Settings > Secrets and variables > Actions):"
+            echo "ANDROID_KEYSTORE_BASE64 = contents of release.jks.base64.txt"
+            echo "ANDROID_KEYSTORE_PASSWORD = $PASS"
+            echo "ANDROID_KEY_PASSWORD = $PASS"
+            echo "ANDROID_KEY_ALIAS = swadsangam"
+          } > out/KEY-INFO.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signing-key
+          path: out/
+          retention-days: 1

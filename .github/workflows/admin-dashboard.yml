@@ -1,0 +1,55 @@
+# Builds the restaurant admin dashboard and (optionally) publishes it free on GitHub Pages.
+name: Admin dashboard
+
+on:
+  push:
+    paths: ["admin-dashboard/**", ".github/workflows/admin-dashboard.yml"]
+  pull_request:
+    paths: ["admin-dashboard/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin-dashboard
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin-dashboard/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: admin-dashboard/dist
+
+  # Publishes only when the repository variable ENABLE_GITHUB_PAGES is "true"
+  # (Settings → Secrets and variables → Actions → Variables) and Pages source is "GitHub Actions".
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && vars.ENABLE_GITHUB_PAGES == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

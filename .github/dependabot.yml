@@ -1,0 +1,14 @@
+# Free automatic dependency/security update pull requests (PRD §20 monthly maintenance)
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /android
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /admin-dashboard
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }

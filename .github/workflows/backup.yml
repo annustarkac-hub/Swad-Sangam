@@ -1,0 +1,36 @@
+# Free daily database backup (the Supabase free plan has no automatic backups).
+# Dump is ENCRYPTED with your BACKUP_PASSPHRASE before upload, because artifacts of a
+# public repository can be downloaded by anyone with a GitHub account.
+# Secrets: SUPABASE_DB_URL (Session pooler connection string, see SETUP_GUIDE), BACKUP_PASSPHRASE.
+name: Database backup
+
+on:
+  schedule:
+    - cron: "47 21 * * *"   # 03:17 IST daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump and encrypt
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DB_URL" ] || [ -z "$PASS" ]; then echo "::warning::Backup secrets not set — skipping"; exit 0; fi
+          mkdir out
+          docker run --rm -e DB_URL="$DB_URL" postgres:17 sh -c 'pg_dump "$DB_URL" --no-owner --no-privileges --schema=public --schema=private --format=custom' > out/db.dump
+          test -s out/db.dump
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$PASS" --symmetric --cipher-algo AES256 -o "out/swad-sangam-$(date -u +%F).dump.gpg" out/db.dump
+          rm out/db.dump
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_number }}
+          path: out/*.gpg
+          retention-days: 30
