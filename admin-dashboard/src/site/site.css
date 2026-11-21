@@ -439,3 +439,72 @@ h1, h2, h3, .sec, .info-title, .status-big { letter-spacing: -.02em; }
   .tabbar-s .tab-ic { width: auto; height: auto; background: none !important; }
 }
 .search-ic { color: var(--brand-600); flex: none; }
+
+/* ===== Modern refresh: clean white canvas, borderless cards, soft depth, one icon set ===== */
+:root {
+  --bg: #ffffff; --surface: #ffffff; --surface-2: #f4f4f6; --line: #ececf0; --text: #16161a; --muted: #6b6b76;
+  --shadow: 0 1px 2px rgba(16,16,20,.04), 0 8px 24px rgba(16,16,20,.06); --shadow-lg: 0 20px 48px rgba(16,16,20,.16);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0f0f12; --surface: #18181c; --surface-2: #222228; --line: #26262d; --text: #f4f4f6; --muted: #9d9daa; }
+}
+body { letter-spacing: -.005em; }
+.ic-text { display: inline-flex; align-items: center; gap: 6px; }
+.pill-s, .ghost-s, .link-s, .chip-f, .recent-s button { display: inline-flex; align-items: center; gap: 6px; }
+svg { flex: none; }
+
+/* Header */
+.topbar-s { background: color-mix(in srgb, var(--bg) 85%, transparent); border-bottom: 0; box-shadow: 0 1px 0 var(--line); }
+.welcome-table { display: inline-flex; align-items: center; gap: 4px; }
+.icon-btn { border: 0; background: var(--surface-2); border-radius: 14px; display: grid; place-items: center; color: var(--text); }
+.pure-veg { border: 0; background: var(--surface-2); }
+
+/* Search + filters */
+.search-s { background: var(--surface-2); border: 0; box-shadow: none; }
+.search-s input::placeholder { color: var(--muted); }
+.chip-f { border: 0; background: var(--surface-2); color: var(--text); font-weight: 600; }
+.chip-f.on { background: var(--brand-50); color: var(--brand-600); }
+
+/* Category pills */
+.cat-title { font-size: 1.05rem; }
+.cat-pills button { border: 0; background: var(--surface-2); color: var(--text); box-shadow: none; font-weight: 600; }
+.cat-pills button.on { background: var(--text); color: var(--bg); }
+
+/* Section titles */
+.sec { font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
+.cat-sec .sec .muted-s { font-weight: 500; font-size: .85rem; }
+
+/* Dish cards */
+.dish-card { border: 0; box-shadow: var(--shadow); padding: 0; overflow: hidden; border-radius: 22px; }
+.dish-card-img { border-radius: 0; }
+.dish-card-body { padding: 10px 12px 0; }
+.dish-card-body h3 { font-weight: 650; }
+.dish-card-foot { padding: 8px 10px 12px 12px; }
+.dish-card-price { font-weight: 750; }
+.dish-card-veg { border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.dish-card-tag { display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,.92); color: #16161a; backdrop-filter: blur(6px); }
+.plus-btn { width: 38px; height: 38px; border-radius: 14px; box-shadow: none; font-size: 1.4rem; }
+.stepper-s.mini { border-radius: 14px; }
+
+/* Bottom bar + cart bar */
+.tabbar-s { box-shadow: 0 -1px 0 var(--line); border-top: 0; }
+.cart-fab { background: var(--text); color: var(--bg); border-radius: 20px; box-shadow: var(--shadow-lg); }
+.cart-fab .cart-count { background: var(--brand-600); color: #fff; }
+
+/* Cards, sheets, buttons */
+.card-s2, .info-card, .desk-cart { border: 0; box-shadow: var(--shadow); border-radius: 22px; }
+.sheet { border-radius: 26px 26px 0 0; }
+.primary-s { border-radius: 16px; box-shadow: none; font-weight: 700; }
+.ghost-s { border: 0; background: var(--surface-2); color: var(--text); border-radius: 14px; }
+.pill-s { border: 0; background: var(--surface-2); color: var(--text); }
+.form-s input, .form-s textarea, .form-s select { background: var(--surface-2); border: 1px solid transparent; border-radius: 14px; }
+.form-s input:focus, .form-s textarea:focus { background: var(--surface); }
+.pay-opts button, .addr-pick button, .variant-row button { border-radius: 16px; }
+.bill-s { border-radius: 18px; }
+.stars-s button { color: var(--line); } .stars-s button.on { color: #f5a623; }
+.review-s b { color: #f5a623; }
+@media (prefers-color-scheme: dark) {
+  .cart-fab .cart-count { color: #fff; }
+  .dish-card-tag { background: rgba(24,24,28,.85); color: #fff; }
+}
+.ph-s { color: var(--muted); }

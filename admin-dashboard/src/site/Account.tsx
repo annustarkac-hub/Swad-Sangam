@@ -1,3 +1,4 @@
+import { ReceiptText, Star } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { cleanPhone, db, store, validPhone, type Address, type Customer } from "./common";
 import type { Lang } from "./i18n";
@@ -203,7 +204,7 @@ function Profile({ lang, c, reload }: { lang: Lang; c: Customer; reload: () => P
       </div>
 
       <div className="card-s2 row-s between">
-        <a className="ghost-s" href="#/orders">🧾 {tx(lang, "My orders", "मेरे ऑर्डर")}</a>
+        <a className="ghost-s ic-text" href="#/orders"><ReceiptText size={16} /> {tx(lang, "My orders", "मेरे ऑर्डर")}</a>
         <button className="ghost-s" onClick={async () => { await db.auth.signOut(); location.hash = "#/account"; }}>{tx(lang, "Log out", "लॉग आउट")}</button>
       </div>
     </div>
@@ -223,7 +224,7 @@ export function FeedbackCard({ lang, token }: { lang: Lang; token: string }) {
     <div className="card-s2 form-s">
       <h3 style={{ margin: 0 }}>{tx(lang, "How was your food?", "खाना कैसा लगा?")}</h3>
       <div className="stars-s" role="radiogroup" aria-label="Rating">
-        {[1, 2, 3, 4, 5].map((n) => <button key={n} role="radio" aria-checked={stars === n} className={n <= stars ? "on" : ""} onClick={() => setStars(n)}>★</button>)}
+        {[1, 2, 3, 4, 5].map((n) => <button key={n} role="radio" aria-checked={stars === n} className={n <= stars ? "on" : ""} onClick={() => setStars(n)}><Star size={30} fill={n <= stars ? "currentColor" : "none"} /></button>)}
       </div>
       <textarea placeholder={tx(lang, "Comments (optional)", "टिप्पणी (वैकल्पिक)")} maxLength={1000} value={text} onChange={(e) => setText(e.target.value)} />
       <label className="check-s"><input type="checkbox" checked={publish} onChange={(e) => setPublish(e.target.checked)} /><span>{tx(lang, "Show my comment (without my name) on the website", "मेरी टिप्पणी (बिना नाम के) वेबसाइट पर दिखाएँ")}</span></label>
