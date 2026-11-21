@@ -123,7 +123,7 @@ export default function SiteApp() {
       {settings?.temporarily_closed && <div className="note bad">{settings.closure_message ?? L("closedNow")}</div>}
       {settings?.announcement && <div className="note">{settings.announcement}</div>}
       {settings && !ordering && view.name !== "order" && <div className="note">{L("orderingOff")} <a href={`tel:${settings.phone}`}>{settings.phone}</a></div>}
-      {table && <div className="note">🍽 {L("table")}: <b>{table}</b></div>}
+      {table && <TableBar table={table} lang={lang} />}
 
       <main className="site-main">
         {view.name === "menu" && <MenuView L={L} lang={lang} cats={cats} items={items} cart={cart} onAdd={add} canOrder={ordering} />}
@@ -210,7 +210,7 @@ function CartView({ L, cart, byId, settings, table, canOrder, setQty, onPlaced }
   const pays = (["CASH", "UPI_AT_RESTAURANT"] as const).filter((p) => (p === "CASH" && settings.cash_enabled) || (p === "UPI_AT_RESTAURANT" && settings.upi_at_restaurant_enabled));
   const saved = store.get("ss_customer", { name: "", phone: "" });
   const [f, setF] = useState({ name: saved.name, phone: saved.phone, type: (table && types.includes("DINE_IN") ? "DINE_IN" : types[0]) as string,
-    table: table ?? "", address: "", notes: "", pay: pays[0] as string, coupon: "", terms: false });
+    table: table ?? "", tableCode: store.get("ss_table_code", ""), address: "", notes: "", pay: pays[0] as string, coupon: "", terms: false });
   const [quote, setQuote] = useState<Quote | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -235,7 +235,7 @@ function CartView({ L, cart, byId, settings, table, canOrder, setQty, onPlaced }
     try {
       const { data, error } = await supabase.rpc("place_order", { p_order: {
         idempotencyKey: key, customerName: f.name, customerPhone: f.phone, orderType: f.type, paymentMethod: f.pay, items,
-        termsAccepted: f.terms, tableNumber: f.type === "DINE_IN" ? f.table : null, deliveryAddress: f.type === "DELIVERY" ? f.address : null,
+        termsAccepted: f.terms, tableNumber: f.type === "DINE_IN" ? f.table : null, tableCode: f.type === "DINE_IN" ? f.tableCode : null, deliveryAddress: f.type === "DELIVERY" ? f.address : null,
         notes: f.notes || null, couponCode: f.coupon || null, expectedTotalPaise: quote?.totalPaise } });
       if (error) throw new Error(error.message);
       const r = data as { ok: boolean; error?: string; message?: string; order?: { accessToken: string } };
@@ -288,6 +288,8 @@ function CartView({ L, cart, byId, settings, table, canOrder, setQty, onPlaced }
           <label>{L("orderType")}</label>
           <div className="chips">{types.map((x) => <button key={x} className={"chip" + (f.type === x ? " on" : "")} onClick={() => setF({ ...f, type: x })}>{L(x)}</button>)}</div>
           {f.type === "DINE_IN" && <label>{L("table")}<input value={f.table} onChange={(e) => setF({ ...f, table: e.target.value })} /></label>}
+          {f.type === "DINE_IN" && <label>Table code (ask our staff)<input inputMode="numeric" maxLength={4} value={f.tableCode}
+            onChange={(e) => { setF({ ...f, tableCode: e.target.value }); store.set("ss_table_code", e.target.value); }} /></label>}
           {f.type === "DELIVERY" && <label>{L("address")}<textarea value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} />{settings.delivery_area_note && <small>{settings.delivery_area_note}</small>}</label>}
           <label>{L("notes")}<input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
           <label>{L("coupon")}<input value={f.coupon} onChange={(e) => setF({ ...f, coupon: e.target.value.toUpperCase() })} />
@@ -384,6 +386,34 @@ function InfoView({ L, s }: { L: (k: Key) => string; s: Settings }) {
       {s.fssai_number && <p className="muted">FSSAI Lic. No. {s.fssai_number}</p>}
       <p><a href={APK_URL}>⬇ {L("getApp")} (APK)</a></p>
       <p className="muted small"><a href="./privacy.html">{L("privacy")}</a> · <a href="./terms.html">{L("orderTerms")}</a> · <a href="./admin.html">{L("staffLogin")}</a></p>
+    </div>
+  );
+}
+
+/** Table guests: call a waiter or ask for the bill from the phone. */
+function TableBar({ table, lang }: { table: string; lang: Lang }) {
+  const [msg, setMsg] = useState<string | null>(null);
+  const hi = lang === "hi";
+  async function ask(type: string) {
+    let code = store.get("ss_table_code", "");
+    const first = await supabase.rpc("request_service", { p_table: table, p_type: type, p_code: code || null });
+    let r = first.data as { ok: boolean; error?: string; message?: string } | null;
+    if (r && !r.ok && r.error === "TABLE_CODE_REQUIRED") {
+      code = prompt(hi ? "स्टाफ़ द्वारा बताया गया 4 अंकों का टेबल कोड" : "Enter the 4-digit table code from our staff") ?? "";
+      store.set("ss_table_code", code);
+      r = (await supabase.rpc("request_service", { p_table: table, p_type: type, p_code: code })).data;
+    }
+    setMsg(r?.ok ? (hi ? "स्टाफ़ को सूचना भेज दी गई ✓" : "Staff has been notified ✓") : (r?.message ?? "Please call the staff"));
+  }
+  return (
+    <div className="note">
+      🍽 {hi ? "टेबल" : "Table"} <b>{table}</b>
+      <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+        <button className="chip" onClick={() => void ask("CALL_WAITER")}>🙋 {hi ? "वेटर बुलाएँ" : "Call waiter"}</button>
+        <button className="chip" onClick={() => void ask("REQUEST_BILL")}>🧾 {hi ? "बिल लाएँ" : "Request bill"}</button>
+        <button className="chip" onClick={() => void ask("WATER")}>💧 {hi ? "पानी" : "Water"}</button>
+      </div>
+      {msg && <div className="small" style={{ marginTop: 6 }}>{msg}</div>}
     </div>
   );
 }

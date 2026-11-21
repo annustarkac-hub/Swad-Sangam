@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { selectAll } from "../lib/erp";
+import { rpc, selectAll } from "../lib/erp";
 import { dateTime, todayIST } from "../lib/format";
 import { supabase } from "../lib/supabase";
 
-interface Table { id: number; name: string; seats: number; status: string; sort_order: number }
+interface Table { id: number; name: string; seats: number; status: string; sort_order: number; session_code: string | null }
 interface Reservation { id: number; customer_name: string; phone: string | null; party_size: number; reserved_for: string; table_id: number | null; status: string; notes: string | null }
 
 /** Floor tables (status, cleaning) and reservations / waiting list. */
@@ -24,12 +24,20 @@ export default function TablesPage() {
   return (
     <div>
       <h1>Tables & reservations</h1>
+      <p className="small muted">When guests sit down, tap <b>Seat guests</b> and tell them the 4-digit code. If “Require table code” is on in Settings,
+        QR orders and waiter calls from that table need this code, so nobody can order for a table they are not sitting at.</p>
       {err && <p className="error">{err}</p>}
       <div className="grid tight">
         {tables.map((x) => (
           <div key={x.id} className="card" style={{ background: color(x.status) }}>
             <b>{x.name}</b> <span className="small">({x.seats} seats)</span><div className="small">{x.status}</div>
             <select className="small" value={x.status} onChange={(e) => void setStatus(x.id, e.target.value)}>{["FREE", "OCCUPIED", "CLEANING", "RESERVED"].map((s) => <option key={s}>{s}</option>)}</select>
+            <div className="row" style={{ marginTop: 6 }}>
+              {x.session_code
+                ? <><span className="small">QR code: <b style={{ fontSize: "1.2rem", letterSpacing: 2 }}>{x.session_code}</b></span>
+                    <button className="link small" onClick={async () => { await rpc("close_table_session", { p_table_id: x.id }); void load(); }}>End</button></>
+                : <button className="secondary small" onClick={async () => { await rpc("open_table_session", { p_table_id: x.id }); void load(); }}>Seat guests · get code</button>}
+            </div>
           </div>
         ))}
       </div>

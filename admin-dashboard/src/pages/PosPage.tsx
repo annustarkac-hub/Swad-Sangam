@@ -1,5 +1,6 @@
 import QRCode from "qrcode";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { playAlert } from "../lib/alert";
 import { can, useAuth } from "../auth";
 import Modal from "../components/Modal";
 import { FoodDot } from "../components/OrderCard";
@@ -10,7 +11,7 @@ import { supabase } from "../lib/supabase";
 import { ORDER_TYPE_LABEL, STATUS_LABEL, type Category, type MenuItem, type Order } from "../lib/types";
 
 interface CartLine { key: string; item: MenuItem; qty: number; optionIds: string[]; complimentary: boolean }
-interface Customer { id: number; name: string; phone: string | null; credit_limit_paise: number }
+interface Customer { id: number; name: string; phone: string | null; credit_limit_paise: number; loyalty_points: number; is_active: boolean }
 interface Table { id: number; name: string; seats: number; status: string }
 interface CashStatus { open: boolean; id?: number; openedAt?: string; openingPaise?: number; expectedPaise?: number; last?: { closed_at: string; difference_paise: number } }
 
@@ -37,6 +38,7 @@ export default function PosPage() {
   const [upiId, setUpiId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"bills" | "menu" | "cart">("menu");
 
   const loadBills = useCallback(async () => {
     try {
@@ -108,12 +110,20 @@ export default function PosPage() {
     <div>
       <CashBar cash={cash} onChange={loadBills} />
       {err && <div className="banner danger">{err} <button className="link" onClick={() => setErr(null)}>✕</button></div>}
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "minmax(200px, 1fr) minmax(280px, 2fr) minmax(280px, 1.3fr)" }} className="pos-grid">
+      <ServiceRequests />
+      <div className="tabs pos-tabs">
+        {(["bills", "menu", "cart"] as const).map((t) => (
+          <button key={t} className={mobileTab === t ? "active" : ""} onClick={() => setMobileTab(t)}>
+            {t === "bills" ? `Bills (${openBills.length})` : t === "menu" ? "Menu" : `${selected ? "Bill" : "Cart"}${cart.length ? ` (${cart.reduce((s, l) => s + l.qty, 0)})` : ""}`}
+          </button>
+        ))}
+      </div>
+      <div className="pos">
         {/* Open bills (hold / resume) */}
-        <section className="column">
+        <section className={"column" + (mobileTab === "bills" ? " show" : "")}>
           <div className="spread"><h3>Open bills ({openBills.length})</h3><button className="small" onClick={() => setSelected(null)}>+ New</button></div>
           {openBills.map((o) => (
-            <div key={o.id} className="order-card" style={{ cursor: "pointer", borderColor: selected?.id === o.id ? "var(--red)" : undefined }} onClick={() => setSelected(o)}>
+            <div key={o.id} className="order-card" style={{ cursor: "pointer", borderColor: selected?.id === o.id ? "var(--red)" : undefined }} onClick={() => { setSelected(o); setMobileTab("cart"); }}>
               <div className="spread"><b>{o.tableNumber ? `Table ${o.tableNumber}` : o.orderNumber}</b><span className={"badge " + o.orderStatus}>{STATUS_LABEL[o.orderStatus]}</span></div>
               <div className="small muted">{ORDER_TYPE_LABEL[o.orderType]} · {time(o.createdAt)} · {o.customerName}</div>
               <div className="small"><b>{rupees(o.totalPaise)}</b> · {o.paymentStatus === "PAID" ? "Paid" : "Unpaid"}</div>
@@ -136,7 +146,7 @@ export default function PosPage() {
         </section>
 
         {/* Menu */}
-        <section>
+        <section className={mobileTab === "menu" ? "show" : ""}>
           <input placeholder="Search dish…" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: 8 }} />
           <div className="tabs">
             <button className={cat === "" ? "active" : ""} onClick={() => setCat("")}>All</button>
@@ -144,9 +154,9 @@ export default function PosPage() {
           </div>
           <div className="grid tight">
             {shown.map((i) => (
-              <button key={i.id} className="secondary" disabled={!i.is_available} style={{ textAlign: "left", minHeight: 72 }}
+              <button key={i.id} className="menu-tile" disabled={!i.is_available}
                 onClick={() => i.options.length ? add(i, [i.options[0].id]) : add(i)}>
-                <FoodDot type={i.food_type} /> {i.name}<br /><b>{rupees(i.price_paise)}</b>
+                <span><FoodDot type={i.food_type} /> {i.name}</span><b>{rupees(i.price_paise)}</b>
                 {!i.is_available && <span className="small"> · unavailable</span>}
               </button>
             ))}
@@ -154,9 +164,10 @@ export default function PosPage() {
         </section>
 
         {/* Cart / bill */}
-        <section className="card">
+        <section className={"card sticky-panel" + (mobileTab === "cart" ? " show" : "")}>
           {selected ? (
-            <BillPanel bill={selected} manager={manager} onPay={() => setPayOpen(true)} onSettle={() => void settle(selected)}
+            <BillPanel bill={selected} manager={manager} openBills={openBills} tables={tables} customers={customers}
+              onPay={() => setPayOpen(true)} onSettle={() => void settle(selected)}
               onChanged={async (o) => { setSelected(o); await loadBills(); }} />
           ) : (
             <>
@@ -218,42 +229,147 @@ export default function PosPage() {
         <PaymentModal bill={selected} customers={customers} upiId={upiId} onClose={() => setPayOpen(false)}
           onPaid={async () => { setPayOpen(false); await loadBills(); }} />
       )}
-      <style>{`@media (max-width: 900px) { .pos-grid { grid-template-columns: 1fr !important; } }`}</style>
     </div>
   );
 }
 
-function BillPanel({ bill, manager, onPay, onSettle, onChanged }: { bill: Order; manager: boolean; onPay: () => void; onSettle: () => void; onChanged: (o: Order) => void }) {
+function BillPanel({ bill, manager, openBills, tables, customers, onPay, onSettle, onChanged }: {
+  bill: Order; manager: boolean; openBills: Order[]; tables: Table[]; customers: Customer[];
+  onPay: () => void; onSettle: () => void; onChanged: (o: Order) => void;
+}) {
   const [disc, setDisc] = useState(fromPaise(bill.discountPaise));
   const [err, setErr] = useState<string | null>(null);
+  const [tool, setTool] = useState<"" | "split" | "merge" | "move" | "customer">("");
+  const [lines, setLines] = useState<{ id: number; name_snapshot: string; quantity: number; line_total_paise: number }[]>([]);
+  const [pick, setPick] = useState<number[]>([]);
+  const [target, setTarget] = useState("");
+  const [points, setPoints] = useState("");
   const paid = bill.paymentStatus === "PAID";
+  const editable = !paid && bill.paymentStatus === "PENDING";
+  const cust = customers.find((c) => c.name === bill.customerName);
+  const run = async (fn: () => Promise<Order>) => { try { setErr(null); onChanged(await fn()); setTool(""); } catch (e) { setErr((e as Error).message); } };
+
+  useEffect(() => {
+    setDisc(fromPaise(bill.discountPaise)); setTool("");
+    supabase.from("order_items").select("id,name_snapshot,quantity,line_total_paise").eq("order_id", bill.id).order("id")
+      .then(({ data }) => setLines(data ?? []));
+  }, [bill]);
+
   return (
     <div>
-      <div className="spread"><h3>{bill.orderNumber}</h3><span className={"badge " + bill.orderStatus}>{STATUS_LABEL[bill.orderStatus]}</span></div>
-      <div className="small muted">{ORDER_TYPE_LABEL[bill.orderType]}{bill.tableNumber ? ` · Table ${bill.tableNumber}` : ""} · {bill.customerName}</div>
-      <table style={{ marginTop: 6 }}><tbody>
+      <div className="spread"><h3 style={{ margin: 0 }}>{bill.tableNumber ? `Table ${bill.tableNumber}` : bill.orderNumber}</h3><span className={"badge " + bill.orderStatus}>{STATUS_LABEL[bill.orderStatus]}</span></div>
+      <div className="small muted">{bill.orderNumber} · {ORDER_TYPE_LABEL[bill.orderType]} · {bill.customerName}</div>
+      <table style={{ marginTop: 8 }}><tbody>
         {bill.items.map((i, k) => <tr key={k}><td>{i.quantity} × {i.nameSnapshot}</td><td className="right">{rupees(i.lineTotalPaise)}</td></tr>)}
         {bill.discountPaise > 0 && <tr><td>Discount</td><td className="right">−{rupees(bill.discountPaise)}</td></tr>}
         {bill.taxPaise > 0 && <tr><td>Tax</td><td className="right">{rupees(bill.taxPaise)}</td></tr>}
         {bill.packagingFeePaise > 0 && <tr><td>Packaging</td><td className="right">{rupees(bill.packagingFeePaise)}</td></tr>}
-        <tr><th>Total</th><th className="right">{rupees(bill.totalPaise)}</th></tr>
+        <tr><th>Total</th><th className="right" style={{ fontSize: "1.05rem", color: "var(--text)" }}>{rupees(bill.totalPaise)}</th></tr>
       </tbody></table>
-      {manager && !paid && (
-        <div className="row" style={{ marginTop: 6 }}>
-          <input style={{ maxWidth: 110 }} value={disc} onChange={(e) => setDisc(e.target.value)} placeholder="Discount ₹" />
-          <button className="secondary small" onClick={async () => {
-            try { onChanged(await rpc<Order>("pos_set_discount", { p_order_id: bill.id, p_discount_paise: toPaise(disc || "0") ?? 0, p_reason: "POS discount" })); }
-            catch (e) { setErr((e as Error).message); }
-          }}>Apply discount</button>
-        </div>
-      )}
-      {err && <p className="error small">{err}</p>}
-      <div className="row" style={{ marginTop: 8 }}>
+
+      <div className="row" style={{ marginTop: 10 }}>
         {!paid && <button className="ok" onClick={onPay}>Take payment</button>}
         {paid && <button className="ok" onClick={onSettle}>Close bill ✓</button>}
         <button className="secondary small" onClick={() => void printReceipt(bill.id)}>Print bill</button>
-        <button className="secondary small" onClick={() => void printReceipt(bill.id, true)}>Reprint KOT</button>
+        <button className="secondary small" onClick={() => void printReceipt(bill.id, true)}>KOT</button>
       </div>
+
+      {editable && bill.orderType !== "DELIVERY" && (
+        <div className="tabs" style={{ marginTop: 10, marginBottom: 6 }}>
+          <button className={tool === "customer" ? "active" : ""} onClick={() => setTool(tool === "customer" ? "" : "customer")}>Customer</button>
+          <button className={tool === "move" ? "active" : ""} onClick={() => setTool(tool === "move" ? "" : "move")}>Move table</button>
+          <button className={tool === "split" ? "active" : ""} onClick={() => { setPick([]); setTool(tool === "split" ? "" : "split"); }}>Split</button>
+          <button className={tool === "merge" ? "active" : ""} onClick={() => setTool(tool === "merge" ? "" : "merge")}>Merge</button>
+        </div>
+      )}
+      {tool === "customer" && (
+        <div className="card" style={{ padding: ".7rem" }}>
+          <select value={target} onChange={(e) => setTarget(e.target.value)}>
+            <option value="">Choose customer…</option>
+            {customers.filter((c) => c.is_active).map((c) => <option key={c.id} value={c.id}>{c.name}{c.phone ? ` · ${c.phone}` : ""} · {c.loyalty_points} pts</option>)}
+          </select>
+          <button className="small" style={{ marginTop: 6 }} disabled={!target} onClick={() => void run(() => rpc<Order>("pos_set_customer", { p_order_id: bill.id, p_customer_id: Number(target) }))}>Attach to bill</button>
+          {cust && cust.loyalty_points > 0 && (
+            <div className="row" style={{ marginTop: 8 }}>
+              <span className="small">{cust.loyalty_points} points available</span>
+              <input style={{ maxWidth: 90 }} placeholder="Points" value={points} onChange={(e) => setPoints(e.target.value)} />
+              <button className="small" onClick={() => void run(() => rpc<Order>("pos_redeem_points", { p_order_id: bill.id, p_points: Number(points) }))}>Redeem</button>
+            </div>
+          )}
+          <p className="small muted" style={{ margin: "6px 0 0" }}>Add customers on the Customers & khata page. Points are earned when the bill closes.</p>
+        </div>
+      )}
+      {tool === "move" && (
+        <div className="row card" style={{ padding: ".7rem" }}>
+          <select style={{ maxWidth: 200 }} value={target} onChange={(e) => setTarget(e.target.value)}>
+            <option value="">Move to table…</option>
+            {tables.filter((t) => t.name !== bill.tableNumber).map((t) => <option key={t.id} value={t.name}>{t.name} ({t.status.toLowerCase()})</option>)}
+          </select>
+          <button className="small" disabled={!target} onClick={() => void run(() => rpc<Order>("pos_transfer_table", { p_order_id: bill.id, p_table: target }))}>Move</button>
+        </div>
+      )}
+      {tool === "split" && (
+        <div className="card" style={{ padding: ".7rem" }}>
+          <p className="small muted" style={{ marginTop: 0 }}>Tick the items to move to a new separate bill:</p>
+          {lines.map((l) => (
+            <label key={l.id} className="check" style={{ marginBottom: 4 }}>
+              <input type="checkbox" checked={pick.includes(l.id)} onChange={(e) => setPick(e.target.checked ? [...pick, l.id] : pick.filter((x) => x !== l.id))} />
+              {l.quantity} × {l.name_snapshot} — {rupees(l.line_total_paise)}
+            </label>
+          ))}
+          <button className="small" disabled={!pick.length || pick.length === lines.length}
+            onClick={() => void run(async () => (await rpc<{ original: Order }>("pos_split_bill", { p_order_id: bill.id, p_item_ids: pick })).original)}>Split into new bill</button>
+        </div>
+      )}
+      {tool === "merge" && (
+        <div className="row card" style={{ padding: ".7rem" }}>
+          <select style={{ maxWidth: 240 }} value={target} onChange={(e) => setTarget(e.target.value)}>
+            <option value="">Bring items from bill…</option>
+            {openBills.filter((o) => o.id !== bill.id && o.paymentStatus === "PENDING").map((o) => (
+              <option key={o.id} value={o.id}>{o.tableNumber ? `Table ${o.tableNumber}` : o.orderNumber} · {rupees(o.totalPaise)}</option>
+            ))}
+          </select>
+          <button className="small" disabled={!target} onClick={() => void run(() => rpc<Order>("pos_merge_bills", { p_target: bill.id, p_source: target }))}>Merge into this bill</button>
+        </div>
+      )}
+      {manager && editable && (
+        <div className="row" style={{ marginTop: 8 }}>
+          <input style={{ maxWidth: 110 }} value={disc} onChange={(e) => setDisc(e.target.value)} placeholder="Discount ₹" />
+          <button className="secondary small" onClick={() => void run(() => rpc<Order>("pos_set_discount", { p_order_id: bill.id, p_discount_paise: toPaise(disc || "0") ?? 0, p_reason: "POS discount" }))}>Apply discount</button>
+        </div>
+      )}
+      {err && <p className="error small">{err}</p>}
+    </div>
+  );
+}
+
+/** Waiter calls / bill requests from QR tables — shown on POS with a sound. */
+function ServiceRequests() {
+  const [rows, setRows] = useState<{ id: number; table_number: string; type: string; created_at: string }[]>([]);
+  const count = useRef(0);
+  const load = useCallback(async () => {
+    const { data } = await supabase.from("service_requests").select("*").eq("status", "OPEN").order("created_at");
+    const list = data ?? [];
+    if (list.length > count.current) playAlert();
+    count.current = list.length;
+    setRows(list);
+  }, []);
+  useEffect(() => {
+    void load();
+    const t = setInterval(() => void load(), 15000);
+    const ch = supabase.channel("svc").on("postgres_changes", { event: "*", schema: "public", table: "service_requests" }, () => void load()).subscribe();
+    return () => { clearInterval(t); void supabase.removeChannel(ch); };
+  }, [load]);
+  if (!rows.length) return null;
+  const label: Record<string, string> = { CALL_WAITER: "🙋 Calling waiter", REQUEST_BILL: "🧾 Wants the bill", WATER: "💧 Needs water" };
+  return (
+    <div className="banner warn row">
+      {rows.map((r) => (
+        <span key={r.id} className="row" style={{ marginRight: 12 }}>
+          <b>Table {r.table_number}</b> {label[r.type]} · {time(r.created_at)}
+          <button className="small ok" onClick={async () => { await rpc("complete_service_request", { p_id: r.id }); void load(); }}>Done</button>
+        </span>
+      ))}
     </div>
   );
 }

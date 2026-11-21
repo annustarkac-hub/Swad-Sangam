@@ -7,7 +7,7 @@ import { supabase } from "../lib/supabase";
 import { LedgerTable } from "./AccountingPage";
 
 type Kind = "CUSTOMER" | "SUPPLIER";
-interface Party { id: number; name: string; phone: string | null; gstin?: string | null; credit_limit_paise?: number; notes: string | null; is_active: boolean; address?: string | null }
+interface Party { id: number; name: string; phone: string | null; loyalty_points?: number; gstin?: string | null; credit_limit_paise?: number; notes: string | null; is_active: boolean; address?: string | null }
 interface Balance { partyId: number; name: string; balancePaise: number; d0_30: number; d31_60: number; d61_90: number; d90plus: number; lastActivity: string }
 
 /** Customer ledger (khata) and supplier ledger with ageing, statements and payments. */
@@ -35,19 +35,19 @@ export default function PartiesPage({ kind }: { kind: Kind }) {
   return (
     <div>
       <div className="spread">
-        <h1>{isCust ? "Customer khata (credit ledger)" : "Suppliers & payables"}</h1>
+        <h1>{isCust ? "Customers, khata & loyalty" : "Suppliers & payables"}</h1>
         <button onClick={() => setEdit({ id: 0, name: "", phone: "", notes: "", is_active: true, credit_limit_paise: 0, gstin: "" })}>Add {isCust ? "customer" : "supplier"}</button>
       </div>
       <p>{isCust ? "Total customers owe you" : "Total you owe suppliers"}: <b>{rupees(total)}</b></p>
       {err && <p className="error">{err}</p>}
       <div className="table-wrap"><table>
-        <thead><tr><th>Name</th><th>Phone</th>{isCust && <th className="right">Credit limit</th>}<th className="right">Balance</th>
+        <thead><tr><th>Name</th><th>Phone</th>{isCust && <th className="right">Points</th>}{isCust && <th className="right">Credit limit</th>}<th className="right">Balance</th>
           <th className="right">0–30 d</th><th className="right">31–60</th><th className="right">61–90</th><th className="right">90+</th><th /></tr></thead>
         <tbody>{parties.map((p) => {
           const b = bal(p.id);
           return (
             <tr key={p.id} style={{ opacity: p.is_active ? 1 : 0.5 }}>
-              <td>{p.name}</td><td>{p.phone}</td>{isCust && <td className="right">{rupees(p.credit_limit_paise)}</td>}
+              <td>{p.name}</td><td>{p.phone}</td>{isCust && <td className="right">{p.loyalty_points ?? 0}</td>}{isCust && <td className="right">{rupees(p.credit_limit_paise)}</td>}
               <td className="right"><b>{rupees(b?.balancePaise ?? 0)}</b></td>
               <td className="right">{rupees(b?.d0_30 ?? 0)}</td><td className="right">{rupees(b?.d31_60 ?? 0)}</td>
               <td className="right">{rupees(b?.d61_90 ?? 0)}</td><td className={"right" + ((b?.d90plus ?? 0) > 0 ? " error" : "")}>{rupees(b?.d90plus ?? 0)}</td>
