@@ -20,6 +20,7 @@ Srinagar, Uttarakhand, India, handles personal data when you use the Swad Sangam
 <table>
 <tr><th>Data</th><th>When</th><th>Purpose</th></tr>
 <tr><td>Name and mobile number</td><td>Only when you place an order</td><td>To prepare your order, identify you at pickup and contact you about it</td></tr>
+<tr><td>Account: email address, password (stored only as a secure hash by Supabase), name, mobile number and saved delivery addresses</td><td>Only if you create an account on the website</td><td>To log you in, fill your details at checkout and show your orders on any phone. You can edit or delete addresses and log out at any time</td></tr>
 <tr><td>Order details (items, amounts, order type, notes, table number)</td><td>When you place an order</td><td>To fulfil the order, keep accounting records and resolve complaints</td></tr>
 <tr><td>Delivery address and landmark</td><td>Only if delivery is offered and you choose it</td><td>To deliver your order</td></tr>
 <tr><td>Payment status and reference (e.g. UPI reference noted by staff)</td><td>When you pay</td><td>Accounting and refunds</td></tr>
@@ -29,7 +30,7 @@ Srinagar, Uttarakhand, India, handles personal data when you use the Swad Sangam
 <tr><td>Crash reports</td><td>If the app crashes</td><td>To fix bugs</td></tr>
 </table>
 <p>We do <b>not</b> access your contacts, SMS, call logs, photos or location, and we do not use advertising IDs.
-You can browse the menu without giving any personal data. No account is required.</p>
+You can browse the menu and order without giving any personal data beyond your order. An account is optional.</p>
 
 <h2>2. Payments</h2>
 <p>You pay in cash or by UPI at the restaurant. The app never asks for or stores card numbers, bank details or UPI PINs.
@@ -37,7 +38,8 @@ If you choose to open your UPI app from Swad Sangam, the payment happens entirel
 
 <h2>3. Service providers</h2>
 <ul>
-<li><b>Supabase</b> — database and hosting of order and menu data.</li>
+<li><b>Supabase</b> — database, customer login (email + password) and storage of order and menu data.</li>
+<li><b>GitHub Pages</b> — hosting of this website.</li>
 <li><b>Google Firebase</b> (Cloud Messaging and Crashlytics) — order notifications and crash reports, if enabled.</li>
 <li><b>Google Play</b> — app distribution.</li>
 </ul>
@@ -51,6 +53,7 @@ Data stored on your phone (cart, saved name and number, list of your orders) sta
 <h2>5. Your rights and deleting your data</h2>
 <ul>
 <li>In the app: <b>More → Clear my data on this phone</b> removes everything stored on your device.</li>
+<li>Account holders can edit their name, number and addresses in <b>Account</b>. To delete your account completely, contact us below.</li>
 <li>To access, correct or delete order records held by the restaurant, or to withdraw consent, contact us below.
 We will respond within the period required by law.</li>
 <li>You may also raise a grievance with the Data Protection Board of India.</li>

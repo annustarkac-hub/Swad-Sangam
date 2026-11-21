@@ -1,7 +1,8 @@
 import QRCode from "qrcode";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { rupees, time } from "../lib/format";
-import { supabase } from "../lib/supabase";
+import { AccountView, FeedbackCard, ReviewsCard, useCustomer } from "./Account";
+import { db as supabase, store, type Customer } from "./common";
 import type { Category, MenuItem, Order } from "../lib/types";
 import { t, type Key, type Lang } from "./i18n";
 
@@ -11,23 +12,19 @@ interface Settings {
   restaurant_name: string; tagline: string; phone: string; address: string; maps_query: string; latitude: number | null; longitude: number | null;
   opening_hours: Record<string, { open: string; close: string }[]>; announcement: string | null; accepting_orders: boolean;
   pickup_enabled: boolean; dine_in_enabled: boolean; delivery_enabled: boolean; cash_enabled: boolean; upi_at_restaurant_enabled: boolean;
-  upi_id: string | null; rating: number | null; review_count: number | null; reviews_url: string | null; temporarily_closed: boolean;
+  upi_id: string | null; whatsapp_phone: string | null; default_prep_minutes: number; rating: number | null; review_count: number | null; reviews_url: string | null; temporarily_closed: boolean;
   closure_message: string | null; hero_image_url: string | null; hero_image_credit: string | null; cost_for_two_paise: number | null; min_order_paise: number; max_item_quantity: number; fssai_number: string | null; delivery_area_note: string | null;
   require_table_code: boolean;
 }
 interface Quote { subtotalPaise: number; discountPaise: number; taxPaise: number; packagingFeePaise: number; deliveryFeePaise: number; totalPaise: number; couponError: string | null; minOrderPaise: number }
 interface Line { itemId: string; qty: number; optionIds: string[] }
-type View = { name: "menu" } | { name: "orders" } | { name: "info" } | { name: "order"; token: string };
+type View = { name: "menu" } | { name: "orders" } | { name: "info" } | { name: "account" } | { name: "order"; token: string };
 type L = (k: Key) => string;
 
-const store = {
-  get<T>(k: string, d: T): T { try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : d; } catch { return d; } },
-  set(k: string, v: unknown) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } },
-};
 function parseHash(): View {
   const h = location.hash.replace(/^#\/?/, "");
   if (h.startsWith("order/")) return { name: "order", token: h.slice(6) };
-  if (h === "orders" || h === "info") return { name: h };
+  if (h === "orders" || h === "info" || h === "account") return { name: h };
   return { name: "menu" };
 }
 const go = (path: string) => { location.hash = "#/" + path; window.scrollTo({ top: 0 }); };
@@ -91,6 +88,8 @@ export default function SiteApp() {
   const [mode, setModeState] = useState<Mode>(() => (new URLSearchParams(location.search).get("table") ? "DINE_IN" : store.get<Mode>("ss_mode", "PICKUP")));
   const setMode = (m: Mode) => { setModeState(m); store.set("ss_mode", m); };
   const [installEvt, setInstallEvt] = useState<(Event & { prompt?: () => void }) | null>(null);
+  const [customer, reloadCustomer, recovery] = useCustomer();
+  useEffect(() => { if (recovery) go("account"); }, [recovery]);
 
   useEffect(() => { const f = () => { setView(parseHash()); setCartOpen(false); setPicker(null); }; window.addEventListener("hashchange", f); return () => window.removeEventListener("hashchange", f); }, []);
   useEffect(() => store.set("ss_cart", cart), [cart]);
@@ -163,9 +162,10 @@ export default function SiteApp() {
             <DeskCart L={L} lang={lang} cart={cart} byId={byId} estimate={estimate} onChange={change} onCheckout={() => setCartOpen(true)} />
           </div>
         )}
-        {view.name === "order" && <OrderView L={L} token={view.token} settings={settings} />}
-        {view.name === "orders" && <OrdersView L={L} onReorder={(o) => { o.items.forEach((i) => byId[i.itemId]?.is_available && change(i.itemId, [], i.quantity)); go(""); setCartOpen(true); }} />}
-        {view.name === "info" && settings && <InfoView L={L} s={settings} />}
+        {view.name === "order" && <OrderView L={L} lang={lang} token={view.token} settings={settings} />}
+        {view.name === "account" && <AccountView lang={lang} customer={customer} reload={reloadCustomer} recovery={recovery} />}
+        {view.name === "orders" && <OrdersView L={L} lang={lang} customer={customer} onReorder={(o) => { o.items.forEach((i) => byId[i.itemId]?.is_available && change(i.itemId, [], i.quantity)); go(""); setCartOpen(true); }} />}
+        {view.name === "info" && settings && <InfoView L={L} lang={lang} s={settings} />}
       </main>
 
       {count > 0 && view.name === "menu" && (
@@ -177,14 +177,14 @@ export default function SiteApp() {
       )}
 
       <nav className="tabbar-s">
-        {([["", "menu", "🍛"], ["orders", "myOrders", "🧾"], ["info", "info", "📍"]] as [string, Key, string][]).map(([p, k, ic]) => (
+        {([["", "menu", "🍛"], ["orders", "myOrders", "🧾"], ["account", customer ? "account" : "login", "👤"], ["info", "info", "📍"]] as [string, Key, string][]).map(([p, k, ic]) => (
           <button key={p} className={view.name === (p || "menu") ? "on" : ""} onClick={() => go(p)}><span>{ic}</span>{L(k)}</button>
         ))}
       </nav>
 
       {picker && <DishSheet L={L} lang={lang} item={picker} canOrder={ordering} onClose={() => setPicker(null)} onAdd={(ids, q) => { change(picker.id, ids, q); setPicker(null); }} />}
       {cartOpen && settings && (
-        <CartSheet L={L} lang={lang} cart={cart} byId={byId} settings={settings} table={table} setTable={setTable} canOrder={ordering} mode={mode}
+        <CartSheet L={L} lang={lang} customer={customer ?? null} cart={cart} byId={byId} settings={settings} table={table} setTable={setTable} canOrder={ordering} mode={mode}
           onChange={change} onClose={() => setCartOpen(false)}
           onPlaced={(token) => { setCart([]); setCartOpen(false); go("order/" + token); }} />
       )}
@@ -423,14 +423,17 @@ function DeskCart({ L, lang, cart, byId, estimate, onChange, onCheckout }: { L: 
   );
 }
 
-function CartSheet({ L, lang, cart, byId, settings, table, setTable, canOrder, mode, onChange, onClose, onPlaced }: {
-  L: L; lang: Lang; cart: Line[]; byId: Record<string, MenuItem>; settings: Settings; table: string | null; setTable: (t: string | null) => void; mode: string;
+function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, canOrder, mode, onChange, onClose, onPlaced }: {
+  L: L; lang: Lang; customer: Customer | null; cart: Line[]; byId: Record<string, MenuItem>; settings: Settings; table: string | null; setTable: (t: string | null) => void; mode: string;
   canOrder: boolean; onChange: (id: string, opts: string[], d: number) => void; onClose: () => void; onPlaced: (token: string) => void;
 }) {
   const types = (["DINE_IN", "PICKUP", "DELIVERY"] as const).filter((x) => (x === "PICKUP" && settings.pickup_enabled) || (x === "DINE_IN" && settings.dine_in_enabled) || (x === "DELIVERY" && settings.delivery_enabled));
   const pays = (["CASH", "UPI_AT_RESTAURANT"] as const).filter((p) => (p === "CASH" && settings.cash_enabled) || (p === "UPI_AT_RESTAURANT" && settings.upi_at_restaurant_enabled));
-  const saved = store.get("ss_customer", { name: "", phone: "" });
-  const [f, setF] = useState({ name: saved.name, phone: saved.phone, type: ((types as readonly string[]).includes(mode) ? mode : table && types.includes("DINE_IN") ? "DINE_IN" : types.find((x) => x !== "DINE_IN") ?? types[0]) as string,
+  const saved = customer?.profile ? { name: customer.profile.full_name, phone: customer.profile.phone } : store.get("ss_customer", { name: "", phone: "" });
+  const defAddr = customer?.addresses.find((a) => a.is_default) ?? customer?.addresses[0];
+  const [addrId, setAddrId] = useState<number | "new">(defAddr ? defAddr.id : "new");
+  const [saveAddr, setSaveAddr] = useState(true);
+  const [f, setF] = useState({ name: saved.name, phone: saved.phone, landmark: "", type: ((types as readonly string[]).includes(mode) ? mode : table && types.includes("DINE_IN") ? "DINE_IN" : types.find((x) => x !== "DINE_IN") ?? types[0]) as string,
     tableCode: store.get("ss_table_code", ""), address: "", notes: "", pay: (pays.includes("UPI_AT_RESTAURANT") ? "UPI_AT_RESTAURANT" : pays[0]) as string, coupon: "", terms: false });
   const [tables, setTables] = useState<{ name: string; seats: number; free: boolean }[]>([]);
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -456,6 +459,10 @@ function CartSheet({ L, lang, cart, byId, settings, table, setTable, canOrder, m
     const ph = f.phone.replace(/\D/g, "").slice(-10);
     if (!/^[6-9]\d{9}$/.test(ph) || f.name.trim().length < 2) return setErr(lang === "hi" ? "नाम और सही मोबाइल नंबर लिखें।" : "Please enter your name and a valid 10-digit mobile number.");
     if (f.type === "DINE_IN" && !table) return setErr(L("chooseTable"));
+    const chosen = addrId === "new" ? null : customer?.addresses.find((a) => a.id === addrId) ?? null;
+    const address = chosen ? chosen.address : f.address.trim();
+    const landmark = chosen ? chosen.landmark : f.landmark.trim() || null;
+    if (f.type === "DELIVERY" && address.length < 10) return setErr(lang === "hi" ? "पूरा डिलीवरी पता लिखें।" : "Please write the full delivery address.");
     if (!f.terms) return setErr(L("terms"));
     setBusy(true);
     const key = store.get<string | null>("ss_pending_key", null) ?? crypto.randomUUID();
@@ -464,13 +471,15 @@ function CartSheet({ L, lang, cart, byId, settings, table, setTable, canOrder, m
       const { data, error } = await supabase.rpc("place_order", { p_order: {
         idempotencyKey: key, customerName: f.name, customerPhone: f.phone, orderType: f.type, paymentMethod: f.pay, items,
         termsAccepted: f.terms, tableNumber: f.type === "DINE_IN" ? table : null, tableCode: f.type === "DINE_IN" ? f.tableCode : null,
-        deliveryAddress: f.type === "DELIVERY" ? f.address : null, notes: f.notes || null, couponCode: f.coupon || null,
+        deliveryAddress: f.type === "DELIVERY" ? address : null, deliveryLandmark: f.type === "DELIVERY" ? landmark : null, notes: f.notes || null, couponCode: f.coupon || null,
         expectedTotalPaise: quote?.totalPaise } });
       if (error) throw new Error(error.message);
       const r = data as { ok: boolean; error?: string; message?: string; order?: { accessToken: string } };
       localStorage.removeItem("ss_pending_key");
       if (!r.ok) { setErr(r.message ?? "Order could not be placed"); if (r.error === "PRICE_CHANGED") setQuote(null); return; }
       store.set("ss_customer", { name: f.name, phone: f.phone });
+      if (customer && f.type === "DELIVERY" && !chosen && saveAddr && customer.addresses.length < 10)
+        void supabase.from("customer_addresses").insert({ label: customer.addresses.length ? "Address " + (customer.addresses.length + 1) : "Home", address, landmark, is_default: customer.addresses.length === 0 });
       store.set("ss_tokens", [r.order!.accessToken, ...store.get<string[]>("ss_tokens", [])].slice(0, 50));
       onPlaced(r.order!.accessToken);
     } catch {
@@ -513,7 +522,20 @@ function CartSheet({ L, lang, cart, byId, settings, table, setTable, canOrder, m
           <h3>{L("details")}</h3>
           <label>{L("name")}<input value={f.name} autoComplete="name" onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
           <label>{L("phone")}<input value={f.phone} inputMode="tel" autoComplete="tel" onChange={(e) => setF({ ...f, phone: e.target.value })} /></label>
-          {f.type === "DELIVERY" && <label>{L("address")}<textarea value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} />{settings.delivery_area_note && <small>{settings.delivery_area_note}</small>}</label>}
+          {f.type === "DELIVERY" && <>
+            {customer && customer.addresses.length > 0 && (
+              <div><div className="lbl">{L("address")}</div>
+                <div className="addr-pick">{customer.addresses.map((a) => (
+                  <button key={a.id} className={addrId === a.id ? "on" : ""} onClick={() => setAddrId(a.id)}><b>{a.label}</b><small>{a.address}</small></button>
+                ))}<button className={addrId === "new" ? "on" : ""} onClick={() => setAddrId("new")}><b>+ {lang === "hi" ? "नया पता" : "New address"}</b></button></div></div>)}
+            {addrId === "new" && <>
+              <label>{L("address")}<textarea value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} /></label>
+              <label>{lang === "hi" ? "लैंडमार्क (वैकल्पिक)" : "Landmark (optional)"}<input value={f.landmark} onChange={(e) => setF({ ...f, landmark: e.target.value })} /></label>
+              {customer && customer.addresses.length < 10 && <label className="check-s"><input type="checkbox" checked={saveAddr} onChange={(e) => setSaveAddr(e.target.checked)} /><span>{lang === "hi" ? "यह पता मेरे खाते में सेव करें" : "Save this address to my account"}</span></label>}
+            </>}
+            {settings.delivery_area_note && <small className="muted-s">{settings.delivery_area_note}</small>}
+            {!customer && <p className="muted-s small">{lang === "hi" ? "पते सेव करने के लिए " : "To save addresses, "}<a href="#/account">{lang === "hi" ? "लॉगिन करें" : "log in"}</a>.</p>}
+          </>}
           <label>{L("notes")}<input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
           <label>{L("coupon")}<input value={f.coupon} onChange={(e) => setF({ ...f, coupon: e.target.value.toUpperCase() })} />
             {quote?.couponError && f.coupon && <small className="bad-s">Coupon not valid</small>}</label>
@@ -547,7 +569,7 @@ function CartSheet({ L, lang, cart, byId, settings, table, setTable, canOrder, m
 
 const STEPS = ["PLACED", "ACCEPTED", "PREPARING", "READY", "COMPLETED"] as const;
 
-function OrderView({ L, token, settings }: { L: L; token: string; settings: Settings | null }) {
+function OrderView({ L, lang, token, settings }: { L: L; lang: Lang; token: string; settings: Settings | null }) {
   const [o, setO] = useState<(Order & { canCancel: boolean; restaurantPhone: string }) | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
@@ -567,21 +589,25 @@ function OrderView({ L, token, settings }: { L: L; token: string; settings: Sett
   if (!o) return <p className="empty-s">{err ?? "…"}</p>;
   const reached = Object.fromEntries(o.history.map((h) => [h.status, h.at]));
   const failed = o.orderStatus === "REJECTED" || o.orderStatus === "CANCELLED";
-  const stepIdx = STEPS.indexOf(o.orderStatus as (typeof STEPS)[number]);
+  const steps: string[] = o.orderType === "DELIVERY" ? ["PLACED", "ACCEPTED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "COMPLETED"] : [...STEPS];
+  const stepIdx = steps.indexOf(o.orderStatus);
+  const stepLabel = (s: string) => (s === "COMPLETED" && o.orderType === "DELIVERY" ? (lang === "hi" ? "डिलीवर हो गया" : "Delivered")
+    : s === "READY" && o.orderType === "PICKUP" ? (lang === "hi" ? "पिकअप के लिए तैयार" : "Ready for pickup")
+    : s === "READY" && o.orderType === "DELIVERY" ? (lang === "hi" ? "पैक हो गया" : "Packed") : L(s as Key));
   const waiting = o.orderStatus === "PLACED" && Date.now() - new Date(o.createdAt).getTime() > 120000;
   return (
     <div className="stack">
       <div className="card-s2 status-card">
         <div className="muted-s">{o.orderNumber}{o.tableNumber ? ` · ${L("table")} ${o.tableNumber}` : ""}</div>
-        <div className={"status-big" + (failed ? " bad" : "")}>{L(o.orderStatus as Key)}</div>
+        <div className={"status-big" + (failed ? " bad" : "")}>{stepLabel(o.orderStatus)}</div>
         {o.orderStatus === "PLACED" && <p>{L("awaiting")}</p>}
         {waiting && <div className="banner-s inline">{L("notConfirmed")} <a href={`tel:${o.restaurantPhone}`}>📞 {o.restaurantPhone}</a></div>}
         {(o.rejectionReason || o.cancelReason) && <p className="bad-s">{o.rejectionReason ?? o.cancelReason}</p>}
-        {o.estimatedReadyAt && ["ACCEPTED", "PREPARING"].includes(o.orderStatus) && <p>{L("estimated")} <b>{time(o.estimatedReadyAt)}</b></p>}
+        {o.estimatedReadyAt && ["ACCEPTED", "PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(o.orderStatus) && <p>{o.orderType === "DELIVERY" ? (lang === "hi" ? "लगभग पहुँचने का समय" : "Estimated delivery by") : L("estimated")} <b>{time(o.estimatedReadyAt)}</b></p>}
         {!failed && (
           <ol className="progress-s">
-            {STEPS.map((s, idx) => (
-              <li key={s} className={idx <= stepIdx ? "done" : ""}><i />{L(s)}{reached[s] && <small>{time(reached[s])}</small>}</li>
+            {steps.map((s, idx) => (
+              <li key={s} className={idx <= stepIdx ? "done" : ""}><i />{stepLabel(s)}{reached[s] && <small>{time(reached[s])}</small>}</li>
             ))}
           </ol>
         )}
@@ -599,9 +625,18 @@ function OrderView({ L, token, settings }: { L: L; token: string; settings: Sett
       {o.paymentStatus === "PAID" && <div className="card-s2 paid">{L("paid")}</div>}
 
       <div className="card-s2">
+        <h3 style={{ marginTop: 0 }}>{lang === "hi" ? "बिल" : "Bill"} · {o.orderNumber}</h3>
         {o.items.map((i, k) => <div key={k} className="row-s between"><span>{i.quantity} × {i.nameSnapshot}</span><span>{rupees(i.lineTotalPaise)}</span></div>)}
+        <div className="row-s between muted-s"><span>{L("subtotal")}</span><span>{rupees(o.subtotalPaise)}</span></div>
+        {o.discountPaise > 0 && <div className="row-s between muted-s"><span>{L("discount")}{o.couponCode ? ` (${o.couponCode})` : ""}</span><span>−{rupees(o.discountPaise)}</span></div>}
+        {o.taxPaise > 0 && <div className="row-s between muted-s"><span>{L("tax")}</span><span>{rupees(o.taxPaise)}</span></div>}
+        {o.packagingFeePaise > 0 && <div className="row-s between muted-s"><span>{L("packaging")}</span><span>{rupees(o.packagingFeePaise)}</span></div>}
+        {o.deliveryFeePaise > 0 && <div className="row-s between muted-s"><span>{L("deliveryFee")}</span><span>{rupees(o.deliveryFeePaise)}</span></div>}
         <div className="row-s between tot"><span>{L("total")}</span><b>{rupees(o.totalPaise)}</b></div>
+        <div className="muted-s small">{L("payment")}: {L(o.paymentMethod as Key)} · {o.paymentStatus === "PAID" ? L("paid") : (lang === "hi" ? "बाकी" : "Due")}</div>
+        {o.orderType === "DELIVERY" && o.deliveryAddress && <div className="small">🛵 {o.deliveryAddress}{o.deliveryLandmark ? ` · ${o.deliveryLandmark}` : ""}</div>}
       </div>
+      {o.orderStatus === "COMPLETED" && <FeedbackCard lang={lang} token={token} />}
       {o.canCancel && <button className="ghost-s" onClick={async () => {
         if (!confirm(L("cancelOrder") + "?")) return;
         await supabase.rpc("cancel_order_by_customer", { p_token: token, p_reason: "Cancelled by customer" }); void load();
@@ -610,18 +645,29 @@ function OrderView({ L, token, settings }: { L: L; token: string; settings: Sett
   );
 }
 
-function OrdersView({ L, onReorder }: { L: L; onReorder: (o: Order) => void }) {
-  const [list, setList] = useState<(Order & { accessToken: string })[] | null>(null);
+type OrderRow = Order & { accessToken: string };
+function OrdersView({ L, lang, customer, onReorder }: { L: L; lang: Lang; customer: Customer | null | undefined; onReorder: (o: Order) => void }) {
+  const [list, setList] = useState<OrderRow[] | null>(null);
   useEffect(() => {
+    if (customer === undefined) return;
     const tokens = store.get<string[]>("ss_tokens", []);
-    if (!tokens.length) { setList([]); return; }
-    supabase.rpc("get_orders_by_tokens", { p_tokens: tokens }).then(({ data }) => setList((data as (Order & { accessToken: string })[]) ?? []));
-  }, []);
+    void (async () => {
+      const [mine, device] = await Promise.all([
+        customer ? supabase.rpc("my_orders", { p_limit: 100 }) : Promise.resolve({ data: [] }),
+        tokens.length ? supabase.rpc("get_orders_by_tokens", { p_tokens: tokens }) : Promise.resolve({ data: [] }),
+      ]);
+      const all = [...((mine.data as OrderRow[]) ?? []), ...((device.data as OrderRow[]) ?? [])];
+      const seen = new Set<string>();
+      setList(all.filter((o) => (seen.has(o.id) ? false : (seen.add(o.id), true))).sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+    })();
+  }, [customer]);
   if (!list) return <p className="empty-s">…</p>;
-  if (!list.length) return <p className="empty-s">{L("noOrders")}</p>;
+  const loginHint = !customer && <p className="muted-s small">{lang === "hi" ? "किसी भी फ़ोन पर अपने सारे ऑर्डर देखने के लिए " : "To see your orders on any phone, "}<a href="#/account">{lang === "hi" ? "लॉगिन करें" : "log in"}</a>.</p>;
+  if (!list.length) return <div className="stack"><p className="empty-s">{L("noOrders")}</p>{loginHint}</div>;
   return (
     <div className="stack">
       <h2 className="sec">{L("myOrders")}</h2>
+      {loginHint}
       {list.map((o) => (
         <div key={o.id} className="card-s2 tap" onClick={() => go("order/" + o.accessToken)}>
           <div className="row-s between"><b>{o.orderNumber}</b><span className="tag-s">{L(o.orderStatus as Key)}</span></div>
@@ -635,15 +681,26 @@ function OrdersView({ L, onReorder }: { L: L; onReorder: (o: Order) => void }) {
   );
 }
 
-function InfoView({ L, s }: { L: L; s: Settings }) {
+function InfoView({ L, lang, s }: { L: L; lang: Lang; s: Settings }) {
+  const wa = (s.whatsapp_phone ?? "").replace(/\D/g, "");
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   return (
     <div className="stack">
       <div className="card-s2">
         <h2 className="sec" style={{ marginTop: 0 }}>{s.restaurant_name}</h2>
         <p>{s.address}</p>
-        <div className="hero-row"><a className="pill-s" href={`tel:${s.phone}`}>📞 {s.phone}</a><a className="pill-s" href={mapsUrl(s)} target="_blank" rel="noreferrer">📍 {L("directions")}</a></div>
+        <div className="hero-row"><a className="pill-s" href={`tel:${s.phone}`}>📞 {s.phone}</a>
+          {wa.length >= 10 && <a className="pill-s" href={`https://wa.me/${wa.length === 10 ? "91" + wa : wa}?text=${encodeURIComponent(lang === "hi" ? "नमस्ते, मुझे ऑर्डर करना है" : "Hello, I would like to place an order")}`} target="_blank" rel="noreferrer">💬 WhatsApp</a>}
+          <a className="pill-s" href={mapsUrl(s)} target="_blank" rel="noreferrer">📍 {L("directions")}</a></div>
       </div>
+      <div className="card-s2">
+        <h3>{lang === "hi" ? "हमारे बारे में" : "About us"}</h3>
+        <p>{lang === "hi"
+          ? `${s.restaurant_name} — ${s.tagline}. श्रीनगर गढ़वाल में थाली, पराठा, मोमो, चाइनीज़, स्नैक्स और चाय का रेस्टोरेंट। यहाँ बैठकर खाएँ, पैक करवाएँ${s.delivery_enabled ? " या घर मँगवाएँ" : ""}।`
+          : `${s.restaurant_name} — ${s.tagline}. A restaurant in Srinagar Garhwal serving thalis, parathas, momos, Chinese, snacks and tea. Eat in, take away${s.delivery_enabled ? " or get it delivered" : ""}.`}</p>
+        <p className="muted-s small">{s.address}</p>
+      </div>
+      <ReviewsCard lang={lang} />
       <div className="card-s2">
         <h3>{L("hours")}</h3>
         {days.map((d, i) => <div key={d} className="row-s between"><span>{d}</span><span>{(s.opening_hours[String(i + 1)] ?? []).map((x) => `${x.open}–${x.close}`).join(", ") || "Closed"}</span></div>)}
