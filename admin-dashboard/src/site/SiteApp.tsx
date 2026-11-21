@@ -228,7 +228,6 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
   const qtyPlain = (id: string) => cart.find((l) => l.itemId === id && l.optionIds.length === 0)?.qty ?? 0;
   const qtyAny = (id: string) => cart.filter((l) => l.itemId === id).reduce((s, l) => s + l.qty, 0);
   const modes = ([["DINE_IN", "🍽", settings?.dine_in_enabled], ["PICKUP", "🥡", settings?.pickup_enabled], ["DELIVERY", "🛵", settings?.delivery_enabled]] as [Mode, string, boolean | undefined][]);
-  const hero = settings?.hero_image_url ?? null;
 
   useEffect(() => {
     const obs = new IntersectionObserver((es) => {
@@ -242,15 +241,12 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
 
   return (
     <>
-      <section className="banner">
-        {hero && <img src={hero} alt="" className="banner-img" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />}
-        <div className="banner-shade" />
-        <div className="banner-text">
-          <span className="kicker">North Indian · Thalis · Snacks · Chinese</span>
-          <h1>{settings?.restaurant_name ?? "Swad Sangam"}</h1>
-          <p>{settings?.tagline ?? L("tagline")}</p>
-        </div>
-      </section>
+      {/* Owner's banner (name, tagline and dishes are part of the image) — tap goes to the menu */}
+      <button className="hero-banner" onClick={() => { const first = cats.find((c) => items.some((i) => i.category_id === c.id)); if (first) jump(first.id); }}
+        aria-label={`${settings?.restaurant_name ?? "Swad Sangam"} — ${settings?.tagline ?? ""}. ${hi ? "मेन्यू देखें" : "See the menu"}`}>
+        <img src={`${import.meta.env.BASE_URL}hero-banner.webp`} alt="" width={1600} height={800} fetchPriority="high"
+          onError={(e) => { ((e.target as HTMLImageElement).parentElement as HTMLElement).style.display = "none"; }} />
+      </button>
       <section className="info-card">
         <div className="info-row">
           <div>
@@ -278,14 +274,6 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
         {settings && !canOrder && <div className="banner-s inline">{L("orderingOff")} <a href={`tel:${settings.phone}`}>{settings.phone}</a></div>}
       </section>
       {table && <TableBar table={table} L={L} lang={lang} />}
-
-      {!q && (
-        <button className="promo" onClick={() => { const first = cats.find((c) => items.some((i) => i.category_id === c.id)); if (first) jump(first.id); }}
-          aria-label={hi ? "मेन्यू देखें" : "See the menu"}>
-          <img src={`${import.meta.env.BASE_URL}promo-banner.webp`} alt="Swad Sangam — Restaurant & Fast Food: burger, momos, spring rolls, paratha, tea" loading="lazy" width={1600} height={533}
-            onError={(e) => { ((e.target as HTMLImageElement).parentElement as HTMLElement).style.display = "none"; }} />
-        </button>
-      )}
 
       {!q && cats.length > 0 && (
         <section>
@@ -415,8 +403,6 @@ function DeskCart({ L, lang, cart, byId, estimate, onChange, onCheckout }: { L: 
   const lines = cart.filter((l) => byId[l.itemId]);
   return (
     <aside className="desk-side">
-      <img className="promo-side" src={`${import.meta.env.BASE_URL}promo-banner.webp`} alt="Swad Sangam — Restaurant & Fast Food" width={1600} height={533}
-        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
     <div className="desk-cart">
       <h3>{L("cart")}</h3>
       {!lines.length && <p className="muted-s small">{L("emptyCart")}</p>}
