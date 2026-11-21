@@ -1,3 +1,4 @@
+import { ReceiptText, Search, SlidersHorizontal, Store, UserRound, UtensilsCrossed } from "lucide-react";
 import QRCode from "qrcode";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { rupees, time } from "../lib/format";
@@ -147,13 +148,13 @@ export default function SiteApp() {
   return (
     <div className="app">
       <header className="topbar-s">
-        <button className="brand-s" onClick={() => go("")}>
-          <span className="logo-s">SS</span>
-          <span><b>{settings?.restaurant_name ?? "Swad Sangam"}</b>
-            <small>{settings ? <><i className={"dot " + (open ? "on" : "off")} />{open ? L("openNow") : L("closedNow")}</> : " "}</small></span>
+        <button className="brand-s welcome" onClick={() => go("")}>
+          <span><small className="welcome-sub">{lang === "hi" ? "आपका स्वागत है" : "Welcome to"}</small>
+            <b>{settings?.restaurant_name ?? "Swad Sangam"}</b>
+            {table ? <small className="welcome-table">🛎 {L("table")} {table}</small>
+              : <small>{settings ? <><i className={"dot " + (open ? "on" : "off")} />{open ? L("openNow") : L("closedNow")}</> : " "}</small>}</span>
         </button>
         <div className="top-actions">
-          {table && <span className="table-chip">🍽 {table}</span>}
           <button className={"pure-veg" + (pureVeg ? " on" : "")} role="switch" aria-checked={pureVeg} onClick={() => setPureVeg(!pureVeg)}
             title={lang === "hi" ? "केवल शाकाहारी दिखाएँ" : "Show vegetarian dishes only"}><i />{lang === "hi" ? "शुद्ध शाकाहारी" : "Pure Veg"}</button>
           <button className="icon-btn" onClick={() => setLang(lang === "en" ? "hi" : "en")} aria-label="Language">{lang === "en" ? "हि" : "EN"}</button>
@@ -189,9 +190,11 @@ export default function SiteApp() {
       )}
 
       <nav className="tabbar-s">
-        {([["", "menu", "🍛"], ["orders", "myOrders", "🧾"], ["account", customer ? "account" : "login", "👤"], ["info", "info", "📍"]] as [string, Key, string][]).map(([p, k, ic]) => (
-          <button key={p} className={view.name === (p || "menu") ? "on" : ""} onClick={() => go(p)}><span>{ic}</span>{L(k)}</button>
-        ))}
+        {([["", "menu", UtensilsCrossed], ["orders", "myOrders", ReceiptText], ["account", customer ? "account" : "login", UserRound], ["info", "info", Store]] as [string, Key, typeof Store][]).map(([p, k, Icon]) => {
+          const on = view.name === (p || "menu");
+          return <button key={p} className={on ? "on" : ""} aria-current={on ? "page" : undefined} onClick={() => go(p)}>
+            <span className="tab-ic"><Icon size={22} strokeWidth={on ? 2.4 : 1.9} aria-hidden="true" /></span>{L(k)}</button>;
+        })}
       </nav>
 
       {picker && <DishSheet L={L} lang={lang} item={picker} canOrder={ordering} onClose={() => setPicker(null)} onAdd={(ids, q) => { change(picker.id, ids, q); setPicker(null); }} />}
@@ -207,7 +210,7 @@ export default function SiteApp() {
 type Mode = "DINE_IN" | "PICKUP" | "DELIVERY";
 type Filter = "veg" | "nonveg" | "under100" | "best";
 
-function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, installEvt, mode, setMode, onOpen, onChange }: {
+function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, onOpen, onChange }: {
   L: L; lang: Lang; settings: Settings | null; cats: Category[]; items: MenuItem[]; cart: Line[]; canOrder: boolean; table: string | null;
   installEvt: (Event & { prompt?: () => void }) | null; mode: Mode; setMode: (m: Mode) => void;
   onOpen: (i: MenuItem) => void; onChange: (id: string, opts: string[], d: number) => void;
@@ -220,6 +223,7 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
   const [filters, setFilters] = useState<Filter[]>([]);
   const [sort, setSort] = useState<"" | "asc" | "desc">("");
   const [active, setActive] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
   const refs = useRef<Record<string, HTMLElement | null>>({});
   const hi = lang === "hi";
   const name = (i: { name: string; name_hi?: string | null }) => (hi && i.name_hi ? i.name_hi : i.name);
@@ -230,12 +234,10 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
     && (!has("under100") || i.price_paise <= 10000) && (!has("best") || i.is_popular)
     && (!q || (i.name + " " + (i.name_hi ?? "") + " " + (i.description ?? "")).toLowerCase().includes(q.toLowerCase())));
   if (sort) shown = [...shown].sort((a, b) => (sort === "asc" ? a.price_paise - b.price_paise : b.price_paise - a.price_paise));
-  const featured = items.filter((i) => i.is_available && i.image_url && (i.is_popular || i.category_id === "thalis")).slice(0, 8);
   const groups = cats.map((c) => ({ c, list: shown.filter((i) => i.category_id === c.id) })).filter((g) => g.list.length);
   const catImg = (id: string) => items.find((i) => i.category_id === id && i.image_url)?.image_url;
   const qtyPlain = (id: string) => cart.find((l) => l.itemId === id && l.optionIds.length === 0)?.qty ?? 0;
   const qtyAny = (id: string) => cart.filter((l) => l.itemId === id).reduce((s, l) => s + l.qty, 0);
-  const modes = ([["DINE_IN", "🍽", settings?.dine_in_enabled], ["PICKUP", "🥡", settings?.pickup_enabled], ["DELIVERY", "🛵", settings?.delivery_enabled]] as [Mode, string, boolean | undefined][]);
 
   useEffect(() => {
     const obs = new IntersectionObserver((es) => {
@@ -249,117 +251,74 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, insta
 
   return (
     <>
-      {/* Owner's banner (name, tagline and dishes are part of the image) — tap goes to the menu */}
-      <button className="hero-banner" onClick={() => { const first = cats.find((c) => items.some((i) => i.category_id === c.id)); if (first) jump(first.id); }}
-        aria-label={`${settings?.restaurant_name ?? "Swad Sangam"} — ${settings?.tagline ?? ""}. ${hi ? "मेन्यू देखें" : "See the menu"}`}>
-        <img src={`${import.meta.env.BASE_URL}hero-banner.webp`} alt="" width={1600} height={800} fetchPriority="high"
-          onError={(e) => { ((e.target as HTMLImageElement).parentElement as HTMLElement).style.display = "none"; }} />
-      </button>
-      <section className="info-card">
-        <div className="info-row">
-          <div>
-            <div className="info-title">{settings?.restaurant_name ?? "Swad Sangam"}</div>
-            <div className="muted-s small">{settings?.address ?? "Bhaktiyana, Pauri Garhwal, Uttarakhand"}</div>
-          </div>
-          {settings?.rating != null && <div className="rating-box"><b>{settings.rating} ★</b><small>{settings.review_count ?? "–"} {L("reviews")}</small></div>}
-        </div>
-        <div className="info-meta">
-          {settings && <span><i className={"dot " + (isOpen(settings) ? "on" : "off")} /> {isOpen(settings) ? L("openNow") : L("closedNow")}</span>}
-          {settings?.cost_for_two_paise ? <span>₹ {rupees(settings.cost_for_two_paise)} for two</span> : null}
-          {settings?.fssai_number && <span>FSSAI {settings.fssai_number}</span>}
-        </div>
-        <div className="hero-row">
-          {settings && <a className="pill-s" href={`tel:${settings.phone}`}>📞 {L("call")}</a>}
-          {settings && <a className="pill-s" href={mapsUrl(settings)} target="_blank" rel="noreferrer">📍 {L("directions")}</a>}
-          {installEvt ? <button className="pill-s gold" onClick={() => installEvt.prompt?.()}>⬇ {L("install")}</button>
-            : <a className="pill-s gold" href={APK_URL}>⬇ {L("getApp")}</a>}
-        </div>
-        {settings && canOrder && modes.filter((m) => m[2]).length > 1 && (
-          <div className="mode-switch">
-            {modes.filter((m) => m[2]).map(([m, ic]) => <button key={m} className={mode === m ? "on" : ""} onClick={() => setMode(m)}>{ic} {L(m)}</button>)}
-          </div>
-        )}
-        {settings && !canOrder && <div className="banner-s inline">{L("orderingOff")} <a href={`tel:${settings.phone}`}>{settings.phone}</a></div>}
-      </section>
+      {settings && !canOrder && <div className="banner-s">{L("orderingOff")} <a href={`tel:${settings.phone}`}>{settings.phone}</a></div>}
       {table && <TableBar table={table} L={L} lang={lang} />}
 
-      {!q && cats.length > 0 && (
-        <section>
-          <h2 className="sec">{hi ? "आज क्या खाएँगे?" : "What's on your mind?"}</h2>
-          <div className="cat-circles">
-            {cats.filter((c) => items.some((i) => i.category_id === c.id)).map((c) => (
-              <button key={c.id} onClick={() => jump(c.id)}>
-                <span className="circle"><DishImg src={catImg(c.id) ?? null} /></span>{name(c)}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {!q && featured.length > 0 && (
-        <section>
-          <h2 className="sec">{hi ? "ख़ास पसंद" : "Recommended for you"}</h2>
-          <div className="feat-row">
-            {featured.map((i) => (
-              <article key={i.id} className="feat-card" onClick={() => onOpen(i)}>
-                <DishImg src={i.image_url} />
-                <div className="feat-shade" />
-                <div className="feat-text"><Veg type={i.food_type} /><b>{name(i)}</b><span>{i.options.some((o) => o.group === "size") ? "from " : ""}{rupees(i.price_paise)}</span></div>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-
       <div className="sticky-tools">
-        <div className="search-s"><span>🔍</span><input placeholder={L("search")} value={q} onChange={(e) => setQ(e.target.value)} enterKeyHint="search"
+        <div className="search-s"><Search size={20} className="search-ic" aria-hidden="true" /><input placeholder={hi ? "डिश खोजें…" : "Search for a dish…"} value={q} onChange={(e) => setQ(e.target.value)} enterKeyHint="search"
+          aria-label={hi ? "डिश खोजें" : "Search for a dish"}
           onFocus={() => setSearchFocus(true)} onBlur={() => { remember(q); setTimeout(() => setSearchFocus(false), 150); }}
           onKeyDown={(e) => { if (e.key === "Enter") { remember(q); (e.target as HTMLInputElement).blur(); } }} />
-          {q && <button className="link-s" aria-label="Clear search" onClick={() => setQ("")}>✕</button>}</div>
+          {q && <button className="link-s" aria-label="Clear search" onClick={() => setQ("")}>✕</button>}
+          <button className={"filter-btn" + (showFilters || filters.length || sort ? " on" : "")} aria-label={hi ? "फ़िल्टर" : "Filters"} aria-expanded={showFilters}
+            onClick={() => setShowFilters(!showFilters)}>
+            <SlidersHorizontal size={20} aria-hidden="true" />
+            {filters.length + (sort ? 1 : 0) > 0 && <i>{filters.length + (sort ? 1 : 0)}</i>}
+          </button></div>
         {searchFocus && !q && recent.length > 0 && (
           <div className="recent-s"><span className="muted-s small">{hi ? "हाल की खोज" : "Recent searches"}</span>
             {recent.map((r) => <button key={r} onMouseDown={(e) => e.preventDefault()} onClick={() => setQ(r)}>↺ {r}</button>)}
             <button className="link-s small" onMouseDown={(e) => e.preventDefault()} onClick={() => { setRecent([]); store.set("ss_recent_search", []); }}>{hi ? "साफ़ करें" : "Clear"}</button>
           </div>)}
-        <div className="filter-row">
-          <button className={"chip-f" + (has("veg") ? " on veg-on" : "")} onClick={() => toggle("veg")}><Veg type="VEG" /> {hi ? "शाकाहारी" : "Veg"}</button>
-          <button className={"chip-f" + (has("nonveg") ? " on" : "")} onClick={() => toggle("nonveg")}><Veg type="NON_VEG" /> {hi ? "मांसाहारी" : "Non-veg"}</button>
-          <button className={"chip-f" + (has("under100") ? " on" : "")} onClick={() => toggle("under100")}>{hi ? "₹100 से कम" : "Under ₹100"}</button>
-          <button className={"chip-f" + (has("best") ? " on" : "")} onClick={() => toggle("best")}>★ {L("bestsellers")}</button>
-          <button className={"chip-f" + (sort ? " on" : "")} onClick={() => setSort(sort === "" ? "asc" : sort === "asc" ? "desc" : "")}>
-            {sort === "asc" ? "₹ Low → High" : sort === "desc" ? "₹ High → Low" : (hi ? "क्रम" : "Sort")}</button>
-        </div>
-        <div className="cat-tabs">
-          {groups.map(({ c }) => <button key={c.id} className={active === c.id ? "on" : ""} onClick={() => jump(c.id)}>{name(c)}</button>)}
+        {showFilters && (
+          <div className="filter-row">
+            <button className={"chip-f" + (has("veg") ? " on veg-on" : "")} onClick={() => toggle("veg")}><Veg type="VEG" /> {hi ? "शाकाहारी" : "Veg"}</button>
+            <button className={"chip-f" + (has("nonveg") ? " on" : "")} onClick={() => toggle("nonveg")}><Veg type="NON_VEG" /> {hi ? "मांसाहारी" : "Non-veg"}</button>
+            <button className={"chip-f" + (has("under100") ? " on" : "")} onClick={() => toggle("under100")}>{hi ? "₹100 से कम" : "Under ₹100"}</button>
+            <button className={"chip-f" + (has("best") ? " on" : "")} onClick={() => toggle("best")}>★ {L("bestsellers")}</button>
+            <button className={"chip-f" + (sort ? " on" : "")} onClick={() => setSort(sort === "" ? "asc" : sort === "asc" ? "desc" : "")}>
+              {sort === "asc" ? "₹ Low → High" : sort === "desc" ? "₹ High → Low" : (hi ? "क्रम" : "Sort")}</button>
+          </div>)}
+        {!q && <h2 className="sec cat-title">{hi ? "श्रेणियाँ" : "Categories"}</h2>}
+        <div className="cat-pills">
+          {groups.map(({ c }) => (
+            <button key={c.id} className={active === c.id ? "on" : ""} onClick={() => jump(c.id)}>
+              <span className="pill-img"><DishImg src={catImg(c.id) ?? null} /></span>{name(c)}
+            </button>
+          ))}
         </div>
       </div>
 
       {groups.map(({ c, list }) => (
         <section key={c.id} id={`cat-${c.id}`} ref={(el) => { refs.current[c.id] = el; }} className="cat-sec">
           <h2 className="sec">{name(c)} <span className="muted-s">({list.length})</span></h2>
-          {list.map((i) => {
-            const plain = qtyPlain(i.id);
-            return (
-              <article key={i.id} className={"dish-s" + (i.is_available ? "" : " sold")}>
-                <div className="dish-info" onClick={() => onOpen(i)}>
-                  <div className="dish-top"><Veg type={i.food_type} />{i.is_popular && <span className="tag-s">★ {L("bestsellers")}</span>}</div>
-                  <h3>{name(i)}</h3>
-                  <div className="price-s">{priceText(i)}</div>
-                  {desc(i) && <p>{desc(i)}</p>}
-                  {variantHint(i) && <span className="custom-s">{variantHint(i)}</span>}
-                </div>
-                <div className="dish-media">
-                  <button className="img-btn" onClick={() => onOpen(i)} aria-label={name(i)}>
+          <div className="dish-grid">
+            {list.map((i) => {
+              const plain = qtyPlain(i.id);
+              const sized = i.options.some((o) => o.group === "size");
+              return (
+                <article key={i.id} className={"dish-card" + (i.is_available ? "" : " sold")}>
+                  <button className="dish-card-img" onClick={() => onOpen(i)} aria-label={name(i)}>
                     <DishImg src={i.image_url} />
+                    <span className="dish-card-veg"><Veg type={i.food_type} /></span>
+                    {i.is_popular && <span className="dish-card-tag">★ {L("bestsellers")}</span>}
+                    {!i.is_available && <span className="dish-card-sold">{L("soldOut")}</span>}
                   </button>
-                  {!i.is_available ? <span className="sold-badge">{L("soldOut")}</span>
-                    : canOrder && (i.options.length === 0 && plain > 0
-                      ? <div className="stepper-s"><button onClick={() => onChange(i.id, [], -1)}>−</button><b>{plain}</b><button onClick={() => onChange(i.id, [], 1)}>+</button></div>
-                      : <button className="add-s" onClick={() => (i.options.length ? onOpen(i) : onChange(i.id, [], 1))}>{L("add")}{qtyAny(i.id) ? ` · ${qtyAny(i.id)}` : ""}<sup>+</sup></button>)}
-                </div>
-              </article>
-            );
-          })}
+                  <div className="dish-card-body" onClick={() => onOpen(i)}>
+                    <h3>{name(i)}</h3>
+                    {desc(i) ? <p>{desc(i)}</p> : variantHint(i) ? <p>{variantHint(i)}</p> : sized ? <p>{priceText(i)}</p> : null}
+                  </div>
+                  <div className="dish-card-foot">
+                    <b className="dish-card-price">{sized ? <small>{hi ? "से " : "from "}</small> : null}{rupees(i.price_paise)}</b>
+                    {i.is_available && canOrder && (i.options.length === 0 && plain > 0
+                      ? <div className="stepper-s mini"><button aria-label="Remove one" onClick={() => onChange(i.id, [], -1)}>−</button><b>{plain}</b><button aria-label="Add one" onClick={() => onChange(i.id, [], 1)}>+</button></div>
+                      : <button className="plus-btn" aria-label={`${L("add")} ${name(i)}`} onClick={() => (i.options.length ? onOpen(i) : onChange(i.id, [], 1))}>
+                          +{qtyAny(i.id) ? <i>{qtyAny(i.id)}</i> : null}</button>)}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         </section>
       ))}
       {groups.length === 0 && <p className="empty-s">{hi ? "कोई डिश नहीं मिली" : "No dishes match. Try another search or filter."}</p>}
