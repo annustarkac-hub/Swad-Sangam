@@ -103,6 +103,7 @@ class MenuRepository @Inject constructor(
                         isPopular = it.isPopular, preparationMinutes = it.preparationMinutes,
                         allergens = it.allergens, portionInfo = it.portionInfo,
                         optionsJson = json.encodeToString(optionsSerializer, it.options), sortOrder = it.sortOrder,
+                        variantBaseLabel = it.variantBaseLabel,
                     )
                 }
                 dao.replaceMenu(activeCats, items)
@@ -131,6 +132,6 @@ class MenuRepository @Inject constructor(
         imageUrl = imageUrl, isAvailable = isAvailable, isPopular = isPopular,
         preparationMinutes = preparationMinutes, allergens = allergens, portionInfo = portionInfo,
         options = runCatching { json.decodeFromString(optionsSerializer, optionsJson) }.getOrDefault(emptyList()),
-        sortOrder = sortOrder,
+        sortOrder = sortOrder, variantBaseLabel = variantBaseLabel,
     )
 }

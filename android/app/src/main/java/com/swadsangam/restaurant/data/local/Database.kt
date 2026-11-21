@@ -40,6 +40,7 @@ data class MenuItemEntity(
     val portionInfo: String?,
     val optionsJson: String,
     val sortOrder: Int,
+    val variantBaseLabel: String? = null,
 )
 
 @Entity(tableName = "offers")
@@ -157,11 +158,18 @@ interface OrderDao {
 @Database(
     entities = [CategoryEntity::class, MenuItemEntity::class, OfferEntity::class, SettingsEntity::class,
         CartLineEntity::class, MyOrderEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun menuDao(): MenuDao
     abstract fun cartDao(): CartDao
     abstract fun orderDao(): OrderDao
+}
+
+/** v2: menu_items.variantBaseLabel ("Half" when "Full" is an option). Keeps the cart and order history. */
+val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE menu_items ADD COLUMN variantBaseLabel TEXT")
+    }
 }

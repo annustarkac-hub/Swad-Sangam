@@ -71,7 +71,8 @@ object AppModule {
     @Provides @Singleton
     fun database(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, "swad_sangam.db")
-            .fallbackToDestructiveMigration(dropAllTables = true) // only cached data; orders re-sync by token
+            .addMigrations(com.swadsangam.restaurant.data.local.MIGRATION_1_2) // keeps cart and "My orders"
+            .fallbackToDestructiveMigration(dropAllTables = true) // only if a future migration is missing
             .build()
 
     @Provides fun menuDao(db: AppDatabase) = db.menuDao()

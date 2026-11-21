@@ -233,4 +233,11 @@
     <string name="notif_rejected">Order not accepted</string>
     <string name="notif_cancelled">Order cancelled</string>
     <string name="notif_body">Order %1$s</string>
+    <string name="choose_one">Choose one</string>
+    <string name="variant_regular">Regular</string>
+    <string name="table_code">Table code (ask the staff)</string>
+    <string name="table_code_error">Enter the 4-digit code shown by our staff</string>
+    <string name="see_all">See all</string>
+    <string name="add_ons">Add-ons</string>
+    <string name="from_price">from %1$s</string>
 </resources>

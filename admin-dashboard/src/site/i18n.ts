@@ -59,6 +59,8 @@ const T = {
   privacy: ["Privacy policy", "गोपनीयता नीति"],
   orderTerms: ["Order terms", "ऑर्डर की शर्तें"],
   staffLogin: ["Staff login", "स्टाफ़ लॉगिन"],
+  account: ["Account", "खाता"],
+  login: ["Login", "लॉगिन"],
   back: ["Back", "वापस"],
   reorder: ["Order again", "फिर से ऑर्डर करें"],
   estimated: ["Estimated ready by", "लगभग तैयार"],

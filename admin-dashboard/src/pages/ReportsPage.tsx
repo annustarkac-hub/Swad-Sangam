@@ -22,6 +22,14 @@ const RANGES = [
   { label: "Last 7 days", from: -6 },
   { label: "Last 30 days", from: -29 },
 ];
+/** First and last day (YYYY-MM-DD, India time) of this month (offset 0) or an earlier month (offset -1, -2 …). */
+function monthRange(offset: number): [string, string] {
+  const [y, m] = todayIST().split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + offset, 1));
+  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
+  const f = (x: Date) => x.toISOString().slice(0, 10);
+  return [f(d), offset === 0 ? todayIST() : f(last)];
+}
 const FUNNEL = ["app_opened", "menu_opened", "item_added_to_cart", "checkout_started", "order_submitted", "order_completed", "call_clicked", "directions_clicked"];
 
 export default function ReportsPage() {
@@ -45,6 +53,9 @@ export default function ReportsPage() {
       <h1>Reports</h1>
       <div className="row" style={{ marginBottom: 12 }}>
         {RANGES.map((x) => <button key={x.label} className="secondary small" onClick={() => { setFrom(todayIST(x.from)); setTo(todayIST()); }}>{x.label}</button>)}
+        <button className="secondary small" onClick={() => { const [a, b] = monthRange(0); setFrom(a); setTo(b); }}>This month</button>
+        <button className="secondary small" onClick={() => { const [a, b] = monthRange(-1); setFrom(a); setTo(b); }}>Last month</button>
+        <button className="secondary small" onClick={() => { setFrom(monthRange(-11)[0]); setTo(todayIST()); }}>Last 12 months</button>
         <input type="date" style={{ maxWidth: 170 }} value={from} onChange={(e) => setFrom(e.target.value)} />
         <span>to</span>
         <input type="date" style={{ maxWidth: 170 }} value={to} onChange={(e) => setTo(e.target.value)} />
@@ -58,10 +69,10 @@ export default function ReportsPage() {
           <p className="small muted">These figures are kept separate on purpose. Gross order value is food value before discounts, taxes and fees. Net receipts = payments received − refunds ± corrections.</p>
           <div className="grid tight">
             <Stat l="Gross order value" v={rupees(r.grossOrderValuePaise)} />
-            <Stat l="Discounts" v={"−" + rupees(r.discountsPaise)} />
+            <Stat l="Discounts" v={(r.discountsPaise ? "−" : "") + rupees(r.discountsPaise)} />
             <Stat l="Taxes collected" v={rupees(r.taxesPaise)} />
             <Stat l="Fees (packaging/delivery)" v={rupees(r.feesPaise)} />
-            <Stat l="Refunds" v={"−" + rupees(r.refundsPaise)} />
+            <Stat l="Refunds" v={(r.refundsPaise ? "−" : "") + rupees(r.refundsPaise)} />
             <Stat l="Corrections" v={rupees(r.correctionsPaise)} />
             <Stat l="Payments received" v={rupees(r.paidReceiptsPaise)} />
             <Stat l="Net receipts" v={rupees(r.netReceiptsPaise)} />
@@ -79,6 +90,21 @@ export default function ReportsPage() {
             <Stat l="Returning customers" v={r.customers.returning} />
           </div>
 
+          {(() => {
+            const months = Object.values(r.byDay.reduce<Record<string, { month: string; orders: number; completed: number; grossPaise: number }>>((acc, d) => {
+              const k = d.date.slice(0, 7); const x = acc[k] ?? (acc[k] = { month: k, orders: 0, completed: 0, grossPaise: 0 });
+              x.orders += d.orders; x.completed += d.completed; x.grossPaise += d.grossPaise; return acc;
+            }, {})).sort((a, b) => a.month.localeCompare(b.month));
+            return months.length > 0 && (
+              <>
+                <h2>Monthly sales</h2>
+                <table><thead><tr><th>Month</th><th className="right">Orders</th><th className="right">Completed</th><th className="right">Gross</th></tr></thead><tbody>
+                  {months.map((m) => <tr key={m.month}><td>{new Date(m.month + "-01T00:00:00").toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</td>
+                    <td className="right">{m.orders}</td><td className="right">{m.completed}</td><td className="right">{rupees(m.grossPaise)}</td></tr>)}
+                </tbody></table>
+              </>
+            );
+          })()}
           <h2>Daily sales</h2>
           <table><tbody>
             {r.byDay.map((d) => (

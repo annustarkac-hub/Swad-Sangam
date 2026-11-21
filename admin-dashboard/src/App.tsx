@@ -4,6 +4,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { can, useAuth } from "./auth";
 import { isConfigured } from "./lib/supabase";
@@ -131,6 +132,7 @@ export default function App() {
           <button className="ghost icon" aria-label="Sign out" title="Sign out" onClick={() => void signOut()}><LogOut /></button>
         </header>
         <main className="content">
+        <ErrorBoundary resetKey={location.pathname}>
         <Routes>
           <Route path="/" element={role === "KITCHEN" ? <Navigate to="/kitchen" /> : role === "ACCOUNTANT" ? <Navigate to="/accounting" /> : <DashboardPage />} />
           <Route path="/pos" element={<Guard roles={FOH}><PosPage /></Guard>} />
@@ -154,6 +156,7 @@ export default function App() {
           <Route path="/audit" element={<Guard roles={["OWNER"]}><AuditPage /></Guard>} />
           <Route path="*" element={<Navigate to={home} />} />
         </Routes>
+        </ErrorBoundary>
         </main>
       </div>
       <nav className="bottom-bar">

@@ -47,8 +47,15 @@ class ItemViewModel @Inject constructor(
     init { analytics.track(Analytics.ITEM_VIEWED, "itemId" to id) }
 
     fun setQuantity(q: Int) { qty.value = q.coerceIn(1, state.value.maxQuantity) }
+    /** Add-ons: tick / untick. */
     fun toggleOption(optionId: String) {
         selected.value = if (optionId in selected.value) selected.value - optionId else selected.value + optionId
+    }
+
+    /** Alternatives in one group (Half / Full, Dry / Gravy): pick one; null = the base choice. */
+    fun chooseVariant(group: String, optionId: String?) {
+        val inGroup = state.value.item?.variantGroups?.get(group).orEmpty().map { it.id }.toSet()
+        selected.value = (selected.value - inGroup) + listOfNotNull(optionId)
     }
 
     fun addToCart(onDone: () -> Unit) = viewModelScope.launch {

@@ -104,4 +104,13 @@ class BusinessRulesTest {
         assertTrue(OrderStatus.PLACED.isActive)
         assertFalse(OrderStatus.COMPLETED.isActive)
     }
+
+    @Test
+    fun `size and style options are alternatives, others are add-ons`() {
+        val i = MenuItem("m1", "Chilli Paneer", null, "starters", null, null, 15000, FoodType.VEG, null, true, false, null, null, null,
+            listOf(ItemOption("full", "Full", 8000, group = "size"), ItemOption("gravy", "Gravy", 0, group = "style"), ItemOption("cheese", "Extra cheese", 2000)),
+            0, variantBaseLabel = "Half")
+        assertEquals(setOf("size", "style"), i.variantGroups.keys)
+        assertEquals(listOf("cheese"), i.addOns.map { it.id })
+    }
 }

@@ -24,6 +24,8 @@ data class ItemOption(
     val name: String,
     val pricePaise: Int = 0,
     val isAvailable: Boolean = true,
+    /** Options in the same group are alternatives (e.g. "size": Half / Full) — pick one at most. */
+    val group: String? = null,
 )
 
 data class Category(val id: String, val name: String, val nameHi: String?, val sortOrder: Int)
@@ -45,7 +47,13 @@ data class MenuItem(
     val portionInfo: String?,
     val options: List<ItemOption>,
     val sortOrder: Int,
+    /** Name of the base price when the dish has alternatives, e.g. "Half" (Full is an option). */
+    val variantBaseLabel: String? = null,
 ) {
+    /** Options grouped as alternatives (size, Dry/Gravy …), in menu order. */
+    val variantGroups: Map<String, List<ItemOption>> get() = options.filter { !it.group.isNullOrBlank() }.groupBy { it.group!! }
+    val addOns: List<ItemOption> get() = options.filter { it.group.isNullOrBlank() }
+
     fun displayName(hindi: Boolean) = if (hindi && !nameHi.isNullOrBlank()) nameHi else name
     fun displayDescription(hindi: Boolean) = if (hindi && !descriptionHi.isNullOrBlank()) descriptionHi else description
 }
@@ -116,6 +124,7 @@ data class RestaurantInfo(
     val legalBusinessName: String?,
     val parkingInfo: String?,
     val dineInInfo: String?,
+    val requireTableCode: Boolean = false,
     val rating: Double?,
     val reviewCount: Int?,
     val reviewsUrl: String?,

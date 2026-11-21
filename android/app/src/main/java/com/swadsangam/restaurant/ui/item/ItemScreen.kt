@@ -1,5 +1,11 @@
 package com.swadsangam.restaurant.ui.item
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.RadioButton
+import androidx.compose.ui.semantics.Role
+import com.swadsangam.restaurant.ui.components.priceLabel
+import com.swadsangam.restaurant.ui.theme.Dimens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -54,7 +60,7 @@ fun ItemScreen(hindi: Boolean, onAdded: () -> Unit, vm: ItemViewModel = androidx
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(item.displayName(hindi), style = MaterialTheme.typography.headlineSmall)
-                Price(item.pricePaise)
+                Text(priceLabel(item), style = com.swadsangam.restaurant.ui.theme.PriceStyle)
                 item.displayDescription(hindi)?.let { Spacer(Modifier.height(8.dp)); Text(it, style = MaterialTheme.typography.bodyMedium) }
                 item.portionInfo?.let { Detail(stringResource(R.string.portion), it) }
                 item.preparationMinutes?.let { Detail(stringResource(R.string.prep_time), stringResource(R.string.minutes, it)) }
@@ -63,12 +69,25 @@ fun ItemScreen(hindi: Boolean, onAdded: () -> Unit, vm: ItemViewModel = androidx
                     Spacer(Modifier.height(8.dp))
                     Text(stringResource(R.string.currently_unavailable), color = MaterialTheme.colorScheme.error)
                 }
-                if (item.options.isNotEmpty()) {
+                // Alternatives (Half / Full, Dry / Gravy): one choice per group
+                item.variantGroups.forEach { (group, opts) ->
                     Spacer(Modifier.height(16.dp))
-                    Text(stringResource(R.string.options), style = MaterialTheme.typography.titleMedium)
-                    item.options.forEach { o ->
+                    Text(stringResource(R.string.choose_one), style = MaterialTheme.typography.titleMedium)
+                    val chosen = opts.firstOrNull { it.id in s.selected }
+                    VariantRow(item.variantBaseLabel ?: stringResource(R.string.variant_regular), item.pricePaise, chosen == null, true) {
+                        vm.chooseVariant(group, null)
+                    }
+                    opts.forEach { o ->
+                        VariantRow(o.name, item.pricePaise + o.pricePaise, chosen?.id == o.id, o.isAvailable) { vm.chooseVariant(group, o.id) }
+                    }
+                }
+                // Add-ons: tick any
+                if (item.addOns.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    Text(stringResource(if (item.variantGroups.isEmpty()) R.string.options else R.string.add_ons), style = MaterialTheme.typography.titleMedium)
+                    item.addOns.forEach { o ->
                         Row(
-                            Modifier.fillMaxWidth().clickable(enabled = o.isAvailable) { vm.toggleOption(o.id) }.padding(vertical = 4.dp),
+                            Modifier.fillMaxWidth().heightIn(min = Dimens.touch).clickable(enabled = o.isAvailable) { vm.toggleOption(o.id) },
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Checkbox(checked = o.id in s.selected, onCheckedChange = { vm.toggleOption(o.id) }, enabled = o.isAvailable)
@@ -89,6 +108,21 @@ fun ItemScreen(hindi: Boolean, onAdded: () -> Unit, vm: ItemViewModel = androidx
                 }
             }
         }
+    }
+}
+
+/** One radio row: label, full price, selected state. */
+@Composable
+private fun VariantRow(label: String, pricePaise: Int, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = Dimens.touch)
+            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = null, enabled = enabled)
+        Spacer(Modifier.width(8.dp))
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Text(Money.format(pricePaise), style = MaterialTheme.typography.bodyLarge)
     }
 }
 
