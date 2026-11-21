@@ -66,8 +66,8 @@ jobs:
       - name: Lint
         run: ./gradlew --no-daemon lintDebug
 
-      - name: Build debug APK (for testing on phones)
-        run: ./gradlew --no-daemon assembleDebug
+      - name: Build debug APKs (customer, admin, staff — for testing on phones)
+        run: ./gradlew --no-daemon :app:assembleDebug :staffapp:assembleAdminDebug :staffapp:assembleStaffDebug
 
       - name: Build release AAB + APK
         env:
@@ -79,7 +79,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: swad-sangam-debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/staffapp/build/outputs/apk/*/debug/*.apk
           retention-days: 30
 
       - uses: actions/upload-artifact@v4

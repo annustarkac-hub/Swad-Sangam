@@ -1,0 +1,36 @@
+<variant
+    name="staffDebug"
+    package="in.swadsangam.staff"
+    minSdkVersion="26"
+    targetSdkVersion="36.0"
+    debuggable="true"
+    mergedManifest="build/intermediates/merged_manifest/staffDebug/processStaffDebugMainManifest/AndroidManifest.xml"
+    partialResultsDir="build/intermediates/android_test_lint_partial_results/staffDebug/lintAnalyzeStaffDebugAndroidTest/out"
+    desugaredMethodsFiles="/root/.gradle/caches/8.14.3/transforms/d367edf8c22542ea22806f82aff4ed4e/transformed/D8BackportedDesugaredMethods.txt">
+  <buildFeatures
+      namespacing="REQUIRED"/>
+  <sourceProviders>
+  </sourceProviders>
+  <testSourceProviders>
+    <sourceProvider
+        manifests="src/androidTest/AndroidManifest.xml"
+        javaDirectories="src/androidTest/java:src/androidTestStaff/java:src/androidTestDebug/java:src/androidTestStaffDebug/java:src/androidTest/kotlin:src/androidTestStaff/kotlin:src/androidTestDebug/kotlin:src/androidTestStaffDebug/kotlin"
+        resDirectories="src/androidTest/res:src/androidTestStaff/res:src/androidTestDebug/res:src/androidTestStaffDebug/res"
+        assetsDirectories="src/androidTest/assets:src/androidTestStaff/assets:src/androidTestDebug/assets:src/androidTestStaffDebug/assets"
+        androidTest="true"/>
+  </testSourceProviders>
+  <testFixturesSourceProviders>
+  </testFixturesSourceProviders>
+  <resValues>
+    <resValue
+        type="string"
+        name="app_name"
+        value="Swad Sangam Staff" />
+  </resValues>
+  <artifact
+      type="INSTRUMENTATION_TEST"
+      applicationId="in.swadsangam.staff.test"
+      generatedResourceFolders="build/generated/res/resValues/androidTest/staff/debug"
+      desugaredMethodsFiles="/root/.gradle/caches/8.14.3/transforms/d367edf8c22542ea22806f82aff4ed4e/transformed/D8BackportedDesugaredMethods.txt">
+  </artifact>
+</variant>

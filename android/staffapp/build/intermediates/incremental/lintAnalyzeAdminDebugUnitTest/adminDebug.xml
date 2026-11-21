@@ -1,0 +1,32 @@
+<variant
+    name="adminDebug"
+    package="in.swadsangam.staff"
+    minSdkVersion="26"
+    targetSdkVersion="36.0"
+    debuggable="true"
+    mergedManifest="build/intermediates/merged_manifest/adminDebug/processAdminDebugMainManifest/AndroidManifest.xml"
+    partialResultsDir="build/intermediates/unit_test_lint_partial_results/adminDebug/lintAnalyzeAdminDebugUnitTest/out"
+    desugaredMethodsFiles="/root/.gradle/caches/8.14.3/transforms/d367edf8c22542ea22806f82aff4ed4e/transformed/D8BackportedDesugaredMethods.txt">
+  <buildFeatures
+      namespacing="REQUIRED"/>
+  <sourceProviders>
+  </sourceProviders>
+  <testSourceProviders>
+    <sourceProvider
+        manifests="src/test/AndroidManifest.xml"
+        javaDirectories="src/test/java:src/testAdmin/java:src/testDebug/java:src/testAdminDebug/java:src/test/kotlin:src/testAdmin/kotlin:src/testDebug/kotlin:src/testAdminDebug/kotlin"
+        assetsDirectories="src/test/assets:src/testAdmin/assets:src/testDebug/assets:src/testAdminDebug/assets"
+        unitTest="true"/>
+  </testSourceProviders>
+  <testFixturesSourceProviders>
+  </testFixturesSourceProviders>
+  <resValues>
+    <resValue
+        type="string"
+        name="app_name"
+        value="Swad Sangam Admin" />
+  </resValues>
+  <artifact
+      type="UNIT_TEST">
+  </artifact>
+</variant>

@@ -24,7 +24,9 @@
 8. **Actions → "Create signing key (run once)" → Run workflow → YES लिखें → Run**
 9. रन पूरा होने पर उसे खोलें → नीचे **signing-key** डाउनलोड करें → `release.jks.base64.txt` खोलें → **पूरा टेक्स्ट कॉपी** करें
 10. फिर से **New repository secret** → Name: `ANDROID_KEYSTORE_BASE64` · Value: कॉपी किया टेक्स्ट
-11. **Actions → "Release Android APK" → Run workflow**। 10–15 मिनट बाद वेबसाइट का "Android app" बटन काम करने लगेगा।
+11. **Actions → "Release Android APK" → Run workflow**। 10–15 मिनट बाद **Releases** में तीन ऐप आएँगे:
+    `swad-sangam.apk` (ग्राहक), `swad-sangam-admin.apk` (मालिक/मैनेजर), `swad-sangam-staff.apk` (कैशियर/किचन/वेटर)।
+    वेबसाइट का "Android app" बटन ग्राहक वाला ऐप देता है। पहले भेजे गए टेस्ट APK हटाकर (uninstall) ये नए लगाएँ — इसके बाद हर अपडेट सीधे ऊपर इंस्टॉल होगा।
     डाउनलोड की गई फ़ाइल Google Drive में संभालकर रखें — इसके बिना आगे ऐप अपडेट नहीं होगा।
 
 ## D. रोज़ का बैकअप — एक बार

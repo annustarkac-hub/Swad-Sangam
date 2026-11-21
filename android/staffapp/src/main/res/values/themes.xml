@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SwadStaff" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/staff_bg</item>
+        <item name="android:statusBarColor">@color/staff_nav</item>
+        <item name="android:navigationBarColor">@color/staff_nav</item>
+        <item name="colorPrimary">@color/staff_brand</item>
+        <item name="colorAccent">@color/staff_brand</item>
+    </style>
+</resources>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { printPage } from "../lib/native";
 import DateRange from "../components/DateRange";
 import Modal from "../components/Modal";
 import { rpc, selectAll, TENDER_LABEL, uuid, type Tender } from "../lib/erp";
@@ -145,7 +146,7 @@ function Statement({ kind, party, onClose }: { kind: Kind; party: Party; onClose
       <DateRange from={from} to={to} onChange={(a, b) => { setFrom(a); setTo(b); }} />
       <p className="small muted">{kind === "CUSTOMER" ? "Dr = customer owes you" : "Cr = you owe the supplier"}</p>
       {data && <LedgerTable data={data} file={`statement-${party.name}-${from}-${to}.csv`} />}
-      <button className="secondary small" onClick={() => window.print()}>Print / PDF</button>
+      <button className="secondary small" onClick={() => printPage()}>Print / PDF</button>
     </Modal>
   );
 }

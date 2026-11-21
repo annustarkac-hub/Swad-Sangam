@@ -1,0 +1,36 @@
+<variant
+    name="adminDebug"
+    package="in.swadsangam.staff"
+    minSdkVersion="26"
+    targetSdkVersion="36.0"
+    debuggable="true"
+    mergedManifest="build/intermediates/merged_manifest/adminDebug/processAdminDebugMainManifest/AndroidManifest.xml"
+    partialResultsDir="build/intermediates/android_test_lint_partial_results/adminDebug/lintAnalyzeAdminDebugAndroidTest/out"
+    desugaredMethodsFiles="/root/.gradle/caches/8.14.3/transforms/d367edf8c22542ea22806f82aff4ed4e/transformed/D8BackportedDesugaredMethods.txt">
+  <buildFeatures
+      namespacing="REQUIRED"/>
+  <sourceProviders>
+  </sourceProviders>
+  <testSourceProviders>
+    <sourceProvider
+        manifests="src/androidTest/AndroidManifest.xml"
+        javaDirectories="src/androidTest/java:src/androidTestAdmin/java:src/androidTestDebug/java:src/androidTestAdminDebug/java:src/androidTest/kotlin:src/androidTestAdmin/kotlin:src/androidTestDebug/kotlin:src/androidTestAdminDebug/kotlin"
+        resDirectories="src/androidTest/res:src/androidTestAdmin/res:src/androidTestDebug/res:src/androidTestAdminDebug/res"
+        assetsDirectories="src/androidTest/assets:src/androidTestAdmin/assets:src/androidTestDebug/assets:src/androidTestAdminDebug/assets"
+        androidTest="true"/>
+  </testSourceProviders>
+  <testFixturesSourceProviders>
+  </testFixturesSourceProviders>
+  <resValues>
+    <resValue
+        type="string"
+        name="app_name"
+        value="Swad Sangam Admin" />
+  </resValues>
+  <artifact
+      type="INSTRUMENTATION_TEST"
+      applicationId="in.swadsangam.admin.test"
+      generatedResourceFolders="build/generated/res/resValues/androidTest/admin/debug"
+      desugaredMethodsFiles="/root/.gradle/caches/8.14.3/transforms/d367edf8c22542ea22806f82aff4ed4e/transformed/D8BackportedDesugaredMethods.txt">
+  </artifact>
+</variant>

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.13.2" type="incidents">
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="This folder configuration (`v26`) is unnecessary; `minSdkVersion` is 26. Merge all the resources in this folder into `mipmap-anydpi`.">
+        <fix-data file="${:staffapp*adminDebug*MAIN*sourceProvider*0*resDir*0}/mipmap-anydpi-v26" folderName="mipmap-anydpi" requiresApi="26"/>
+        <location
+            file="${:staffapp*adminDebug*MAIN*sourceProvider*0*resDir*0}/mipmap-anydpi-v26"/>
+    </incident>
+
+    <incident
+        id="UseKtx"
+        severity="warning"
+        message="Use the KTX extension function `String.toUri` instead?">
+        <fix-replace
+            description="Replace with the toUri extension function"
+            family="Replace with the toUri extension function"
+            robot="true"
+            independent="true"
+            oldString="Uri.parse(BuildConfig.SITE_BASE)"
+            replacement="BuildConfig.SITE_BASE.toUri()"
+            reformat="value"
+            imports="androidx.core.net.toUri"
+            priority="0">
+            <range
+                file="${:staffapp*adminDebug*MAIN*sourceProvider*0*javaDir*0}/in/swadsangam/staff/MainActivity.kt"
+                startOffset="2185"
+                endOffset="2217"/>
+        </fix-replace>
+        <location
+            file="${:staffapp*adminDebug*MAIN*sourceProvider*0*javaDir*0}/in/swadsangam/staff/MainActivity.kt"
+            line="56"
+            column="33"
+            startOffset="2185"
+            endLine="56"
+            endColumn="65"
+            endOffset="2217"/>
+    </incident>
+
+    <incident
+        id="UseKtx"
+        severity="warning"
+        message="Use the KTX extension function `String.toColorInt` instead?">
+        <fix-replace
+            description="Replace with the toColorInt extension function"
+            family="Replace with the toColorInt extension function"
+            robot="true"
+            independent="true"
+            oldString="Color.parseColor(&quot;#131217&quot;)"
+            replacement="&quot;#131217&quot;.toColorInt()"
+            reformat="value"
+            imports="androidx.core.graphics.toColorInt"
+            priority="0">
+            <range
+                file="${:staffapp*adminDebug*MAIN*sourceProvider*0*javaDir*0}/in/swadsangam/staff/MainActivity.kt"
+                startOffset="2533"
+                endOffset="2560"/>
+        </fix-replace>
+        <location
+            file="${:staffapp*adminDebug*MAIN*sourceProvider*0*javaDir*0}/in/swadsangam/staff/MainActivity.kt"
+            line="64"
+            column="32"
+            startOffset="2533"
+            endLine="64"
+            endColumn="59"
+            endOffset="2560"/>
+    </incident>
+
+    <incident
+        id="UseKtx"
+        severity="warning"
+        message="Use the KTX extension function `String.toUri` instead?">
+        <fix-replace
+            description="Replace with the toUri extension function"
+            family="Replace with the toUri extension function"
+            robot="true"
+            independent="true"
+            oldString="Uri.parse(url)"
+            replacement="url.toUri()"
+            reformat="value"
+            imports="androidx.core.net.toUri"
+            priority="0">
+            <range
+                file="${:staffapp*adminDebug*MAIN*sourceProvider*0*javaDir*0}/in/swadsangam/staff/MainActivity.kt"
+                startOffset="8480"
+                endOffset="8494"/>
+        </fix-replace>
+        <location
+            file="${:staffapp*adminDebug*MAIN*sourceProvider*0*javaDir*0}/in/swadsangam/staff/MainActivity.kt"
+            line="181"
+            column="65"
+            startOffset="8480"
+            endLine="181"
+            endColumn="79"
+            endOffset="8494"/>
+    </incident>
+
+    <incident
+        id="UseKtx"
+        severity="warning"
+        message="Use the KTX extension function `String.toColorInt` instead?">
+        <fix-replace
+            description="Replace with the toColorInt extension function"
+            family="Replace with the toColorInt extension function"
+            robot="true"
+            independent="true"
+            oldString="Color.parseColor(&quot;#131217&quot;)"
+            replacement="&quot;#131217&quot;.toColorInt()"
+            reformat="value"
+            imports="androidx.core.graphics.toColorInt"
+            priority="0">
+            <range
+                file="${:staffapp*adminDebug*MAIN*sourceProvider*0*javaDir*0}/in/swadsangam/staff/MainActivity.kt"
+                startOffset="8916"
+                endOffset="8943"/>
+        </fix-replace>
+        <location
+            file="${:staffapp*adminDebug*MAIN*sourceProvider*0*javaDir*0}/in/swadsangam/staff/MainActivity.kt"
+            line="192"
+            column="28"
+            startOffset="8916"
+            endLine="192"
+            endColumn="55"
+            endOffset="8943"/>
+    </incident>
+
+    <incident
+        id="UseKtx"
+        severity="warning"
+        message="Use the KTX extension function `String.toColorInt` instead?">
+        <fix-replace
+            description="Replace with the toColorInt extension function"
+            family="Replace with the toColorInt extension function"
+            robot="true"
+            independent="true"
+            oldString="Color.parseColor(&quot;#C9C5CC&quot;)"
+            replacement="&quot;#C9C5CC&quot;.toColorInt()"
+            reformat="value"
+            imports="androidx.core.graphics.toColorInt"
+            priority="0">
+            <range
+                file="${:staffapp*adminDebug*MAIN*sourceProvider*0*javaDir*0}/in/swadsangam/staff/MainActivity.kt"
+                startOffset="9292"
+                endOffset="9319"/>
+        </fix-replace>
+        <location
+            file="${:staffapp*adminDebug*MAIN*sourceProvider*0*javaDir*0}/in/swadsangam/staff/MainActivity.kt"
+            line="199"
+            column="74"
+            startOffset="9292"
+            endLine="199"
+            endColumn="101"
+            endOffset="9319"/>
+    </incident>
+
+</incidents>

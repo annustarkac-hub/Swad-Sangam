@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { printPage } from "../lib/native";
 import { useEffect, useState } from "react";
 
 /**
@@ -23,7 +24,7 @@ export default function QrPage() {
 
   return (
     <div>
-      <div className="spread"><h1>QR codes</h1><button onClick={() => window.print()}>Print</button></div>
+      <div className="spread"><h1>QR codes</h1><button onClick={() => printPage()}>Print</button></div>
       <div className="form-grid">
         <label>Website link<input value={store} onChange={(e) => setStore(e.target.value)} /></label>
         <label>Table ordering link<input value={base} onChange={(e) => setBase(e.target.value)} /></label>

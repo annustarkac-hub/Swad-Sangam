@@ -66,10 +66,14 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'swadsangam' }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          ./gradlew --no-daemon testDebugUnitTest assembleRelease
+          ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease :staffapp:assembleAdminRelease :staffapp:assembleStaffRelease
           cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/swad-sangam.apk"
-          "$ANDROID_HOME"/build-tools/*/apksigner verify "$RUNNER_TEMP/swad-sangam.apk" 2>/dev/null || ls "$ANDROID_HOME"/build-tools
-          sha256sum "$RUNNER_TEMP/swad-sangam.apk" | cut -d' ' -f1 > "$RUNNER_TEMP/swad-sangam.apk.sha256"
+          cp staffapp/build/outputs/apk/admin/release/staffapp-admin-release.apk "$RUNNER_TEMP/swad-sangam-admin.apk"
+          cp staffapp/build/outputs/apk/staff/release/staffapp-staff-release.apk "$RUNNER_TEMP/swad-sangam-staff.apk"
+          for f in swad-sangam swad-sangam-admin swad-sangam-staff; do
+            "$ANDROID_HOME"/build-tools/*/apksigner verify "$RUNNER_TEMP/$f.apk"
+            sha256sum "$RUNNER_TEMP/$f.apk" | cut -d' ' -f1 > "$RUNNER_TEMP/$f.apk.sha256"
+          done
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.1.${{ github.run_number }}
@@ -78,8 +82,14 @@ jobs:
           body: |
             ${{ inputs.notes || 'Menu and app improvements' }}
 
-            **Install:** download `swad-sangam.apk` on your Android phone → open it → allow “Install unknown apps” for your browser/WhatsApp → Install.
+            **Customer app:** `swad-sangam.apk` · **Admin (owner/manager):** `swad-sangam-admin.apk` · **Staff (POS / kitchen):** `swad-sangam-staff.apk`
+
+            **Install:** download the APK on the Android phone → open it → allow “Install unknown apps” for your browser/WhatsApp → Install.
             Updating: install the new APK over the old one; your orders stay.
           files: |
             ${{ runner.temp }}/swad-sangam.apk
             ${{ runner.temp }}/swad-sangam.apk.sha256
+            ${{ runner.temp }}/swad-sangam-admin.apk
+            ${{ runner.temp }}/swad-sangam-admin.apk.sha256
+            ${{ runner.temp }}/swad-sangam-staff.apk
+            ${{ runner.temp }}/swad-sangam-staff.apk.sha256

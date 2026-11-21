@@ -1,3 +1,4 @@
+import { appBridge } from "./native";
 import { useCallback, useEffect, useState } from "react";
 import { friendlyError, supabase } from "./supabase";
 
@@ -45,17 +46,20 @@ export function upiLink(upiId: string, payee: string, amountPaise: number, note:
 }
 
 export function printHtml(title: string, bodyHtml: string, widthMm?: number) {
-  const w = window.open("", "_blank", "width=420,height=640");
-  if (!w) return;
   const page = widthMm ? `@page { size: ${widthMm}mm auto; margin: 2mm; } body { width: ${widthMm - 4}mm; }` : "@page { margin: 12mm; }";
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
+  const head = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
     ${page}
     body { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: ${widthMm ? (widthMm < 70 ? "10px" : "12px") : "13px"}; color: #000; margin: 0 auto; }
     h1,h2,h3 { margin: 4px 0; text-align: center; } table { width: 100%; border-collapse: collapse; }
     td, th { padding: 2px 0; vertical-align: top; } .r { text-align: right; } .c { text-align: center; }
     hr { border: 0; border-top: 1px dashed #000; } .big { font-size: 1.3em; font-weight: bold; }
     .doc td, .doc th { border-bottom: 1px solid #ddd; padding: 4px; font-family: system-ui, sans-serif; }
-  </style></head><body>${bodyHtml}<script>window.onload = () => { window.print(); }<\/script></body></html>`);
+  </style></head><body>${bodyHtml}`;
+  const bridge = appBridge();
+  if (bridge) { bridge.printHtml(title, head + "</body></html>"); return; } // Android app: native print dialog / printer
+  const w = window.open("", "_blank", "width=420,height=640");
+  if (!w) return;
+  w.document.write(head + `<script>window.onload = () => { window.print(); }<\/script></body></html>`);
   w.document.close();
 }
 

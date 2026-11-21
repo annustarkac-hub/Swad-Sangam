@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { printPage } from "../lib/native";
 import { can, useAuth } from "../auth";
 import DateRange, { monthStart } from "../components/DateRange";
 import Modal from "../components/Modal";
@@ -17,7 +18,7 @@ export default function AccountingPage() {
   const [to, setTo] = useState(todayIST());
   return (
     <div>
-      <div className="spread"><h1>Accounting</h1><button className="secondary small" onClick={() => window.print()}>Print / save PDF</button></div>
+      <div className="spread"><h1>Accounting</h1><button className="secondary small" onClick={() => printPage()}>Print / save PDF</button></div>
       <p className="small muted">Double-entry books. Every sale, payment, purchase, expense, salary and stock movement is posted automatically.
         Posted entries cannot be edited — use a reversal. Have your CA review before filing returns.</p>
       <div className="tabs">{TABS.map((t) => <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>{t}</button>)}</div>
