@@ -11,5 +11,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 );
 
 if ("serviceWorker" in navigator && location.protocol === "https:") {
-  window.addEventListener("load", () => { void navigator.serviceWorker.register("./sw.js"); });
+  window.addEventListener("load", () => { void navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" }); });
+  // When a new version takes over, reload once so the customer sees it immediately.
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (!reloaded) { reloaded = true; location.reload(); } });
 }
