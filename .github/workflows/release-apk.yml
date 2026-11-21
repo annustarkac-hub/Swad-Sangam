@@ -38,7 +38,7 @@ jobs:
           KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KS" ]; then
-            echo "::error::Signing key missing. Run the 'Create signing key (run once)' workflow and add its 4 secrets — see docs/SETUP_GUIDE.md."
+            echo "::error::Signing key missing. Add the ANDROID_KEYSTORE_PASSWORD secret, run 'Create signing key (run once)', then add ANDROID_KEYSTORE_BASE64 — steps are at the top of create-signing-key.yml."
             exit 1
           fi
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
@@ -63,8 +63,8 @@ jobs:
       - name: Test and build signed APK
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'swadsangam' }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           ./gradlew --no-daemon testDebugUnitTest assembleRelease
           cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/swad-sangam.apk"
