@@ -208,3 +208,16 @@ Not built: phone OTP login (needs a paid SMS provider).
   only modes enabled in Settings), "What's on your mind?" category circles, recommended carousel, filters (veg, non-veg,
   under ₹100, bestseller, price sort), dish detail sheet (portion, prep time, allergens, add-ons, quantity), desktop
   two-column layout with live order summary. Ordering, UPI, tracking, QR table ordering unchanged (same RPCs → POS/KOT).
+
+## Real menu import (owner's menu card, Nov 2026)
+- Source: menu-card photos and a storefront photo shared by the owner. 199 dishes in 22 categories, prices exactly as
+  printed — `supabase/menu/swad_sangam_menu.py` → `swad_sangam_menu.sql` (idempotent; keeps photos, availability and Hindi
+  names set by the owner). Applied to the live database.
+- Two prices without a printed meaning ("₹40 | ₹70") are modelled as **Half / Full** and the dish stays "Unverified" so the
+  owner can rename the variant (e.g. "1 pc / 2 pc") in Admin → Menu. Printed variants (Dry/Gravy, Sweet/Salty,
+  Salted/Spicy, Fried Rice/Noodles, Spaghetti/Penne/Macaroni, Boil/Bhurji) use their printed names. Veg/Egg/Chicken
+  variants are separate dishes so the veg/non-veg mark stays correct.
+- Variant groups (migration 15): `options[].group` + `menu_items.variant_base_label`; the database rejects two options of
+  the same group on one line. Website, POS and KOT show the chosen variant.
+- Branding: storefront photo is the website banner (genuine restaurant photo); orange + charcoal colours from the
+  signboard and menu card.

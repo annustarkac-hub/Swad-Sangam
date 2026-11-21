@@ -155,8 +155,8 @@ export default function PosPage() {
           <div className="grid tight">
             {shown.map((i) => (
               <button key={i.id} className="menu-tile" disabled={!i.is_available}
-                onClick={() => i.options.length ? add(i, [i.options[0].id]) : add(i)}>
-                <span><FoodDot type={i.food_type} /> {i.name}</span><b>{rupees(i.price_paise)}</b>
+                onClick={() => add(i)}>
+                <span><FoodDot type={i.food_type} /> {i.name}</span><b>{rupees(i.price_paise)}{i.options.some((o) => o.group === "size") ? <span className="small muted"> · {i.options.filter((o) => o.group === "size").map((o) => `${o.name} ${rupees(i.price_paise + o.pricePaise)}`).join(" ")}</span> : null}</b>
                 {!i.is_available && <span className="small"> · unavailable</span>}
               </button>
             ))}
@@ -196,12 +196,20 @@ export default function PosPage() {
               <div style={{ flex: 1 }}>
                 {l.item.name}{l.optionIds.length > 0 && <span className="small muted"> ({l.item.options.filter((o) => l.optionIds.includes(o.id)).map((o) => o.name).join(", ")})</span>}
                 {l.complimentary && <span className="badge">Free</span>}
-                {l.item.options.length > 1 && (
-                  <select className="small" style={{ width: "auto", marginLeft: 6, padding: 2 }} value={l.optionIds[0]}
-                    onChange={(e) => setCart((c) => c.map((x) => (x === l ? { ...x, optionIds: [e.target.value], key: x.item.id + "|" + e.target.value } : x)))}>
-                    {l.item.options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                  </select>
-                )}
+                {[...new Set(l.item.options.filter((o) => o.group).map((o) => o.group!))].map((g) => {
+                  const cur = l.optionIds.find((id) => l.item.options.find((o) => o.id === id)?.group === g) ?? "";
+                  return (
+                    <select key={g} className="small" style={{ width: "auto", marginLeft: 6, padding: 2, minHeight: 30 }} value={cur}
+                      onChange={(e) => setCart((c) => c.map((x) => {
+                        if (x !== l) return x;
+                        const ids = [...x.optionIds.filter((id) => x.item.options.find((o) => o.id === id)?.group !== g), ...(e.target.value ? [e.target.value] : [])].sort();
+                        return { ...x, optionIds: ids, key: x.item.id + "|" + ids.join(",") };
+                      }))}>
+                      <option value="">{l.item.variant_base_label ?? "Regular"}</option>
+                      {l.item.options.filter((o) => o.group === g).map((o) => <option key={o.id} value={o.id}>{o.name} (+{rupees(o.pricePaise)})</option>)}
+                    </select>
+                  );
+                })}
               </div>
               <div className="row">
                 <button className="secondary small" onClick={() => setCart((c) => c.flatMap((x) => (x === l ? (x.qty > 1 ? [{ ...x, qty: x.qty - 1 }] : []) : [x])))}>−</button>

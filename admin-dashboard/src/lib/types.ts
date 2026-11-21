@@ -24,6 +24,8 @@ export interface ItemOption {
   name: string;
   pricePaise: number;
   isAvailable?: boolean;
+  /** Options in the same group are alternatives (pick one); none = the base variant. */
+  group?: string;
 }
 
 export interface MenuItem {
@@ -38,6 +40,7 @@ export interface MenuItem {
   image_url: string | null;
   image_is_representative?: boolean;
   image_credit?: string | null;
+  variant_base_label?: string | null;
   is_available: boolean;
   is_archived: boolean;
   is_popular: boolean;
