@@ -30,6 +30,7 @@ const NUM: [string, string][] = [
   ["tax_rate_bps", "Tax rate in basis points (500 = 5%)"], ["default_prep_minutes", "Default preparation time (min)"],
   ["max_open_orders_per_phone", "Max open orders per phone"], ["max_item_quantity", "Max quantity per item"],
   ["pii_retention_days", "Delete customer details after (days)"],
+  ["loyalty_points_per_100", "Loyalty points earned per ₹100"], ["loyalty_point_value_paise", "Value of 1 point in paise (100 = ₹1)"],
 ];
 const SWITCHES: [string, string][] = [
   ["accepting_orders", "Accepting app orders (master switch)"], ["pickup_enabled", "Pickup orders"],
@@ -37,6 +38,7 @@ const SWITCHES: [string, string][] = [
   ["cash_enabled", "Cash on pickup/delivery"], ["upi_at_restaurant_enabled", "UPI at restaurant"],
   ["temporarily_closed", "Temporarily closed"], ["allow_cancel_after_accept", "Customers may cancel after acceptance"],
   ["prices_include_tax", "Menu prices include tax"], ["hours_verified", "Opening hours confirmed by owner"],
+  ["loyalty_enabled", "Loyalty points for regular customers"], ["require_table_code", "QR table orders need the table code"],
   ["gst_registered", "GST registered (print tax invoices)"], ["gst_input_credit", "Claim input tax credit on purchases"],
 ];
 
@@ -133,6 +135,8 @@ export default function SettingsPage() {
       </div>
       <p className="small muted">Confirm tax treatment and invoicing with your accountant before setting a tax rate (PRD §10.4, §12.4).</p>
 
+      <Stations />
+
       <h2>Restaurant information</h2>
       <div className="form-grid">
         {TEXT.map(([k, l]) => (
@@ -148,5 +152,35 @@ export default function SettingsPage() {
         </Modal>
       )}
     </div>
+  );
+}
+
+function Stations() {
+  const [rows, setRows] = useState<{ id: number; name: string; is_active: boolean }[]>([]);
+  const [cats, setCats] = useState<{ id: string; name: string; station_id: number | null }[]>([]);
+  const [name, setName] = useState("");
+  const load = async () => {
+    const [a, b] = await Promise.all([supabase.from("kitchen_stations").select("*").order("sort_order"), supabase.from("categories").select("id,name,station_id").order("sort_order")]);
+    setRows(a.data ?? []); setCats(b.data ?? []);
+  };
+  useEffect(() => { void load(); }, []);
+  return (
+    <>
+      <h2>Kitchen stations (KDS)</h2>
+      <p className="small muted">Each menu category is sent to one kitchen station screen.</p>
+      <div className="grid tight">
+        {cats.map((c) => (
+          <label key={c.id}>{c.name}
+            <select value={c.station_id ?? ""} onChange={async (e) => { await supabase.from("categories").update({ station_id: e.target.value ? Number(e.target.value) : null }).eq("id", c.id); void load(); }}>
+              <option value="">—</option>{rows.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          </label>
+        ))}
+      </div>
+      <div className="row">
+        <input style={{ maxWidth: 220 }} placeholder="New station (e.g. Tandoor)" value={name} onChange={(e) => setName(e.target.value)} />
+        <button className="small" disabled={!name.trim()} onClick={async () => { await supabase.from("kitchen_stations").insert({ name: name.trim(), sort_order: rows.length + 1 }); setName(""); void load(); }}>Add station</button>
+      </div>
+    </>
   );
 }

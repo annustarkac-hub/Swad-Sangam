@@ -164,3 +164,26 @@ Owner direction: **free website + Android APK are the focus; Play Store not need
 - Leave balances and shift rosters; bank reconciliation screen; FIFO stock valuation option (weighted average only).
 - Customer display screen; direct ESC/POS printer driver (printing uses the browser print dialog, which works with thermal printers that have a driver).
 - Android app UI polish with the external design skill repositories the owner listed (not fetched in this round).
+
+---
+
+# POS upgrade (OrderRestro feature parity, Nov 2026)
+
+The owner asked for OrderRestro (NodeDR, AGPL-3.0) features and a matching clean, mobile-first POS design. Its README
+feature list was used as a checklist; **no code was copied** (ADR-5). Status against that list:
+
+| OrderRestro module | Swad Sangam | Where |
+|---|---|---|
+| POS & billing (dine-in/takeaway, merge, split, discounts, refunds, GST incl./excl.) | ✅ incl. split bill, merge bills, split tender | `pos_split_bill`, `pos_merge_bills`, `PosPage` |
+| Tables & reservations (floor, waitlist, QR table ordering with live table code, table transfer) | ✅ | `open_table_session`, `pos_transfer_table`, `TablesPage` |
+| Kitchen / KDS (stations, prep tracking, priority, timers, reprint) | ✅ | `kds_board`, `kds_set_item_status`, `KitchenPage` |
+| Online ordering (QR, no duplicate orders, call waiter, request bill) | ✅ | website + `request_service`, POS banner |
+| Inventory & recipes, procurement, suppliers | ✅ (PO/GRN workflow not built) | `InventoryPage` |
+| CRM: loyalty points | ✅ earn on close, redeem at POS | `pos_redeem_points` |
+| Staff: attendance, payroll, payslips | ✅ (clock-in kiosk, tip pool not built) | `PayrollPage` |
+| Accounting: cash close with variance, P&L, balance sheet, tax summary | ✅ (budgets, bank reconciliation not built) | `AccountingPage` |
+| Analytics: peak hours, food cost & margins, exports | ✅ | `ReportsPage`, `InsightsPage` |
+| UPI QR for exact amount | ✅ | POS payment |
+| Security: RBAC, audit log | ✅ (PIN quick-switch not built; optional TOTP via Supabase) | |
+| Design: sidebar nav, dark mode, phone bottom bar, POS tabs on phones | ✅ | `App.tsx`, `styles.css` |
+| Not built: offline LAN server, multi-branch, gift cards, tips, customer display, ESC/POS USB, delivery zones/drivers, marketing campaigns, maintenance, documents | — | next phases |
