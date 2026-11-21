@@ -1,4 +1,4 @@
-import { ReceiptText, Search, SlidersHorizontal, Store, UserRound, UtensilsCrossed } from "lucide-react";
+import { BadgePercent, Banknote, BellRing, Bike, Camera, GlassWater, Hand, History, Leaf, MapPin, MessageCircle, Phone, ReceiptText, Search, SlidersHorizontal, Smartphone, Star, Store, UserRound, UtensilsCrossed, X } from "lucide-react";
 import QRCode from "qrcode";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { rupees, time } from "../lib/format";
@@ -61,7 +61,7 @@ function variantHint(i: MenuItem): string | null {
 function DishImg({ src, className }: { src: string | null; className?: string }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [src]);
-  if (!src || failed) return <div className={"ph-s" + (className ? " " + className : "")} aria-hidden="true">🍛</div>;
+  if (!src || failed) return <div className={"ph-s" + (className ? " " + className : "")} aria-hidden="true"><UtensilsCrossed size={28} strokeWidth={1.6} /></div>;
   return <img src={src} className={className} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />;
 }
 
@@ -75,7 +75,7 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-grip" />
-        <div className="sheet-head"><h2>{title}</h2><button className="icon-btn" aria-label="Close" onClick={onClose}>✕</button></div>
+        <div className="sheet-head"><h2>{title}</h2><button className="icon-btn" aria-label="Close" onClick={onClose}><X size={20} /></button></div>
         {children}
       </div>
     </div>
@@ -151,7 +151,7 @@ export default function SiteApp() {
         <button className="brand-s welcome" onClick={() => go("")}>
           <span><small className="welcome-sub">{lang === "hi" ? "आपका स्वागत है" : "Welcome to"}</small>
             <b>{settings?.restaurant_name ?? "Swad Sangam"}</b>
-            {table ? <small className="welcome-table">🛎 {L("table")} {table}</small>
+            {table ? <small className="welcome-table"><BellRing size={14} /> {L("table")} {table}</small>
               : <small>{settings ? <><i className={"dot " + (open ? "on" : "off")} />{open ? L("openNow") : L("closedNow")}</> : " "}</small>}</span>
         </button>
         <div className="top-actions">
@@ -259,7 +259,7 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, onOpe
           aria-label={hi ? "डिश खोजें" : "Search for a dish"}
           onFocus={() => setSearchFocus(true)} onBlur={() => { remember(q); setTimeout(() => setSearchFocus(false), 150); }}
           onKeyDown={(e) => { if (e.key === "Enter") { remember(q); (e.target as HTMLInputElement).blur(); } }} />
-          {q && <button className="link-s" aria-label="Clear search" onClick={() => setQ("")}>✕</button>}
+          {q && <button className="link-s" aria-label="Clear search" onClick={() => setQ("")}><X size={18} /></button>}
           <button className={"filter-btn" + (showFilters || filters.length || sort ? " on" : "")} aria-label={hi ? "फ़िल्टर" : "Filters"} aria-expanded={showFilters}
             onClick={() => setShowFilters(!showFilters)}>
             <SlidersHorizontal size={20} aria-hidden="true" />
@@ -267,7 +267,7 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, onOpe
           </button></div>
         {searchFocus && !q && recent.length > 0 && (
           <div className="recent-s"><span className="muted-s small">{hi ? "हाल की खोज" : "Recent searches"}</span>
-            {recent.map((r) => <button key={r} onMouseDown={(e) => e.preventDefault()} onClick={() => setQ(r)}>↺ {r}</button>)}
+            {recent.map((r) => <button key={r} onMouseDown={(e) => e.preventDefault()} onClick={() => setQ(r)}><History size={14} /> {r}</button>)}
             <button className="link-s small" onMouseDown={(e) => e.preventDefault()} onClick={() => { setRecent([]); store.set("ss_recent_search", []); }}>{hi ? "साफ़ करें" : "Clear"}</button>
           </div>)}
         {showFilters && (
@@ -275,7 +275,7 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, onOpe
             <button className={"chip-f" + (has("veg") ? " on veg-on" : "")} onClick={() => toggle("veg")}><Veg type="VEG" /> {hi ? "शाकाहारी" : "Veg"}</button>
             <button className={"chip-f" + (has("nonveg") ? " on" : "")} onClick={() => toggle("nonveg")}><Veg type="NON_VEG" /> {hi ? "मांसाहारी" : "Non-veg"}</button>
             <button className={"chip-f" + (has("under100") ? " on" : "")} onClick={() => toggle("under100")}>{hi ? "₹100 से कम" : "Under ₹100"}</button>
-            <button className={"chip-f" + (has("best") ? " on" : "")} onClick={() => toggle("best")}>★ {L("bestsellers")}</button>
+            <button className={"chip-f" + (has("best") ? " on" : "")} onClick={() => toggle("best")}><Star size={14} /> {L("bestsellers")}</button>
             <button className={"chip-f" + (sort ? " on" : "")} onClick={() => setSort(sort === "" ? "asc" : sort === "asc" ? "desc" : "")}>
               {sort === "asc" ? "₹ Low → High" : sort === "desc" ? "₹ High → Low" : (hi ? "क्रम" : "Sort")}</button>
           </div>)}
@@ -301,7 +301,7 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, onOpe
                   <button className="dish-card-img" onClick={() => onOpen(i)} aria-label={name(i)}>
                     <DishImg src={i.image_url} />
                     <span className="dish-card-veg"><Veg type={i.food_type} /></span>
-                    {i.is_popular && <span className="dish-card-tag">★ {L("bestsellers")}</span>}
+                    {i.is_popular && <span className="dish-card-tag"><Star size={11} fill="currentColor" /> {L("bestsellers")}</span>}
                     {!i.is_available && <span className="dish-card-sold">{L("soldOut")}</span>}
                   </button>
                   <div className="dish-card-body" onClick={() => onOpen(i)}>
@@ -485,7 +485,7 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
         <div className="form-s">
           <div className="seg">{types.map((x) => <button key={x} className={f.type === x ? "on" : ""} onClick={() => setF({ ...f, type: x })}>{L(x)}</button>)}</div>
           {f.type === "DINE_IN" && (table
-            ? <div className="row-s">🍽 {L("table")} <b>{table}</b> <button className="link-s" onClick={() => setTable(null)}>change</button></div>
+            ? <div className="row-s"><UtensilsCrossed size={16} /> {L("table")} <b>{table}</b> <button className="link-s" onClick={() => setTable(null)}>change</button></div>
             : <div><div className="lbl">{L("chooseTable")}</div>
                 <div className="table-grid">{tables.map((x) => (
                   <button key={x.name} className={x.free ? "" : "busy"} onClick={() => setTable(x.name)}>{x.name}<small>{x.seats} · {x.free ? L("free") : "—"}</small></button>
@@ -513,12 +513,12 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
             placeholder={lang === "hi" ? "जैसे: कम तीखा, प्याज़ नहीं" : "e.g. less spicy, no onion"} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
           {f.type !== "DINE_IN" && <label className="check-s"><input type="checkbox" checked={f.noCutlery}
             onChange={(e) => { setF({ ...f, noCutlery: e.target.checked }); store.set("ss_no_cutlery", e.target.checked); }} />
-            <span>🌱 {lang === "hi" ? "प्लास्टिक कटलरी न भेजें" : "Don't send plastic cutlery"}</span></label>}
+            <span className="ic-text"><Leaf size={16} /> {lang === "hi" ? "प्लास्टिक कटलरी न भेजें" : "Don't send plastic cutlery"}</span></label>}
           <label>{L("coupon")}<input value={f.coupon} onChange={(e) => setF({ ...f, coupon: e.target.value.toUpperCase() })} />
             {quote?.couponError && f.coupon && <small className="bad-s">Coupon not valid</small>}</label>
           <div className="lbl">{L("payment")}</div>
           <div className="pay-opts">{pays.map((p) => (
-            <button key={p} className={f.pay === p ? "on" : ""} onClick={() => setF({ ...f, pay: p })}>{p === "UPI_AT_RESTAURANT" ? "📱 UPI" : "💵 " + (lang === "hi" ? "नकद" : "Cash")}<small>{L(p)}</small></button>
+            <button key={p} className={f.pay === p ? "on" : ""} onClick={() => setF({ ...f, pay: p })}><span className="ic-text">{p === "UPI_AT_RESTAURANT" ? <><Smartphone size={18} /> UPI</> : <><Banknote size={18} /> {lang === "hi" ? "नकद" : "Cash"}</>}</span><small>{L(p)}</small></button>
           ))}</div>
           {quote && (
             <table className="bill-s"><caption>{lang === "hi" ? "बिल का विवरण" : "Bill details"}</caption><tbody>
@@ -528,7 +528,7 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
               {quote.packagingFeePaise > 0 && <tr><td>{L("packaging")}</td><td>{rupees(quote.packagingFeePaise)}</td></tr>}
               {quote.deliveryFeePaise > 0 && <tr><td>{L("deliveryFee")}</td><td>{rupees(quote.deliveryFeePaise)}</td></tr>}
               <tr className="tot"><td>{lang === "hi" ? "कुल देय" : "To pay"}</td><td>{rupees(quote.totalPaise)}</td></tr>
-              {quote.discountPaise > 0 && <tr className="save"><td colSpan={2}>🎉 {lang === "hi" ? `आपने ${rupees(quote.discountPaise)} बचाए` : `You saved ${rupees(quote.discountPaise)} on this order`}</td></tr>}
+              {quote.discountPaise > 0 && <tr className="save"><td colSpan={2}><BadgePercent size={16} /> {lang === "hi" ? `आपने ${rupees(quote.discountPaise)} बचाए` : `You saved ${rupees(quote.discountPaise)} on this order`}</td></tr>}
             </tbody></table>
           )}
           {quote && quote.subtotalPaise < quote.minOrderPaise && <p className="bad-s">{L("minOrder")}: {rupees(quote.minOrderPaise)}</p>}
@@ -579,7 +579,7 @@ function OrderView({ L, lang, token, settings }: { L: L; lang: Lang; token: stri
         <div className="muted-s">{o.orderNumber}{o.tableNumber ? ` · ${L("table")} ${o.tableNumber}` : ""}</div>
         <div className={"status-big" + (failed ? " bad" : "")}>{stepLabel(o.orderStatus)}</div>
         {o.orderStatus === "PLACED" && <p>{L("awaiting")}</p>}
-        {waiting && <div className="banner-s inline">{L("notConfirmed")} <a href={`tel:${o.restaurantPhone}`}>📞 {o.restaurantPhone}</a></div>}
+        {waiting && <div className="banner-s inline">{L("notConfirmed")} <a href={`tel:${o.restaurantPhone}`}><Phone size={14} /> {o.restaurantPhone}</a></div>}
         {(o.rejectionReason || o.cancelReason) && <p className="bad-s">{o.rejectionReason ?? o.cancelReason}</p>}
         {o.estimatedReadyAt && ["ACCEPTED", "PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(o.orderStatus) && <p>{o.orderType === "DELIVERY" ? (lang === "hi" ? "लगभग पहुँचने का समय" : "Estimated delivery by") : L("estimated")} <b>{time(o.estimatedReadyAt)}</b></p>}
         {!failed && (
@@ -612,7 +612,7 @@ function OrderView({ L, lang, token, settings }: { L: L; lang: Lang; token: stri
         {o.deliveryFeePaise > 0 && <div className="row-s between muted-s"><span>{L("deliveryFee")}</span><span>{rupees(o.deliveryFeePaise)}</span></div>}
         <div className="row-s between tot"><span>{L("total")}</span><b>{rupees(o.totalPaise)}</b></div>
         <div className="muted-s small">{L("payment")}: {L(o.paymentMethod as Key)} · {o.paymentStatus === "PAID" ? L("paid") : (lang === "hi" ? "बाकी" : "Due")}</div>
-        {o.orderType === "DELIVERY" && o.deliveryAddress && <div className="small">🛵 {o.deliveryAddress}{o.deliveryLandmark ? ` · ${o.deliveryLandmark}` : ""}</div>}
+        {o.orderType === "DELIVERY" && o.deliveryAddress && <div className="small ic-text"><Bike size={16} /> {o.deliveryAddress}{o.deliveryLandmark ? ` · ${o.deliveryLandmark}` : ""}</div>}
       </div>
       {o.orderStatus === "COMPLETED" && <FeedbackCard lang={lang} token={token} />}
       {o.canCancel && <button className="ghost-s" onClick={async () => {
@@ -667,9 +667,9 @@ function InfoView({ L, lang, s }: { L: L; lang: Lang; s: Settings }) {
       <div className="card-s2">
         <h2 className="sec" style={{ marginTop: 0 }}>{s.restaurant_name}</h2>
         <p>{s.address}</p>
-        <div className="hero-row"><a className="pill-s" href={`tel:${s.phone}`}>📞 {s.phone}</a>
-          {wa.length >= 10 && <a className="pill-s" href={`https://wa.me/${wa.length === 10 ? "91" + wa : wa}?text=${encodeURIComponent(lang === "hi" ? "नमस्ते, मुझे ऑर्डर करना है" : "Hello, I would like to place an order")}`} target="_blank" rel="noreferrer">💬 WhatsApp</a>}
-          <a className="pill-s" href={mapsUrl(s)} target="_blank" rel="noreferrer">📍 {L("directions")}</a></div>
+        <div className="hero-row"><a className="pill-s" href={`tel:${s.phone}`}><Phone size={16} /> {s.phone}</a>
+          {wa.length >= 10 && <a className="pill-s" href={`https://wa.me/${wa.length === 10 ? "91" + wa : wa}?text=${encodeURIComponent(lang === "hi" ? "नमस्ते, मुझे ऑर्डर करना है" : "Hello, I would like to place an order")}`} target="_blank" rel="noreferrer"><MessageCircle size={16} /> WhatsApp</a>}
+          <a className="pill-s" href={mapsUrl(s)} target="_blank" rel="noreferrer"><MapPin size={16} /> {L("directions")}</a></div>
       </div>
       <div className="card-s2">
         <h3>{lang === "hi" ? "हमारे बारे में" : "About us"}</h3>
@@ -684,10 +684,10 @@ function InfoView({ L, lang, s }: { L: L; lang: Lang; s: Settings }) {
         {days.map((d, i) => <div key={d} className="row-s between"><span>{d}</span><span>{(s.opening_hours[String(i + 1)] ?? []).map((x) => `${x.open}–${x.close}`).join(", ") || "Closed"}</span></div>)}
       </div>
       <div className="card-s2">
-        {s.reviews_url && <p><a href={s.reviews_url} target="_blank" rel="noreferrer">★ {s.rating} — Google reviews</a></p>}
+        {s.reviews_url && <p><a href={s.reviews_url} target="_blank" rel="noreferrer" className="ic-text"><Star size={16} /> {s.rating} — Google reviews</a></p>}
         {s.fssai_number && <p className="muted-s">FSSAI Lic. No. {s.fssai_number}</p>}
         <p><a href={APK_URL}>⬇ {L("getApp")} (APK)</a></p>
-        <p className="small"><a href="./photo-credits.html" target="_blank">📷 Photo credits</a></p>
+        <p className="small"><a href="./photo-credits.html" target="_blank" className="ic-text"><Camera size={16} /> Photo credits</a></p>
         <p className="muted-s small"><a href="./privacy.html">{L("privacy")}</a> · <a href="./terms.html">{L("orderTerms")}</a> · <a href="./admin.html">{L("staffLogin")}</a></p>
       </div>
     </div>
@@ -710,11 +710,11 @@ function TableBar({ table, L, lang }: { table: string; L: L; lang: Lang }) {
   }
   return (
     <div className="table-bar">
-      <span>🍽 {L("table")} <b>{table}</b></span>
+      <span className="ic-text"><UtensilsCrossed size={16} /> {L("table")} <b>{table}</b></span>
       <div className="row-s">
-        <button className="pill-s" onClick={() => void ask("CALL_WAITER")}>🙋 {L("callWaiter")}</button>
-        <button className="pill-s" onClick={() => void ask("REQUEST_BILL")}>🧾 {L("requestBill")}</button>
-        <button className="pill-s" onClick={() => void ask("WATER")}>💧 {L("water")}</button>
+        <button className="pill-s" onClick={() => void ask("CALL_WAITER")}><Hand size={16} /> {L("callWaiter")}</button>
+        <button className="pill-s" onClick={() => void ask("REQUEST_BILL")}><ReceiptText size={16} /> {L("requestBill")}</button>
+        <button className="pill-s" onClick={() => void ask("WATER")}><GlassWater size={16} /> {L("water")}</button>
       </div>
       {msg && <div className="small toast-s">{msg}</div>}
     </div>
