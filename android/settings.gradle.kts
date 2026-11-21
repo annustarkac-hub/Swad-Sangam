@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "SwadSangam"
 include(":app")
+include(":staffapp")

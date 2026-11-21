@@ -1,0 +1,4 @@
+#Sat Nov 21 22:21:35 UTC 2026
+base.0=/home/user/Swad-Sangam/android/staffapp/build/intermediates/dex/adminRelease/minifyAdminReleaseWithR8/classes.dex
+path.0=classes.dex
+renamed.0=classes.dex

@@ -1,0 +1,32 @@
+<variant
+    name="staffDebug"
+    package="in.swadsangam.staff"
+    minSdkVersion="26"
+    targetSdkVersion="36.0"
+    debuggable="true"
+    mergedManifest="build/intermediates/merged_manifest/staffDebug/processStaffDebugMainManifest/AndroidManifest.xml"
+    partialResultsDir="build/intermediates/unit_test_lint_partial_results/staffDebug/lintAnalyzeStaffDebugUnitTest/out"
+    desugaredMethodsFiles="/root/.gradle/caches/8.14.3/transforms/d367edf8c22542ea22806f82aff4ed4e/transformed/D8BackportedDesugaredMethods.txt">
+  <buildFeatures
+      namespacing="REQUIRED"/>
+  <sourceProviders>
+  </sourceProviders>
+  <testSourceProviders>
+    <sourceProvider
+        manifests="src/test/AndroidManifest.xml"
+        javaDirectories="src/test/java:src/testStaff/java:src/testDebug/java:src/testStaffDebug/java:src/test/kotlin:src/testStaff/kotlin:src/testDebug/kotlin:src/testStaffDebug/kotlin"
+        assetsDirectories="src/test/assets:src/testStaff/assets:src/testDebug/assets:src/testStaffDebug/assets"
+        unitTest="true"/>
+  </testSourceProviders>
+  <testFixturesSourceProviders>
+  </testFixturesSourceProviders>
+  <resValues>
+    <resValue
+        type="string"
+        name="app_name"
+        value="Swad Sangam Staff" />
+  </resValues>
+  <artifact
+      type="UNIT_TEST">
+  </artifact>
+</variant>

@@ -1,0 +1,17 @@
+R_DEF: Internal format may change without notice
+local
+color launcher_bg
+color staff_accent
+color staff_bg
+color staff_brand
+color staff_nav
+drawable ic_launcher_foreground
+drawable ic_launcher_monochrome
+mipmap ic_launcher
+string app_name
+string no_app_for_link
+string offline_body
+string offline_title
+string retry
+string saved_to_downloads
+style Theme.SwadStaff

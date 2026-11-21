@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { openExternal } from "../lib/native";
 import { can, useAuth } from "../auth";
 import DateRange, { monthStart } from "../components/DateRange";
 import { downloadCsv } from "../lib/csv";
@@ -60,7 +61,7 @@ export default function ExpensesPage() {
 
   async function openReceipt(path: string) {
     const { data } = await supabase.storage.from("receipts").createSignedUrl(path, 300);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    if (data?.signedUrl) openExternal(data.signedUrl);
   }
 
   const total = rows.filter((r) => r.status === "APPROVED").reduce((s, r) => s + r.amount_paise, 0);

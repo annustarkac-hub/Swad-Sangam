@@ -1,0 +1,38 @@
+<variant
+    name="staffDebug"
+    package="in.swadsangam.staff"
+    minSdkVersion="26"
+    targetSdkVersion="36.0"
+    debuggable="true"
+    mergedManifest="build/intermediates/merged_manifest/staffDebug/processStaffDebugMainManifest/AndroidManifest.xml"
+    manifestMergeReport="build/outputs/logs/manifest-merger-staff-debug-report.txt"
+    proguardFiles="build/intermediates/default_proguard_files/global/proguard-android.txt-8.13.2"
+    partialResultsDir="build/intermediates/lint_partial_results/staffDebug/lintAnalyzeStaffDebug/out">
+  <buildFeatures
+      namespacing="REQUIRED"/>
+  <sourceProviders>
+    <sourceProvider
+        manifests="src/main/AndroidManifest.xml"
+        javaDirectories="src/main/java:src/staff/java:src/debug/java:src/staffDebug/java:src/main/kotlin:src/staff/kotlin:src/debug/kotlin:src/staffDebug/kotlin"
+        resDirectories="src/main/res:src/staff/res:src/debug/res:src/staffDebug/res"
+        assetsDirectories="src/main/assets:src/staff/assets:src/debug/assets:src/staffDebug/assets"/>
+  </sourceProviders>
+  <testSourceProviders>
+  </testSourceProviders>
+  <testFixturesSourceProviders>
+  </testFixturesSourceProviders>
+  <resValues>
+    <resValue
+        type="string"
+        name="app_name"
+        value="Swad Sangam Staff" />
+  </resValues>
+  <artifact
+      classOutputs="build/intermediates/javac/staffDebug/compileStaffDebugJavaWithJavac/classes:build/tmp/kotlin-classes/staffDebug:build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/staffDebug/processStaffDebugResources/R.jar"
+      type="MAIN"
+      applicationId="in.swadsangam.staff"
+      generatedSourceFolders="build/generated/ap_generated_sources/staffDebug/out:build/generated/source/buildConfig/staff/debug"
+      generatedResourceFolders="build/generated/res/resValues/staff/debug"
+      desugaredMethodsFiles="/root/.gradle/caches/8.14.3/transforms/d367edf8c22542ea22806f82aff4ed4e/transformed/D8BackportedDesugaredMethods.txt">
+  </artifact>
+</variant>
