@@ -229,3 +229,51 @@ data class FeedbackRequest(
 @Serializable
 data class EventDto(val name: String, val sessionId: String, val at: String, val properties: Map<String, String> = emptyMap())
 @Serializable data class EventsBody(@SerialName("p_events") val events: List<EventDto>)
+
+// ---------- Customer accounts (Supabase Auth email + password, free) ----------
+
+@Serializable
+data class AuthUserDto(val id: String, val email: String? = null)
+
+/** Returned by sign-in, refresh and (when email confirmation is off) sign-up. */
+@Serializable
+data class SessionDto(
+    @SerialName("access_token") val accessToken: String? = null,
+    @SerialName("refresh_token") val refreshToken: String? = null,
+    @SerialName("expires_at") val expiresAt: Long? = null,
+    @SerialName("expires_in") val expiresIn: Long? = null,
+    val user: AuthUserDto? = null,
+    // sign-up without a session returns the user fields at the top level
+    val id: String? = null,
+)
+
+@Serializable data class PasswordLogin(val email: String, val password: String)
+@Serializable data class SignUpBody(val email: String, val password: String, val data: Map<String, String>)
+@Serializable data class RefreshBody(@SerialName("refresh_token") val refreshToken: String)
+@Serializable data class RecoverBody(val email: String)
+
+@Serializable
+data class ProfileDto(
+    @SerialName("user_id") val userId: String,
+    @SerialName("full_name") val fullName: String,
+    val phone: String,
+)
+
+@Serializable
+data class AddressDto(
+    val id: Long,
+    val label: String,
+    val address: String,
+    val landmark: String? = null,
+    @SerialName("is_default") val isDefault: Boolean = false,
+)
+
+@Serializable
+data class AddressWrite(
+    val label: String,
+    val address: String,
+    val landmark: String? = null,
+    @SerialName("is_default") val isDefault: Boolean = false,
+)
+
+@Serializable data class MyOrdersBody(@SerialName("p_limit") val limit: Int = 100)

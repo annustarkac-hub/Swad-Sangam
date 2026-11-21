@@ -1,5 +1,6 @@
 package com.swadsangam.restaurant.ui.checkout
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.selection.selectable
@@ -61,6 +62,7 @@ fun CheckoutScreen(
     val lines by vm.lines.collectAsStateWithLifecycle()
     val quote by vm.quote.collectAsStateWithLifecycle()
     val placed by vm.placed.collectAsStateWithLifecycle()
+    val account by vm.addresses.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(Unit) { vm.start(tableNumber) }
@@ -111,6 +113,17 @@ fun CheckoutScreen(
                 OrderType.DELIVERY -> {
                     (i.deliveryAreaNote ?: i.deliveryRadiusKm?.let { stringResource(R.string.delivery_radius, it.toString()) })?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall)
+                    }
+                    account?.addresses?.takeIf { it.isNotEmpty() }?.let { saved ->
+                        Text(stringResource(R.string.saved_address), style = MaterialTheme.typography.labelLarge)
+                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            saved.forEach { a ->
+                                FilterChip(u.address == a.address, { vm.edit { it.copy(address = a.address, landmark = a.landmark.orEmpty()) } },
+                                    label = { Text(a.label) })
+                            }
+                            FilterChip(saved.none { it.address == u.address }, { vm.edit { it.copy(address = "", landmark = "") } },
+                                label = { Text(stringResource(R.string.new_address)) })
+                        }
                     }
                     OutlinedTextField(u.address, { v -> vm.edit { it.copy(address = v.take(300)) } }, Modifier.fillMaxWidth(),
                         label = { Text(stringResource(R.string.delivery_address)) }, minLines = 2,
