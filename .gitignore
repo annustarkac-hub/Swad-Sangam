@@ -18,6 +18,7 @@ service-account*.json
 android/.gradle/
 android/build/
 android/app/build/
+android/staffapp/build/
 android/.kotlin/
 admin-dashboard/node_modules/
 admin-dashboard/dist/

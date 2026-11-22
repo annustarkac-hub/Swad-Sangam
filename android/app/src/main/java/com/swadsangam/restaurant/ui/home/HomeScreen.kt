@@ -98,10 +98,11 @@ fun HomeScreen(
                     Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).padding(16.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(shape = RoundedCornerShape(Dimens.radiusM), color = Color.White, modifier = Modifier.size(48.dp)) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("SS", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-                            }
+                        Surface(shape = RoundedCornerShape(Dimens.radiusM), color = Color.White, modifier = Modifier.size(52.dp)) {
+                            androidx.compose.foundation.Image(
+                                androidx.compose.ui.res.painterResource(R.drawable.logo_mark), contentDescription = stringResource(R.string.app_name),
+                                modifier = Modifier.padding(5.dp),
+                            )
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {

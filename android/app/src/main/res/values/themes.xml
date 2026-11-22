@@ -8,8 +8,8 @@
 
     <!-- FR-01 splash: logo on brand colour, handed over to Compose quickly -->
     <style name="Theme.SwadSangam.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/brand_red</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="windowSplashScreenBackground">@color/splash_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_fg</item>
         <item name="windowSplashScreenAnimationDuration">600</item>
         <item name="postSplashScreenTheme">@style/Theme.SwadSangam</item>
     </style>

@@ -6,5 +6,6 @@
     <color name="brand_cream">#FFF8F4</color>
     <color name="brand_text">#1B1A1F</color>
     <color name="brand_dark_bg">#131217</color>
-    <color name="ic_launcher_background">#D63B06</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="splash_bg">#FFFFFF</color>
 </resources>

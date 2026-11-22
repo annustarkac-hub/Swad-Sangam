@@ -106,7 +106,7 @@ export default function App() {
   return (
     <div className="shell">
       <aside className={"sidebar" + (drawer ? " open" : "")}>
-        <div className="brand"><div className="logo">SS</div><div>Swad Sangam<small>Restaurant OS</small></div></div>
+        <div className="brand"><img className="logo logo-img" src={`${import.meta.env.BASE_URL}logo-mark.png`} alt="" width={34} height={34} /><div>Swad Sangam<small>Restaurant OS</small></div></div>
         {GROUPS.map((g) => {
           const items = NAV.filter((n) => n.group === g && can(role, ...n.roles));
           if (!items.length) return null;
