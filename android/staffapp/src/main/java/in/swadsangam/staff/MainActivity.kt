@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.ContentValues
 import android.content.Intent
-import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -61,7 +60,7 @@ class MainActivity : AppCompatActivity() {
         if (BuildConfig.KEEP_SCREEN_ON) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         web = WebView(this).apply {
-            setBackgroundColor(Color.parseColor("#131217"))
+            setBackgroundColor(getColor(R.color.staff_bg))
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true          // login session + preferences
             settings.mediaPlaybackRequiresUserGesture = false // new-order alert sound
@@ -186,21 +185,24 @@ class MainActivity : AppCompatActivity() {
         pm.print("Swad Sangam – $title", view.createPrintDocumentAdapter(title), PrintAttributes.Builder().build())
     }
 
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
     private fun offlineView(): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER
-        setBackgroundColor(Color.parseColor("#131217"))
-        setPadding(64, 64, 64, 64)
+        setBackgroundColor(getColor(R.color.staff_bg))
+        val pad = dp(24); setPadding(pad, pad, pad, pad)
         visibility = View.GONE
         addView(TextView(context).apply {
-            setText(R.string.offline_title); textSize = 22f; setTextColor(Color.WHITE); gravity = Gravity.CENTER
+            setText(R.string.offline_title); textSize = 22f; setTextColor(getColor(R.color.staff_on_bg)); gravity = Gravity.CENTER
         })
         addView(TextView(context).apply {
-            setText(R.string.offline_body); textSize = 15f; setTextColor(Color.parseColor("#C9C5CC")); gravity = Gravity.CENTER
-            setPadding(0, 24, 0, 32)
+            setText(R.string.offline_body); textSize = 15f; setTextColor(getColor(R.color.staff_on_bg_muted)); gravity = Gravity.CENTER
+            setPadding(0, dp(12), 0, dp(20))
         })
         addView(Button(context).apply {
             setText(R.string.retry)
+            minHeight = dp(48); minimumHeight = dp(48)
             setOnClickListener { this@MainActivity.offline.visibility = View.GONE; web.reload() }
         })
     }

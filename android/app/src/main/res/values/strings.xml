@@ -127,6 +127,7 @@
     <string name="checkout">Checkout</string>
     <string name="order_status">Order status</string>
     <string name="loading_order">Loading order…</string>
+    <string name="loading">Loading…</string>
     <string name="order_number">Order %1$s</string>
     <string name="table_n">Table %1$s</string>
     <string name="status_offline">Offline — showing last known status.</string>
@@ -278,4 +279,7 @@
     <string name="acc_generic_error">Something went wrong.</string>
     <string name="saved_address">Saved address</string>
     <string name="new_address">New address</string>
+    <string name="bill_details">Bill details</string>
+    <string name="your_cart_items">Items in your order</string>
+    <string name="coupon_title">Offers &amp; coupon</string>
 </resources>

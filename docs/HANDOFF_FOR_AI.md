@@ -37,7 +37,7 @@ Owner login (OWNER role): the owner's own email (ask them; do not store it in co
 - `.github/workflows/` — `admin-dashboard.yml` (build + Pages deploy), `backend-tests.yml`, `android.yml` (CI builds),
   `release-apk.yml` (signed release of all 3 APKs), `create-signing-key.yml`, `keepalive.yml`, `backup.yml`, `deploy-backend.yml`.
 - `docs/` — `SETUP_GUIDE.md`, `OWNER_GUIDE_HINDI.md` (daily use), `OWNER_TODO_HINDI.md` (owner's remaining tasks),
-  `FREE_FEATURES.md`, `UI_UX_AUDIT.md`, `PRD_TRACEABILITY.md`, `ARCHITECTURE_DECISIONS.md`, `LAUNCH_CHECKLIST.md`.
+  `FREE_FEATURES.md`, `UI_UX_AUDIT.md`, `ANDROID_UI_AUDIT.md` (Android design tokens + components), `PRD_TRACEABILITY.md`, `ARCHITECTURE_DECISIONS.md`, `LAUNCH_CHECKLIST.md`.
 
 ## 3. Rules that must not be broken
 - **Do not invent** menu items, prices, restaurant details, ratings or reviews. Unknown → leave blank / mark for owner verification.
@@ -68,7 +68,7 @@ Owner login (OWNER role): the owner's own email (ask them; do not store it in co
   mirror because of 429s). `android/local.properties` (gitignored) holds `sdk.dir`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` (public anon key).
 - Git: develop on branch `claude/swad-sangam-full-stack-4ndt3v`, open a PR to `main`, merge when the owner says
   "merge kar do" (or has asked to finish everything). Pages deploys automatically from `main` (~1 min).
-  When merging use the full 40-char head SHA. PRs #1–#28 are merged.
+  When merging use the full 40-char head SHA. PRs #1–#31 are merged.
 
 ## 5. Live configuration now
 - Settings: accepting orders ON; **Pickup ON, Dine-in ON, Delivery OFF** (delivery fee ₹20 prepared); Cash only;
@@ -89,7 +89,8 @@ Admin/ERP: dashboard with new-order sound, online orders (accept with ETA / reje
 loyalty, KOT/bill print), kitchen display with stations, tables + QR + table codes, menu (variants, photos), offers & coupons,
 reports (daily/monthly, item-wise, CSV), double-entry accounting (P&L, balance sheet, ledger, GST summary), inventory/recipes/
 purchases/wastage, suppliers, customer khata, expenses with approval, payroll/attendance, staff roles, audit log, feedback, settings.
-Customer Android: same ordering flow natively, Pure Veg, variants, table code, accounts, new design (Plus Jakarta Sans, orange #D63B06 /
+Customer Android: same ordering flow natively, Pure Veg, variants, table code, accounts, design system in `ui/theme/Tokens.kt` +
+`ui/components/DesignSystem.kt` (use these, never raw dp/hex), Plus Jakarta Sans, orange #D03905 /
 accent #FD4E11, cream/near-black #131217). Admin/Staff Android: WebView shell with native print, CSV save, file upload, outside links.
 
 ## 7. Open items (most important first)

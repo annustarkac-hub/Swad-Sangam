@@ -1,5 +1,12 @@
 package com.swadsangam.restaurant.ui.menu
 
+import androidx.compose.foundation.layout.heightIn
+import com.swadsangam.restaurant.ui.theme.secondaryText
+import com.swadsangam.restaurant.ui.theme.Size
+import com.swadsangam.restaurant.ui.components.Tone
+import com.swadsangam.restaurant.ui.components.SectionHeader
+import com.swadsangam.restaurant.ui.components.SearchField
+import com.swadsangam.restaurant.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -60,37 +67,34 @@ fun MenuScreen(
     LaunchedEffect(focusSearch) { if (focusSearch) runCatching { focus.requestFocus() } }
 
     Column(Modifier.fillMaxSize()) {
-        OutlinedTextField(
-            value = f.query,
-            onValueChange = { q -> vm.update { it.copy(query = q) } },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).focusRequester(focus),
-            placeholder = { Text(stringResource(R.string.search_hint)) },
-            leadingIcon = { Icon(Icons.Default.Search, null) },
-            trailingIcon = {
-                Row {
-                    if (f.query.isNotEmpty()) IconButton({ vm.update { it.copy(query = "") } }) { Icon(Icons.Default.Clear, stringResource(R.string.clear)) }
-                    IconButton({ showFilters = !showFilters }) { Icon(Icons.Default.Tune, stringResource(R.string.filters)) }
+        SearchField(
+            value = f.query, onValueChange = { q -> vm.update { it.copy(query = q) } },
+            placeholder = stringResource(R.string.search_hint), clearLabel = stringResource(R.string.clear),
+            modifier = Modifier.padding(horizontal = Spacing.gutter, vertical = Spacing.s).focusRequester(focus),
+            trailing = {
+                IconButton({ showFilters = !showFilters }) {
+                    Icon(Icons.Default.Tune, stringResource(R.string.filters),
+                        tint = if (showFilters) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-            singleLine = true,
         )
-        if (tableNumber != null) InfoBanner(stringResource(R.string.ordering_for_table, tableNumber))
+        if (tableNumber != null) InfoBanner(stringResource(R.string.ordering_for_table, tableNumber), tone = Tone.Brand)
 
         // Category filter
-        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyRow(contentPadding = PaddingValues(horizontal = Spacing.gutter, vertical = Spacing.xs), horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
             item {
                 FilterChip(selected = f.categoryId == null, onClick = { vm.update { it.copy(categoryId = null) } },
-                    label = { Text(stringResource(R.string.all)) })
+                    label = { Text(stringResource(R.string.all)) }, modifier = Modifier.heightIn(min = Size.touch))
             }
             items(s.categories, key = { it.id }) { c ->
                 FilterChip(selected = f.categoryId == c.id, onClick = { vm.update { it.copy(categoryId = if (it.categoryId == c.id) null else c.id) } },
-                    label = { Text(if (hindi && !c.nameHi.isNullOrBlank()) c.nameHi else c.name) })
+                    label = { Text(if (hindi && !c.nameHi.isNullOrBlank()) c.nameHi else c.name) }, modifier = Modifier.heightIn(min = Size.touch))
             }
         }
 
         if (showFilters) {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.padding(horizontal = Spacing.gutter, vertical = Spacing.xs)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s), verticalAlignment = Alignment.CenterVertically) {
                     FilterChip(f.food == FoodFilter.VEG, { vm.update { it.copy(food = if (it.food == FoodFilter.VEG) FoodFilter.ALL else FoodFilter.VEG) } },
                         label = { Text(stringResource(R.string.veg_only)) })
                     FilterChip(f.food == FoodFilter.NON_VEG, { vm.update { it.copy(food = if (it.food == FoodFilter.NON_VEG) FoodFilter.ALL else FoodFilter.NON_VEG) } },
@@ -119,7 +123,7 @@ fun MenuScreen(
                 if (s.priceCeilingPaise > 0) {
                     val ceiling = s.priceCeilingPaise
                     val current = f.maxPricePaise ?: ceiling
-                    Text(stringResource(R.string.max_price, Money.format(current)), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.max_price, Money.format(current)), style = MaterialTheme.typography.labelLarge, color = secondaryText)
                     Slider(
                         value = current.toFloat(), valueRange = 0f..ceiling.toFloat(),
                         onValueChange = { v -> vm.update { it.copy(maxPricePaise = ((v / 1000).toInt() * 1000).coerceAtLeast(1000).takeIf { p -> p < ceiling }) } },
@@ -128,7 +132,7 @@ fun MenuScreen(
             }
         }
 
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = Spacing.xl)) {
             if (s.loaded && s.results.isEmpty()) {
                 item {
                     EmptyState(
@@ -142,18 +146,17 @@ fun MenuScreen(
             if (s.groups.isNotEmpty()) {
                 s.groups.forEach { (cat, items) ->
                     item(key = "h-${cat.id}") {
-                        Text(if (hindi && !cat.nameHi.isNullOrBlank()) cat.nameHi else cat.name,
-                            style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp))
+                        SectionHeader(if (hindi && !cat.nameHi.isNullOrBlank()) cat.nameHi else cat.name)
                     }
                     items(items, key = { it.id }) { item ->
                         DishRow(item, hindi, s.cartQuantities[item.id] ?: 0, { onOpenItem(item.id) }, { vm.quickAdd(item) })
-                        HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                        HorizontalDivider(Modifier.padding(horizontal = Spacing.gutter), color = MaterialTheme.colorScheme.outlineVariant)
                     }
                 }
             } else {
                 items(s.results, key = { it.id }) { item ->
                     DishRow(item, hindi, s.cartQuantities[item.id] ?: 0, { onOpenItem(item.id) }, { vm.quickAdd(item) })
-                    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(Modifier.padding(horizontal = Spacing.gutter), color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
         }

@@ -1,5 +1,24 @@
 package com.swadsangam.restaurant.ui.order
 
+import com.swadsangam.restaurant.ui.theme.secondaryText
+import com.swadsangam.restaurant.ui.components.Tone
+import com.swadsangam.restaurant.ui.components.StatusChip
+import com.swadsangam.restaurant.ui.components.StatusBanner
+import com.swadsangam.restaurant.ui.components.SectionDivider
+import com.swadsangam.restaurant.ui.components.LoadingState
+import com.swadsangam.restaurant.ui.components.KeyValueRow
+import com.swadsangam.restaurant.ui.components.ButtonVariant
+import com.swadsangam.restaurant.ui.components.AppTextField
+import com.swadsangam.restaurant.ui.components.AppCard
+import com.swadsangam.restaurant.ui.components.AppButton
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Directions
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Call
+import com.swadsangam.restaurant.ui.theme.AppTheme
+import com.swadsangam.restaurant.ui.theme.Size
+import com.swadsangam.restaurant.ui.theme.IconSize
+import com.swadsangam.restaurant.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -52,7 +71,6 @@ import com.swadsangam.restaurant.ui.cart.orderTypeLabel
 import com.swadsangam.restaurant.ui.components.EmptyState
 import com.swadsangam.restaurant.ui.components.FoodTypeMark
 import com.swadsangam.restaurant.ui.components.InfoBanner
-import com.swadsangam.restaurant.ui.theme.SuccessGreen
 import com.swadsangam.restaurant.util.Intents
 import com.swadsangam.restaurant.util.TimeFmt
 import kotlinx.coroutines.delay
@@ -105,88 +123,100 @@ fun OrderScreen(onFeedback: (String) -> Unit, onHome: () -> Unit, vm: OrderViewM
     }
     LaunchedEffect(Unit) { while (true) { delay(30_000); now = System.currentTimeMillis() } }
 
-    val o = order ?: run { EmptyState(stringResource(R.string.loading_order)); return }
+    val o = order ?: run { LoadingState(stringResource(R.string.loading_order)); return }
     val phone = info?.phone ?: o.restaurantPhone
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        Text(stringResource(R.string.order_number, o.orderNumber), style = MaterialTheme.typography.headlineSmall)
-        Text("${orderTypeLabel(o.orderType)}${o.tableNumber?.let { " · " + stringResource(R.string.table_n, it) } ?: ""} · ${TimeFmt.dateTime(o.createdAt)}",
-            style = MaterialTheme.typography.bodySmall)
-        if (offline) InfoBanner(stringResource(R.string.status_offline))
+    val failed = o.status in setOf(OrderStatus.REJECTED, OrderStatus.CANCELLED)
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = Spacing.gutter, vertical = Spacing.l),
+        verticalArrangement = Arrangement.spacedBy(Spacing.l),
+    ) {
+        // Header
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            Text(stringResource(R.string.order_number, o.orderNumber), style = MaterialTheme.typography.headlineSmall)
+            Text("${orderTypeLabel(o.orderType)}${o.tableNumber?.let { " · " + stringResource(R.string.table_n, it) } ?: ""} · ${TimeFmt.dateTime(o.createdAt)}",
+                style = MaterialTheme.typography.bodyMedium, color = secondaryText)
+        }
+        if (offline) StatusBanner(stringResource(R.string.status_offline), tone = Tone.Warning, icon = Icons.Default.CloudOff)
 
-        Spacer(Modifier.height(12.dp))
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp)) {
-                Text(statusLabel(o.status), style = MaterialTheme.typography.titleLarge,
-                    color = if (o.status in setOf(OrderStatus.REJECTED, OrderStatus.CANCELLED)) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
-                // Never show "accepted" until the restaurant actually accepts (FR-09)
-                if (o.status == OrderStatus.PLACED) {
-                    Text(stringResource(R.string.awaiting_confirmation), style = MaterialTheme.typography.bodyMedium)
-                    val waitingMin = TimeFmt.minutesSince(o.createdAt, now)
-                    if (waitingMin >= 2) {
-                        Spacer(Modifier.height(8.dp))
-                        InfoBanner(stringResource(R.string.not_confirmed_call), action = stringResource(R.string.call),
-                            onAction = { Intents.call(context, phone) })
-                    }
+        // Status + timeline
+        AppCard {
+            StatusChip(statusLabel(o.status), tone = statusTone(o.status))
+            Spacer(Modifier.height(Spacing.s))
+            // Never show "accepted" until the restaurant actually accepts (FR-09)
+            if (o.status == OrderStatus.PLACED) {
+                Text(stringResource(R.string.awaiting_confirmation), style = MaterialTheme.typography.bodyMedium)
+                if (TimeFmt.minutesSince(o.createdAt, now) >= 2) {
+                    Spacer(Modifier.height(Spacing.s))
+                    StatusBanner(stringResource(R.string.not_confirmed_call), tone = Tone.Warning, action = stringResource(R.string.call),
+                        onAction = { Intents.call(context, phone) })
                 }
-                o.rejectionReason?.let { Text(stringResource(R.string.reason_prefix, it)) }
-                o.cancelReason?.let { Text(stringResource(R.string.reason_prefix, it)) }
-                if (o.status.isActive && o.status != OrderStatus.PLACED) {
-                    o.estimatedReadyAt?.let { Text(stringResource(R.string.estimated_ready, TimeFmt.time(it))) }
-                }
-                Spacer(Modifier.height(12.dp))
-                Timeline(o)
             }
+            o.rejectionReason?.let { Text(stringResource(R.string.reason_prefix, it), style = MaterialTheme.typography.bodyMedium) }
+            o.cancelReason?.let { Text(stringResource(R.string.reason_prefix, it), style = MaterialTheme.typography.bodyMedium) }
+            if (o.status.isActive && o.status != OrderStatus.PLACED) {
+                o.estimatedReadyAt?.let { Text(stringResource(R.string.estimated_ready, TimeFmt.time(it)), style = MaterialTheme.typography.titleSmall) }
+            }
+            Spacer(Modifier.height(Spacing.m))
+            Timeline(o)
         }
 
         if (o.status == OrderStatus.READY && o.orderType == OrderType.PICKUP) {
-            InfoBanner(stringResource(R.string.ready_collect, info?.address ?: ""))
+            StatusBanner(stringResource(R.string.ready_collect, info?.address ?: ""), tone = Tone.Success, icon = Icons.Default.CheckCircle)
         }
 
         // Pay at restaurant via UPI — staff verify receipt; the app never assumes success
         if (o.paymentMethod == PaymentMethod.UPI_AT_RESTAURANT && o.paymentStatus == "PENDING" && o.status.isActive && !info?.upiId.isNullOrBlank()) {
-            Card(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(stringResource(R.string.pay_by_upi_title), style = MaterialTheme.typography.titleMedium)
-                    Text(stringResource(R.string.pay_by_upi_body, info!!.upiId!!), style = MaterialTheme.typography.bodySmall)
-                    Button({ Intents.upiPay(context, info!!.upiId!!, info!!.name, o.totalPaise, o.orderNumber) }, Modifier.padding(top = 8.dp)) {
-                        Text(stringResource(R.string.open_upi_app, Money.format(o.totalPaise)))
-                    }
+            AppCard {
+                Text(stringResource(R.string.pay_by_upi_title), style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(Spacing.xs))
+                Text(stringResource(R.string.pay_by_upi_body, info!!.upiId!!), style = MaterialTheme.typography.bodyMedium, color = secondaryText)
+                Spacer(Modifier.height(Spacing.m))
+                AppButton(stringResource(R.string.open_upi_app, Money.format(o.totalPaise)),
+                    { Intents.upiPay(context, info!!.upiId!!, info!!.name, o.totalPaise, o.orderNumber) }, Modifier.fillMaxWidth())
+            }
+        }
+
+        // Items + bill
+        AppCard {
+            Text(stringResource(R.string.items), style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(Spacing.s))
+            o.items.forEach { l ->
+                Row(Modifier.fillMaxWidth().padding(vertical = Spacing.xs), verticalAlignment = Alignment.CenterVertically) {
+                    FoodTypeMark(l.foodType, IconSize.xs)
+                    Spacer(Modifier.width(Spacing.s))
+                    Text("${l.quantity} × ${l.name}" + if (l.options.isNotEmpty()) " (${l.options.joinToString()})" else "", Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium)
+                    Text(Money.format(l.lineTotalPaise), style = MaterialTheme.typography.bodyMedium)
                 }
             }
+            SectionDivider()
+            KeyValueRow(stringResource(R.string.subtotal), Money.format(o.subtotalPaise))
+            if (o.discountPaise > 0) KeyValueRow(stringResource(R.string.discount_code, o.couponCode ?: ""), "−" + Money.format(o.discountPaise), valueColor = AppTheme.colors.success)
+            if (o.taxPaise > 0) KeyValueRow(stringResource(R.string.tax), Money.format(o.taxPaise))
+            if (o.packagingFeePaise > 0) KeyValueRow(stringResource(R.string.packaging_fee), Money.format(o.packagingFeePaise))
+            if (o.deliveryFeePaise > 0) KeyValueRow(stringResource(R.string.delivery_fee), Money.format(o.deliveryFeePaise))
+            SectionDivider()
+            KeyValueRow(stringResource(R.string.total), Money.format(o.totalPaise), emphasize = true)
+            Text("${stringResource(R.string.payment)}: ${paymentStatusLabel(o.paymentStatus)}", style = MaterialTheme.typography.bodySmall, color = secondaryText)
         }
 
-        Spacer(Modifier.height(12.dp))
-        Text(stringResource(R.string.items), style = MaterialTheme.typography.titleMedium)
-        o.items.forEach { l ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                FoodTypeMark(l.foodType, 14.dp)
-                Spacer(Modifier.width(8.dp))
-                Text("${l.quantity} × ${l.name}" + if (l.options.isNotEmpty()) " (${l.options.joinToString()})" else "", Modifier.weight(1f))
-                Text(Money.format(l.lineTotalPaise))
+        // Actions
+        if (o.status == OrderStatus.COMPLETED && !feedbackGiven) {
+            AppButton(stringResource(R.string.rate_order), { onFeedback(o.accessToken) }, Modifier.fillMaxWidth(), large = true, icon = Icons.Default.Star)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+            AppButton(stringResource(R.string.call_restaurant), { Intents.call(context, phone) }, Modifier.weight(1f),
+                variant = ButtonVariant.Secondary, icon = Icons.Default.Call)
+            info?.let { i ->
+                AppButton(stringResource(R.string.directions), { Intents.directions(context, i) }, Modifier.weight(1f),
+                    variant = ButtonVariant.Secondary, icon = Icons.Default.Directions)
             }
         }
-        Spacer(Modifier.height(8.dp))
-        Amount(stringResource(R.string.subtotal), o.subtotalPaise)
-        if (o.discountPaise > 0) Amount(stringResource(R.string.discount_code, o.couponCode ?: ""), -o.discountPaise)
-        if (o.taxPaise > 0) Amount(stringResource(R.string.tax), o.taxPaise)
-        if (o.packagingFeePaise > 0) Amount(stringResource(R.string.packaging_fee), o.packagingFeePaise)
-        if (o.deliveryFeePaise > 0) Amount(stringResource(R.string.delivery_fee), o.deliveryFeePaise)
-        Amount(stringResource(R.string.total), o.totalPaise, bold = true)
-        Text("${stringResource(R.string.payment)}: ${paymentStatusLabel(o.paymentStatus)}", style = MaterialTheme.typography.bodySmall)
-
-        Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton({ Intents.call(context, phone) }, Modifier.weight(1f)) { Text(stringResource(R.string.call_restaurant)) }
-            info?.let { i -> OutlinedButton({ Intents.directions(context, i) }, Modifier.weight(1f)) { Text(stringResource(R.string.directions)) } }
-        }
         if (o.canCancel) {
-            TextButton({ confirmCancel = true }) { Text(stringResource(R.string.cancel_order), color = MaterialTheme.colorScheme.error) }
+            AppButton(stringResource(R.string.cancel_order), { confirmCancel = true }, Modifier.fillMaxWidth(), variant = ButtonVariant.Text)
         }
-        if (o.status == OrderStatus.COMPLETED && !feedbackGiven) {
-            Button({ onFeedback(o.accessToken) }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.rate_order)) }
-        }
-        TextButton(onHome) { Text(stringResource(R.string.back_to_home)) }
+        AppButton(stringResource(R.string.back_to_home), onHome, Modifier.fillMaxWidth(), variant = ButtonVariant.Text)
     }
 
     if (confirmCancel) {
@@ -195,7 +225,7 @@ fun OrderScreen(onFeedback: (String) -> Unit, onHome: () -> Unit, vm: OrderViewM
             onDismissRequest = { confirmCancel = false },
             title = { Text(stringResource(R.string.cancel_order_q)) },
             text = {
-                OutlinedTextField(reason, { reason = it.take(200) }, label = { Text(stringResource(R.string.reason_optional)) })
+                AppTextField(reason, { reason = it.take(200) }, stringResource(R.string.reason_optional), singleLine = false)
             },
             confirmButton = {
                 TextButton({ vm.cancel(reason.ifBlank { "Cancelled by customer" }); confirmCancel = false }) {
@@ -222,29 +252,29 @@ private fun Timeline(o: Order) {
     val failed = o.status in setOf(OrderStatus.REJECTED, OrderStatus.CANCELLED)
     steps.forEach { st ->
         val at = reached[st]
-        Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(vertical = Spacing.xs), verticalAlignment = Alignment.CenterVertically) {
             Icon(if (at != null) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null,
-                tint = if (at != null) SuccessGreen else MaterialTheme.colorScheme.outline, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.width(8.dp))
+                tint = if (at != null) AppTheme.colors.success else MaterialTheme.colorScheme.outline, modifier = Modifier.size(Size.stepIcon))
+            Spacer(Modifier.width(Spacing.s))
             Text(statusLabel(st), Modifier.weight(1f))
             at?.let { Text(TimeFmt.time(it), style = MaterialTheme.typography.bodySmall) }
         }
     }
     if (failed) {
-        Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Cancel, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.width(8.dp))
+        Row(Modifier.padding(vertical = Spacing.xs), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Cancel, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(Size.stepIcon))
+            Spacer(Modifier.width(Spacing.s))
             Text(statusLabel(o.status), Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
             reached[o.status]?.let { Text(TimeFmt.time(it), style = MaterialTheme.typography.bodySmall) }
         }
     }
 }
 
-@Composable
-private fun Amount(label: String, paise: Int, bold: Boolean = false) {
-    Row(Modifier.fillMaxWidth()) {
-        Text(label, Modifier.weight(1f), style = if (bold) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium)
-        Text((if (paise < 0) "−" else "") + Money.format(kotlin.math.abs(paise)),
-            style = if (bold) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium)
-    }
+/** Colour tone for an order status chip: success when done, error when rejected/cancelled, brand while in progress. */
+fun statusTone(s: OrderStatus): Tone = when (s) {
+    OrderStatus.COMPLETED -> Tone.Success
+    OrderStatus.REJECTED, OrderStatus.CANCELLED -> Tone.Error
+    OrderStatus.READY -> Tone.Success
+    OrderStatus.UNKNOWN -> Tone.Neutral
+    else -> Tone.Brand
 }

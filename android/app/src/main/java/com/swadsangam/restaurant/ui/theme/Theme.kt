@@ -17,22 +17,20 @@ import androidx.compose.ui.unit.sp
 
 // Design language (FoodGenz-style, licensed by the owner): vivid orange on warm cream, near-black partner surfaces,
 // Plus Jakarta Sans. Buttons use the deeper orange so white text passes WCAG AA (4.6:1); the vivid one is the accent.
-val BrandOrange = Color(0xFFD63B06)
-val BrandOrangeBright = Color(0xFFFD4E11)
-val Navy = Color(0xFF131217)
-val Saffron = Color(0xFFFFB020)
-val Cream = Color(0xFFFFF8F4)
-val TextInk = Color(0xFF1B1A1F)
-val SuccessGreen = Color(0xFF1F8A4C)
-val ErrorRed = Color(0xFFC8392F)
-val NonVegBrown = Color(0xFF8B3A1A)
+private val BrandOrange = Color(0xFFD03905) // #D63B06 nudged darker: 4.7:1 on cream as well as white
+private val BrandOrangeBright = Color(0xFFFD4E11)
+private val Navy = Color(0xFF131217)
+private val Saffron = Color(0xFFFFB020)
+private val Cream = Color(0xFFFFF8F4)
+private val TextInk = Color(0xFF1B1A1F)
+private val ErrorRed = Color(0xFFC8392F)
 
 private val Light = lightColorScheme(
     primary = BrandOrange,
     onPrimary = Color.White,
     primaryContainer = Color(0xFFFFE1D3),
     onPrimaryContainer = Color(0xFF4A1300),
-    secondary = Navy,
+    secondary = Color(0xFF1F5F2C),   // logo green
     onSecondary = Color.White,
     secondaryContainer = Color(0xFFFFF0E8),
     onSecondaryContainer = Color(0xFF4A1300),
@@ -49,7 +47,7 @@ private val Light = lightColorScheme(
     surfaceContainer = Color(0xFFFFF4EE),
     surfaceContainerHigh = Color(0xFFFBEDE5),
     surfaceContainerHighest = Color(0xFFF5E6DD),
-    outline = Color(0xFFD9CCC4),
+    outline = Color(0xFF8F837B),        // 3.5:1 — checkbox, radio, field borders must be visible (WCAG 1.4.11)
     outlineVariant = Color(0xFFF0E6DF),
     error = ErrorRed,
     onError = Color.White,
@@ -63,8 +61,8 @@ private val Dark = darkColorScheme(
     onPrimary = Color(0xFF131217),
     primaryContainer = Color(0xFF5A2410),
     onPrimaryContainer = Color(0xFFFFDBC9),
-    secondary = Color(0xFFC9C5CC),
-    onSecondary = Color(0xFF131217),
+    secondary = Color(0xFF8FD19E),   // logo green, lightened for dark mode
+    onSecondary = Color(0xFF0B2416),
     secondaryContainer = Color(0xFF2A1A14),
     onSecondaryContainer = Color(0xFFFFDBC9),
     tertiary = Saffron,
@@ -88,18 +86,6 @@ private val Dark = darkColorScheme(
     onErrorContainer = Color(0xFFFFDAD6),
 )
 
-/** Spacing, radius and size tokens — use these instead of ad-hoc numbers. */
-object Dimens {
-    val gutter = 16.dp
-    val gap = 12.dp
-    val gapS = 8.dp
-    val radiusS = 8.dp
-    val radiusM = 14.dp
-    val radiusL = 20.dp
-    /** Minimum touch target (Material / WCAG). */
-    val touch = 48.dp
-    val buttonTall = 52.dp
-}
 
 // Plus Jakarta Sans (bundled, SIL OFL) — headings bold/extra-bold, prices bold
 val JakartaSans = FontFamily(
@@ -110,33 +96,42 @@ val JakartaSans = FontFamily(
     Font(R.font.plus_jakarta_sans_extrabold, FontWeight.ExtraBold),
 )
 private val base = Typography()
+/** Complete type scale on Plus Jakarta Sans. Display/headline for page titles, title for cards and sections,
+ *  body for content (16 sp base), label for buttons, chips and captions. */
+private fun TextStyle.jakarta(weight: FontWeight, spacing: Float? = null) =
+    copy(fontFamily = JakartaSans, fontWeight = weight, letterSpacing = spacing?.sp ?: letterSpacing)
 val AppTypography = Typography(
-    displaySmall = base.displaySmall.copy(fontFamily = JakartaSans, fontWeight = FontWeight.ExtraBold),
-    headlineMedium = base.headlineMedium.copy(fontFamily = JakartaSans, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp),
-    headlineSmall = base.headlineSmall.copy(fontFamily = JakartaSans, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.2).sp),
-    titleLarge = base.titleLarge.copy(fontFamily = JakartaSans, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp),
-    titleMedium = base.titleMedium.copy(fontFamily = JakartaSans, fontWeight = FontWeight.Bold),
-    titleSmall = base.titleSmall.copy(fontFamily = JakartaSans, fontWeight = FontWeight.SemiBold),
-    bodyLarge = base.bodyLarge.copy(fontFamily = JakartaSans),
-    bodyMedium = base.bodyMedium.copy(fontFamily = JakartaSans),
-    bodySmall = base.bodySmall.copy(fontFamily = JakartaSans),
-    labelLarge = base.labelLarge.copy(fontFamily = JakartaSans, fontWeight = FontWeight.Bold),
-    labelMedium = base.labelMedium.copy(fontFamily = JakartaSans, fontWeight = FontWeight.SemiBold),
-    labelSmall = base.labelSmall.copy(fontFamily = JakartaSans, fontWeight = FontWeight.SemiBold),
+    displayLarge = base.displayLarge.jakarta(FontWeight.ExtraBold, -0.5f),
+    displayMedium = base.displayMedium.jakarta(FontWeight.ExtraBold, -0.4f),
+    displaySmall = base.displaySmall.jakarta(FontWeight.ExtraBold, -0.3f),
+    headlineLarge = base.headlineLarge.jakarta(FontWeight.ExtraBold, -0.3f),
+    headlineMedium = base.headlineMedium.jakarta(FontWeight.ExtraBold, -0.3f),
+    headlineSmall = base.headlineSmall.jakarta(FontWeight.Bold, -0.2f),
+    titleLarge = base.titleLarge.jakarta(FontWeight.Bold, -0.2f),
+    titleMedium = base.titleMedium.jakarta(FontWeight.Bold, 0f),
+    titleSmall = base.titleSmall.jakarta(FontWeight.SemiBold, 0f),
+    bodyLarge = base.bodyLarge.jakarta(FontWeight.Normal, 0f),
+    bodyMedium = base.bodyMedium.jakarta(FontWeight.Normal, 0f),
+    bodySmall = base.bodySmall.jakarta(FontWeight.Normal, 0f),
+    labelLarge = base.labelLarge.jakarta(FontWeight.Bold, 0f),
+    labelMedium = base.labelMedium.jakarta(FontWeight.SemiBold, 0f),
+    labelSmall = base.labelSmall.jakarta(FontWeight.SemiBold, 0.2f),
 )
 
-/** Softer, rounder shapes (cards 18 dp, sheets 24 dp) */
+/** Shapes: chips 10, cards 20, sheets/dialogs 28 (see [Radius]). */
 val AppShapes = androidx.compose.material3.Shapes(
-    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-    small = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-    medium = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
-    large = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(Radius.xs),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(Radius.s),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(Radius.l),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(Radius.xl),
+    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(Radius.xl),
 )
 
 val PriceStyle = TextStyle(fontFamily = JakartaSans, fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
 @Composable
 fun SwadSangamTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = if (dark) Dark else Light, typography = AppTypography, shapes = AppShapes, content = content)
+    androidx.compose.runtime.CompositionLocalProvider(LocalAppColors provides if (dark) DarkAppColors else LightAppColors) {
+        MaterialTheme(colorScheme = if (dark) Dark else Light, typography = AppTypography, shapes = AppShapes, content = content)
+    }
 }

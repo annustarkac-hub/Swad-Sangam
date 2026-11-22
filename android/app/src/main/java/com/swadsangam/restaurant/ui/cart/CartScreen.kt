@@ -1,5 +1,19 @@
 package com.swadsangam.restaurant.ui.cart
 
+import com.swadsangam.restaurant.ui.theme.secondaryText
+import com.swadsangam.restaurant.ui.theme.PriceStyle
+import com.swadsangam.restaurant.ui.components.ButtonVariant
+import com.swadsangam.restaurant.ui.components.BottomActionBar
+import com.swadsangam.restaurant.ui.components.AppTextField
+import com.swadsangam.restaurant.ui.components.AppCard
+import com.swadsangam.restaurant.ui.components.AppButton
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Call
+import com.swadsangam.restaurant.ui.theme.Size
+import com.swadsangam.restaurant.ui.theme.IconSize
+import com.swadsangam.restaurant.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -65,79 +79,84 @@ fun CartScreen(
     val orderingOpen = info != null && info.acceptingOrders && info.anyOrderTypeEnabled
 
     Column(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {
+        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = Spacing.s)) {
             if (s.hasUnavailable) {
                 item {
                     InfoBanner(stringResource(R.string.cart_has_unavailable), isError = true,
                         action = stringResource(R.string.remove), onAction = { vm.removeUnavailable() })
                 }
             }
-            items(s.lines, key = { it.key }) { line ->
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            line.item?.let { FoodTypeMark(it.foodType, 14.dp); Spacer(Modifier.width(6.dp)) }
-                            Text(line.item?.displayName(hindi) ?: stringResource(R.string.removed_item), style = MaterialTheme.typography.titleSmall)
-                        }
-                        if (line.selectedOptions.isNotEmpty()) {
-                            Text(line.selectedOptions.joinToString { it.name }, style = MaterialTheme.typography.bodySmall)
-                        }
-                        Text("${Money.format(line.unitPricePaise)} × ${line.quantity} = ${Money.format(line.lineTotalPaise)}",
-                            style = MaterialTheme.typography.bodySmall)
-                        if (!line.isOrderable) Text(stringResource(R.string.currently_unavailable), color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.labelSmall)
-                    }
-                    QuantityStepper(line.quantity, { vm.setQuantity(line, it) }, info?.maxItemQuantity ?: 20)
-                    IconButton({ vm.remove(line) }) { Icon(Icons.Default.Delete, stringResource(R.string.remove)) }
-                }
-                HorizontalDivider(Modifier.padding(horizontal = 16.dp))
-            }
             item {
-                TextButton(onClick = onBrowse, modifier = Modifier.padding(horizontal = 8.dp)) { Text(stringResource(R.string.add_more_items)) }
+                AppCard(Modifier.padding(horizontal = Spacing.gutter, vertical = Spacing.s), padding = PaddingValues(vertical = Spacing.s)) {
+                    Text(stringResource(R.string.your_cart_items), style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.s))
+                    s.lines.forEachIndexed { idx, line ->
+                        if (idx > 0) HorizontalDivider(Modifier.padding(horizontal = Spacing.l), color = MaterialTheme.colorScheme.outlineVariant)
+                        Row(Modifier.fillMaxWidth().padding(start = Spacing.l, end = Spacing.xs, top = Spacing.s, bottom = Spacing.s),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    line.item?.let { FoodTypeMark(it.foodType, IconSize.xs); Spacer(Modifier.width(Spacing.s)) }
+                                    Text(line.item?.displayName(hindi) ?: stringResource(R.string.removed_item), style = MaterialTheme.typography.titleSmall)
+                                }
+                                if (line.selectedOptions.isNotEmpty()) {
+                                    Text(line.selectedOptions.joinToString { it.name }, style = MaterialTheme.typography.bodySmall, color = secondaryText)
+                                }
+                                Text(Money.format(line.lineTotalPaise), style = PriceStyle)
+                                if (!line.isOrderable) Text(stringResource(R.string.currently_unavailable), color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.labelMedium)
+                            }
+                            QuantityStepper(line.quantity, { vm.setQuantity(line, it) }, info?.maxItemQuantity ?: 20)
+                            IconButton({ vm.remove(line) }, Modifier.size(Size.touch)) {
+                                Icon(Icons.Default.DeleteOutline, stringResource(R.string.remove), tint = secondaryText)
+                            }
+                        }
+                    }
+                    AppButton("+ " + stringResource(R.string.add_more_items), onBrowse, Modifier.padding(horizontal = Spacing.xs), variant = ButtonVariant.Text)
+                }
             }
             if (info != null && info.enabledOrderTypes.size > 1) {
                 item {
-                    Text(stringResource(R.string.order_type), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp))
-                    Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        info.enabledOrderTypes.forEach { t ->
-                            FilterChip(s.orderType == t, { vm.setOrderType(t) }, label = { Text(orderTypeLabel(t)) })
+                    AppCard(Modifier.padding(horizontal = Spacing.gutter, vertical = Spacing.s)) {
+                        Text(stringResource(R.string.order_type), style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(Spacing.s))
+                        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                            info.enabledOrderTypes.forEach { t ->
+                                FilterChip(s.orderType == t, { vm.setOrderType(t) }, label = { Text(orderTypeLabel(t)) }, modifier = Modifier.heightIn(min = Size.touch))
+                            }
                         }
                     }
                 }
             }
             item {
-                Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(s.couponInput, vm::setCouponInput, Modifier.weight(1f), singleLine = true,
-                        label = { Text(stringResource(R.string.coupon_code)) })
-                    Spacer(Modifier.width(8.dp))
-                    if (s.appliedCoupon.isNotEmpty() && s.appliedCoupon == s.couponInput) {
-                        TextButton({ vm.removeCoupon() }) { Text(stringResource(R.string.remove)) }
-                    } else {
-                        TextButton({ vm.applyCoupon() }, enabled = s.couponInput.length >= 3) { Text(stringResource(R.string.apply)) }
+                AppCard(Modifier.padding(horizontal = Spacing.gutter, vertical = Spacing.s)) {
+                    Text(stringResource(R.string.coupon_title), style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(Spacing.s))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val err = s.quote?.couponError?.let { stringResource(if (it == "COUPON_MIN_ORDER") R.string.coupon_min_order else R.string.coupon_invalid) }
+                        AppTextField(s.couponInput, vm::setCouponInput, stringResource(R.string.coupon_code), Modifier.weight(1f), error = err)
+                        Spacer(Modifier.width(Spacing.s))
+                        if (s.appliedCoupon.isNotEmpty() && s.appliedCoupon == s.couponInput) {
+                            AppButton(stringResource(R.string.remove), { vm.removeCoupon() }, variant = ButtonVariant.Text)
+                        } else {
+                            AppButton(stringResource(R.string.apply), { vm.applyCoupon() }, enabled = s.couponInput.length >= 3, variant = ButtonVariant.Tonal)
+                        }
                     }
                 }
-                s.quote?.couponError?.let {
-                    Text(stringResource(if (it == "COUPON_MIN_ORDER") R.string.coupon_min_order else R.string.coupon_invalid),
-                        color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
-                }
             }
-            item { s.quote?.let { PriceSummary(it, s.appliedCoupon, s.serverQuote) } }
+            item { s.quote?.let { PriceSummary(it, s.appliedCoupon, s.serverQuote, Modifier.padding(horizontal = Spacing.gutter, vertical = Spacing.s)) } }
             if (s.belowMinimum) {
                 item { InfoBanner(stringResource(R.string.min_order, Money.format(s.quote!!.minOrderPaise)), isError = true) }
             }
         }
-        HorizontalDivider()
-        Column(Modifier.padding(16.dp)) {
+        BottomActionBar {
             if (!orderingOpen) {
-                Text(stringResource(R.string.ordering_unavailable_call), style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(8.dp))
-                Button(onClick = { info?.let { Intents.call(context, it.phone) } }, Modifier.fillMaxWidth().height(52.dp)) {
-                    Text(stringResource(R.string.call_to_order))
-                }
+                Text(stringResource(R.string.ordering_unavailable_call), style = MaterialTheme.typography.bodyMedium, color = secondaryText)
+                AppButton(stringResource(R.string.call_to_order), { info?.let { Intents.call(context, it.phone) } }, Modifier.fillMaxWidth(),
+                    large = true, icon = Icons.Default.Call)
             } else {
-                Button(onClick = onCheckout, enabled = s.canCheckout, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                    Text(stringResource(R.string.proceed_to_checkout, Money.format(s.quote?.totalPaise ?: 0)))
-                }
+                AppButton(stringResource(R.string.proceed_to_checkout, Money.format(s.quote?.totalPaise ?: 0)), onCheckout,
+                    Modifier.fillMaxWidth(), large = true, enabled = s.canCheckout)
             }
         }
     }
