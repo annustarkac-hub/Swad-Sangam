@@ -32,7 +32,7 @@
             endOffset="127"/>
         <entry
             name="model"
-            string="color[launcher_bg(U),staff_brand(U),staff_accent(D),staff_nav(U),staff_bg(U)],drawable[ic_launcher_foreground(U),ic_launcher_monochrome(U)],mipmap[ic_launcher(U)],string[app_name(U),offline_title(U),offline_body(U),retry(U),saved_to_downloads(U),no_app_for_link(U)],style[Theme_SwadStaff(U),Theme_AppCompat_DayNight_NoActionBar(R)];7^0^5^6,e^f^4^3^1;;;"/>
+            string="color[launcher_bg(U),staff_brand(U),staff_accent(D),staff_nav(U),staff_bg(U)],mipmap[ic_launcher(U),ic_launcher_fg(U),ic_launcher_mono(U)],string[app_name(U),offline_title(U),offline_body(U),retry(U),saved_to_downloads(U),no_app_for_link(U)],style[Theme_SwadStaff(U),Theme_AppCompat_DayNight_NoActionBar(R)];5^0^6^7,e^f^4^3^1;;;"/>
     </map>
 
 </incidents>

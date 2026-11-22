@@ -149,6 +149,7 @@ export default function SiteApp() {
     <div className="app">
       <header className="topbar-s">
         <button className="brand-s welcome" onClick={() => go("")}>
+          <img className="brand-logo" src={`${import.meta.env.BASE_URL}logo-mark.png`} alt="Swad Sangam logo" width={52} height={52} />
           <span><small className="welcome-sub">{lang === "hi" ? "आपका स्वागत है" : "Welcome to"}</small>
             <b>{settings?.restaurant_name ?? "Swad Sangam"}</b>
             {table ? <small className="welcome-table"><BellRing size={14} /> {L("table")} {table}</small>
@@ -664,8 +665,8 @@ function InfoView({ L, lang, s }: { L: L; lang: Lang; s: Settings }) {
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   return (
     <div className="stack">
-      <div className="card-s2">
-        <h2 className="sec" style={{ marginTop: 0 }}>{s.restaurant_name}</h2>
+      <div className="card-s2 info-head">
+        <img className="info-logo" src={`${import.meta.env.BASE_URL}logo-full.webp`} alt={`${s.restaurant_name} — ${s.tagline}`} width={800} height={807} loading="lazy" />
         <p>{s.address}</p>
         <div className="hero-row"><a className="pill-s" href={`tel:${s.phone}`}><Phone size={16} /> {s.phone}</a>
           {wa.length >= 10 && <a className="pill-s" href={`https://wa.me/${wa.length === 10 ? "91" + wa : wa}?text=${encodeURIComponent(lang === "hi" ? "नमस्ते, मुझे ऑर्डर करना है" : "Hello, I would like to place an order")}`} target="_blank" rel="noreferrer"><MessageCircle size={16} /> WhatsApp</a>}

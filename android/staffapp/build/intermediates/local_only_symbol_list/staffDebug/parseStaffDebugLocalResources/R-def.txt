@@ -5,9 +5,9 @@ color staff_accent
 color staff_bg
 color staff_brand
 color staff_nav
-drawable ic_launcher_foreground
-drawable ic_launcher_monochrome
 mipmap ic_launcher
+mipmap ic_launcher_fg
+mipmap ic_launcher_mono
 string app_name
 string no_app_for_link
 string offline_body

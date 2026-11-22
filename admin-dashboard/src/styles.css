@@ -259,3 +259,5 @@ tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 70%, transpa
 h1 { font-weight: 800; letter-spacing: -.02em; }
 .card, .stat { border-radius: 18px; }
 .bottom-bar a.active, .bottom-bar a[aria-current="page"] { color: var(--brand); }
+/* Real logo mark on a white tile (dark-green parts need a light background) */
+.brand .logo.logo-img { background: #fff; object-fit: contain; padding: 3px; box-shadow: 0 0 0 1px rgba(255,255,255,.08); }

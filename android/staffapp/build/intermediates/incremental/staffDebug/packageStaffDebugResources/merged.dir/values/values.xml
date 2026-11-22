@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="launcher_bg">#1F8A4C</color>
+    <color name="launcher_bg">#FFFFFF</color>
     <color name="staff_accent">#FD4E11</color>
     <color name="staff_bg">#131217</color>
     <color name="staff_brand">#D63B06</color>
