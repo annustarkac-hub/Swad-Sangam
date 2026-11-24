@@ -70,6 +70,9 @@ class CheckoutViewModel @Inject constructor(
     val lines: StateFlow<List<CartLine>> = cart.lines.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     private val _quote = MutableStateFlow<Quote?>(null)
     val quote: StateFlow<Quote?> = _quote.asStateFlow()
+    /** False while offline: the bill is a local estimate and the coupon is not yet checked by the server. */
+    val quoteVerified = MutableStateFlow(false)
+    val couponCode: StateFlow<String> get() = draft.couponCode
     private val _placed = MutableStateFlow<Order?>(null)
     val placed: StateFlow<Order?> = _placed.asStateFlow()
 
@@ -98,8 +101,9 @@ class CheckoutViewModel @Inject constructor(
     private suspend fun requote() {
         val l = cart.lines.first()
         val i = menu.restaurantNow()
-        _quote.value = orders.quote(l, _ui.value.orderType, draft.couponCode.value)
-            ?: CartMath.localQuote(l, i, _ui.value.orderType)
+        val server = orders.quote(l, _ui.value.orderType, draft.couponCode.value)
+        quoteVerified.value = server != null
+        _quote.value = server ?: CartMath.localQuote(l, i, _ui.value.orderType)
     }
 
     fun edit(f: (CheckoutUi) -> CheckoutUi) {

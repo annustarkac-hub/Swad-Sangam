@@ -206,4 +206,5 @@ data class Order(
     val canCancel: Boolean,
     val items: List<OrderLine>,
     val history: List<StatusEvent>,
+    val deliveryOtp: String? = null,
 )

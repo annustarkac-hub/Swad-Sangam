@@ -32,6 +32,7 @@ data class HomeState(
     val nonVeg: List<MenuItem> = emptyList(),
     val thalis: List<MenuItem> = emptyList(),
     val heroItem: MenuItem? = null,
+    val totalDishes: Int = 0,
     val sync: SyncState = SyncState.Idle,
     val hasMenu: Boolean = false,
     val pureVeg: Boolean = false,
@@ -62,8 +63,9 @@ class HomeViewModel @Inject constructor(
             veg = available.filter { it.foodType == FoodType.VEG }.take(10),
             nonVeg = available.filter { it.foodType == FoodType.NON_VEG }.take(10),
             thalis = available.filter { it.categoryId == "thalis" },
-            heroItem = available.firstOrNull { it.categoryId == "thalis" && it.imageUrl != null }
-                ?: available.firstOrNull { it.imageUrl != null },
+            totalDishes = available.size,
+            // Only a real thali photo: the banner says "Explore our thalis" and opens the thali category
+            heroItem = available.firstOrNull { it.categoryId == "thalis" && it.imageUrl != null },
             sync = sync,
             hasMenu = items.isNotEmpty(),
             pureVeg = pureVeg,

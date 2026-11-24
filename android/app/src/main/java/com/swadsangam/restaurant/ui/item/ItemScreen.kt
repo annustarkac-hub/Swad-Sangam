@@ -1,5 +1,8 @@
 package com.swadsangam.restaurant.ui.item
 
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import com.swadsangam.restaurant.ui.theme.secondaryText
 import com.swadsangam.restaurant.ui.theme.PriceStyle
 import com.swadsangam.restaurant.ui.components.Tone
@@ -49,7 +52,7 @@ import com.swadsangam.restaurant.ui.components.QuantityStepper
 import com.swadsangam.restaurant.ui.components.Tag
 
 @Composable
-fun ItemScreen(hindi: Boolean, onAdded: () -> Unit, vm: ItemViewModel = androidx.hilt.navigation.compose.hiltViewModel()) {
+fun ItemScreen(hindi: Boolean, onAdded: () -> Unit, onBack: () -> Unit = onAdded, vm: ItemViewModel = androidx.hilt.navigation.compose.hiltViewModel()) {
     val s by vm.state.collectAsStateWithLifecycle()
     val item = s.item
     if (item == null) {
@@ -58,7 +61,20 @@ fun ItemScreen(hindi: Boolean, onAdded: () -> Unit, vm: ItemViewModel = androidx
     }
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            DishImage(item.imageUrl, Modifier.fillMaxWidth().height(Size.heroImage))
+            // Edge-to-edge photo with a floating round back button (no empty top bar)
+            androidx.compose.foundation.layout.Box {
+                DishImage(item.imageUrl, Modifier.fillMaxWidth().height(Size.heroImage + Spacing.xxl))
+                androidx.compose.material3.Surface(
+                    onClick = onBack, shape = androidx.compose.foundation.shape.CircleShape,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), contentColor = MaterialTheme.colorScheme.onSurface,
+                    shadowElevation = com.swadsangam.restaurant.ui.theme.Elevation.mid,
+                    modifier = Modifier.statusBarsPadding().padding(Spacing.m).size(Size.touch),
+                ) {
+                    androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
+                        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
+                    }
+                }
+            }
             Column(Modifier.padding(horizontal = Spacing.gutter, vertical = Spacing.l)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     FoodTypeMark(item.foodType, IconSize.s)
@@ -76,7 +92,10 @@ fun ItemScreen(hindi: Boolean, onAdded: () -> Unit, vm: ItemViewModel = androidx
                 }
                 item.portionInfo?.let { Detail(stringResource(R.string.portion), it) }
                 item.preparationMinutes?.let { Detail(stringResource(R.string.prep_time), stringResource(R.string.minutes, it)) }
-                Detail(stringResource(R.string.allergens), item.allergens ?: stringResource(R.string.allergens_ask))
+                // Real allergen info is shown as a detail; the generic "please ask" note is a quiet footer instead
+                item.allergens?.let { Detail(stringResource(R.string.allergens), it) }
+                if (item.allergens == null) Text(stringResource(R.string.allergens_ask), style = MaterialTheme.typography.bodySmall, color = secondaryText,
+                    modifier = Modifier.padding(top = Spacing.m))
                 if (!item.isAvailable) {
                     Spacer(Modifier.height(Spacing.m))
                     StatusBanner(stringResource(R.string.currently_unavailable), tone = Tone.Error)

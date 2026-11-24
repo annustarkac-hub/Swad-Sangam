@@ -180,7 +180,11 @@ export default function App() {
 
 function Guard({ roles, children }: { roles: Role[]; children: JSX.Element }) {
   const { role } = useAuth();
-  return can(role, ...roles) ? children : <p>You do not have access to this page.</p>;
+  if (can(role, ...roles)) return children;
+  // Riders open the Staff app (which starts on POS) — send them to their own screen instead of an error
+  if (role === "DELIVERY") return <Navigate to="/delivery" replace />;
+  if (role === "KITCHEN") return <Navigate to="/kitchen" replace />;
+  return <p>You do not have access to this page.</p>;
 }
 
 /**

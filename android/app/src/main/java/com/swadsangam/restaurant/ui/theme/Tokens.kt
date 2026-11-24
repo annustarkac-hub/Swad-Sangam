@@ -107,17 +107,17 @@ data class AppColors(
 internal val LightAppColors = AppColors(
     success = Color(0xFF1F8A4C), onSuccess = Color.White, successContainer = Color(0xFFE5F5EB), onSuccessContainer = Color(0xFF0B3D1E),
     warning = Color(0xFFB45309), warningContainer = Color(0xFFFFF3DC), onWarningContainer = Color(0xFF4A2A00),
-    info = Color(0xFF1F5F2C), infoContainer = Color(0xFFFFF0E8), onInfoContainer = Color(0xFF4A1300),
-    veg = Color(0xFF1F8A4C), nonVeg = Color(0xFF8B3A1A), rating = Color(0xFFC77C00),
-    brandAccent = Color(0xFFFD4E11), brandGreen = Color(0xFF1F5F2C), onBrandHeader = Color.White,
+    info = Color(0xFF1F5F2C), infoContainer = Color(0xFFFDF0EE), onInfoContainer = Color(0xFF5C1610),
+    veg = Color(0xFF1F8A4C), nonVeg = Color(0xFF8B3A1A), rating = Color(0xFFC27C0E),
+    brandAccent = Color(0xFFB83227), brandGreen = Color(0xFF1F5F2C), onBrandHeader = Color.White,
 )
 
 internal val DarkAppColors = AppColors(
     success = Color(0xFF5BD08A), onSuccess = Color(0xFF0B2416), successContainer = Color(0xFF16301F), onSuccessContainer = Color(0xFFC9F0D6),
     warning = Color(0xFFFFB454), warningContainer = Color(0xFF3A2D14), onWarningContainer = Color(0xFFFFE2B8),
-    info = Color(0xFF8FD19E), infoContainer = Color(0xFF2A1A14), onInfoContainer = Color(0xFFFFDBC9),
+    info = Color(0xFF8FD19E), infoContainer = Color(0xFF331B1A), onInfoContainer = Color(0xFFFFDAD5),
     veg = Color(0xFF5BD08A), nonVeg = Color(0xFFE08A64), rating = Color(0xFFFFC24D),
-    brandAccent = Color(0xFFFF7A45), brandGreen = Color(0xFF8FD19E), onBrandHeader = Color.White,
+    brandAccent = Color(0xFFFF7A6B), brandGreen = Color(0xFF8FD19E), onBrandHeader = Color.White,
 )
 
 val LocalAppColors = staticCompositionLocalOf { LightAppColors }

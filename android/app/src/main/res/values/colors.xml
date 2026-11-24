@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Brand palette from the Swad Sangam signboard (same as the website). Names kept for existing references. -->
-    <color name="brand_red">#D03905</color>
-    <color name="brand_cream">#FFF8F4</color>
-    <color name="brand_dark_bg">#131217</color>
+    <color name="brand_red">#B83227</color>
+    <color name="brand_cream">#F8F6F3</color>
+    <color name="brand_dark_bg">#121115</color>
     <color name="ic_launcher_background">#FFFFFF</color>
     <color name="splash_bg">#FFFFFF</color>
 </resources>

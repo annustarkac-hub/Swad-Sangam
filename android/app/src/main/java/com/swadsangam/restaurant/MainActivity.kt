@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
         splash.setKeepOnScreenCondition { !appVm.ready.value }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        deepLink = intent?.dataString
+        deepLink = linkFrom(intent)
         setContent {
             SwadSangamTheme {
                 AppNav(appVm, prefs, deepLink) { deepLink = null }
@@ -39,11 +39,21 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        intent.dataString?.let { deepLink = it }
+        linkFrom(intent)?.let { deepLink = it }
     }
+
+    /** A swadsangam:// link, or — when Android showed a push itself — the order token in the extras. */
+    private fun linkFrom(i: Intent?): String? =
+        i?.dataString ?: i?.getStringExtra("token")?.takeIf { it.isNotBlank() }?.let { "swadsangam://order/$it" }
 
     override fun onStart() {
         super.onStart()
         appVm.refresh()
+        appVm.startOrderWatch()
+    }
+
+    override fun onStop() {
+        appVm.stopOrderWatch()
+        super.onStop()
     }
 }

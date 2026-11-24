@@ -1,5 +1,6 @@
 package com.swadsangam.restaurant.ui.more
 
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.IconButton
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
@@ -79,12 +80,16 @@ class MoreViewModel @Inject constructor(
     private val cart: CartRepository,
     private val prefs: UserPrefs,
     private val analytics: Analytics,
+    private val auth: com.swadsangam.restaurant.data.auth.AuthRepository,
 ) : ViewModel() {
+    val account = auth.account
     val info = menu.restaurant.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     fun track(e: String) = analytics.track(e)
 
     /** Removes everything this app stored on the phone (orders list, cart, saved name/phone). */
     fun clearLocalData() = viewModelScope.launch {
+        // Also log out: otherwise the saved login would sync the orders straight back
+        runCatching { auth.signOut() }
         orders.clearHistory(); cart.clear(); prefs.clearAll()
     }
 }
@@ -96,10 +101,31 @@ fun MoreScreen(onInfo: () -> Unit, onMenu: () -> Unit, onFeedback: () -> Unit, o
     val context = LocalContext.current
     var langDialog by remember { mutableStateOf(false) }
     var clearDialog by remember { mutableStateOf(false) }
+    val account by vm.account.collectAsStateWithLifecycle()
     val i = info ?: return
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = Spacing.gutter, vertical = Spacing.l),
         verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+        // Profile header: greeting when signed in, a reason to sign in when not
+        AppCard(onClick = onAccount) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.Surface(Modifier.size(Size.avatar), shape = androidx.compose.foundation.shape.CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+                    androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
+                        val name = account?.profile?.fullName?.takeIf { it.isNotBlank() }
+                        if (name != null) Text(name.take(1).uppercase(), style = MaterialTheme.typography.titleLarge)
+                        else Icon(Icons.Default.AccountCircle, null)
+                    }
+                }
+                Spacer(Modifier.width(Spacing.m))
+                Column(Modifier.weight(1f)) {
+                    val name = account?.profile?.fullName?.takeIf { it.isNotBlank() }
+                    Text(if (name != null) stringResource(R.string.hello_name, name) else stringResource(R.string.hello_guest), style = MaterialTheme.typography.titleMedium)
+                    Text(account?.email ?: stringResource(R.string.sign_in_benefit), style = MaterialTheme.typography.bodySmall, color = secondaryText)
+                }
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = secondaryText)
+            }
+        }
         Group {
             ListRow(stringResource(R.string.acc_account), Icons.Default.AccountCircle, onAccount)
             ListRow(stringResource(R.string.restaurant_info), Icons.Default.Info, onInfo)

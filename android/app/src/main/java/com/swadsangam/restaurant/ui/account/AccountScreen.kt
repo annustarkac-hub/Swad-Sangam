@@ -28,6 +28,8 @@ import com.swadsangam.restaurant.ui.components.ButtonVariant
 import com.swadsangam.restaurant.ui.components.AppTextField
 import com.swadsangam.restaurant.ui.components.AppCard
 import com.swadsangam.restaurant.ui.components.AppButton
+import com.swadsangam.restaurant.ui.components.ConfirmDialog
+import com.swadsangam.restaurant.ui.components.PasswordField
 import com.swadsangam.restaurant.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -102,12 +104,11 @@ fun AccountScreen(onMyOrders: () -> Unit, vm: AccountViewModel = androidx.hilt.n
     val account by vm.account.collectAsStateWithLifecycle()
     if (!vm.loaded) { LoadingState(stringResource(R.string.loading)); return }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = Spacing.gutter, vertical = Spacing.l), verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+        // Errors/confirmations at the TOP, so the keyboard never hides them
+        vm.message?.let { (ok, text) -> StatusBanner(text, tone = if (ok) Tone.Success else Tone.Error) }
         when {
             account == null -> AuthForm(vm)
             else -> ProfileSection(vm, account!!.email, account!!.profile?.fullName.orEmpty(), account!!.profile?.phone.orEmpty(), account!!.addresses, onMyOrders)
-        }
-        vm.message?.let { (ok, text) ->
-            StatusBanner(text, tone = if (ok) Tone.Success else Tone.Error)
         }
     }
 }
@@ -131,8 +132,9 @@ private fun AuthForm(vm: AccountViewModel) {
     AppTextField(email, { email = it.trim() }, stringResource(R.string.acc_email),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next))
     if (mode != "forgot") {
-        AppTextField(password, { password = it }, stringResource(R.string.acc_password), supporting = if (mode == "signup") stringResource(R.string.acc_short_password) else null,
-            visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done))
+        PasswordField(password, { password = it }, stringResource(R.string.acc_password),
+            showLabel = stringResource(R.string.show_password), hideLabel = stringResource(R.string.hide_password),
+            supporting = if (mode == "signup") stringResource(R.string.acc_min_8) else null)
     }
     val invalidEmail = stringResource(R.string.acc_bad_email)
     val badDetails = stringResource(R.string.acc_bad_details)
@@ -143,7 +145,8 @@ private fun AuthForm(vm: AccountViewModel) {
             when {
                 !Regex("^\\S+@\\S+\\.\\S+$").matches(email) -> vm.message = false to invalidEmail
                 mode == "forgot" -> vm.reset(email) { r -> if (r is AuthResult.Error) false to msgs.error(r.message) else true to msgs.resetSent }
-                password.length < 6 -> vm.message = false to shortPass
+                mode == "login" && password.isEmpty() -> vm.message = false to shortPass
+                mode == "signup" && password.length < 8 -> vm.message = false to shortPass
                 mode == "login" -> vm.signIn(email, password) { r -> (r as? AuthResult.Error)?.let { false to msgs.error(it.message) } }
                 else -> {
                     val ph = PhoneValidator.normalize(phone)
@@ -174,6 +177,7 @@ private fun ProfileSection(vm: AccountViewModel, email: String, savedName: Strin
     var phone by remember(savedPhone) { mutableStateOf(savedPhone) }
     var editing by remember { mutableStateOf<AddressDto?>(null) }
     var adding by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf<AddressDto?>(null) }
     val saved = stringResource(R.string.acc_saved)
     val failed = stringResource(R.string.acc_save_failed)
     val badDetails = stringResource(R.string.acc_bad_details)
@@ -221,11 +225,15 @@ private fun ProfileSection(vm: AccountViewModel, email: String, savedName: Strin
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 if (!a.isDefault) AppButton(stringResource(R.string.acc_make_default), { vm.saveAddress(a.id, AddressWrite(a.label, a.address, a.landmark, true), {}) { it } }, variant = ButtonVariant.Text)
                 AppButton(stringResource(R.string.acc_edit), { editing = a }, variant = ButtonVariant.Text)
-                AppButton(stringResource(R.string.acc_delete), { vm.deleteAddress(a.id) }, variant = ButtonVariant.Danger)
+                AppButton(stringResource(R.string.acc_delete), { deleting = a }, variant = ButtonVariant.Danger)
             }
         }
     }
     if (adding) AddressForm(vm, null, addresses.isEmpty()) { adding = false }
+    deleting?.let { d ->
+        ConfirmDialog(stringResource(R.string.delete_address_q), stringResource(R.string.acc_delete), stringResource(R.string.cancel),
+            onConfirm = { vm.deleteAddress(d.id) }, onDismiss = { deleting = null }, danger = true, body = d.address)
+    }
 
     Row(Modifier.padding(top = Spacing.s), horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
         AppButton(stringResource(R.string.my_orders), onMyOrders, Modifier.weight(1f), variant = ButtonVariant.Secondary, icon = Icons.AutoMirrored.Filled.ReceiptLong)

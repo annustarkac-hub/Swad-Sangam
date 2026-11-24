@@ -1,5 +1,7 @@
 package com.swadsangam.restaurant.ui.cart
 
+import com.swadsangam.restaurant.ui.components.Tone
+import com.swadsangam.restaurant.ui.components.StatusBanner
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -32,6 +34,10 @@ fun PriceSummary(q: Quote, coupon: String?, verified: Boolean,
         if (q.deliveryFeePaise > 0) KeyValueRow(stringResource(R.string.delivery_fee), Money.format(q.deliveryFeePaise))
         SectionDivider()
         KeyValueRow(stringResource(R.string.total_payable), Money.format(q.totalPaise), emphasize = true)
+        if (q.discountPaise > 0) {
+            Spacer(Modifier.height(Spacing.s))
+            StatusBanner(stringResource(R.string.savings, Money.format(q.discountPaise)), tone = Tone.Success)
+        }
         if (q.pricesIncludeTax) Text(stringResource(R.string.prices_include_tax), style = MaterialTheme.typography.bodySmall, color = secondaryText)
         if (!verified) Text(stringResource(R.string.total_confirmed_at_checkout), style = MaterialTheme.typography.bodySmall, color = secondaryText)
     }

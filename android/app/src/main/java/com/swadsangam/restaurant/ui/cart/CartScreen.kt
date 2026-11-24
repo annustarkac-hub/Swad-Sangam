@@ -1,5 +1,6 @@
 package com.swadsangam.restaurant.ui.cart
 
+import androidx.compose.runtime.setValue
 import com.swadsangam.restaurant.ui.theme.secondaryText
 import com.swadsangam.restaurant.ui.theme.PriceStyle
 import com.swadsangam.restaurant.ui.components.ButtonVariant
@@ -69,6 +70,9 @@ fun CartScreen(
     onCheckout: () -> Unit,
     vm: CartViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
+    var confirmClear by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    if (confirmClear) com.swadsangam.restaurant.ui.components.ConfirmDialog(stringResource(R.string.clear_cart_q), stringResource(R.string.clear_cart),
+        stringResource(R.string.cancel), onConfirm = { vm.clear() }, onDismiss = { confirmClear = false }, danger = true)
     val s by vm.state.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
     if (s.lines.isEmpty()) {
@@ -106,13 +110,14 @@ fun CartScreen(
                                 if (!line.isOrderable) Text(stringResource(R.string.currently_unavailable), color = MaterialTheme.colorScheme.error,
                                     style = MaterialTheme.typography.labelMedium)
                             }
-                            QuantityStepper(line.quantity, { vm.setQuantity(line, it) }, info?.maxItemQuantity ?: 20)
-                            IconButton({ vm.remove(line) }, Modifier.size(Size.touch)) {
-                                Icon(Icons.Default.DeleteOutline, stringResource(R.string.remove), tint = secondaryText)
-                            }
+                            QuantityStepper(line.quantity, { q -> if (q <= 0) vm.remove(line) else vm.setQuantity(line, q) }, info?.maxItemQuantity ?: 20)
                         }
                     }
-                    AppButton("+ " + stringResource(R.string.add_more_items), onBrowse, Modifier.padding(horizontal = Spacing.xs), variant = ButtonVariant.Text)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AppButton("+ " + stringResource(R.string.add_more_items), onBrowse, Modifier.padding(horizontal = Spacing.xs).weight(1f, fill = false), variant = ButtonVariant.Text)
+                        Spacer(Modifier.weight(1f))
+                        AppButton(stringResource(R.string.clear_cart), { confirmClear = true }, variant = ButtonVariant.Text)
+                    }
                 }
             }
             if (info != null && info.enabledOrderTypes.size > 1) {

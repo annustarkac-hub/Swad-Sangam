@@ -1,5 +1,6 @@
 package com.swadsangam.restaurant.ui.checkout
 
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.PaddingValues
 import com.swadsangam.restaurant.ui.theme.secondaryText
 import com.swadsangam.restaurant.ui.theme.Size
@@ -69,10 +70,13 @@ fun CheckoutScreen(
     onBackToCart: () -> Unit,
     vm: CheckoutViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
+    var editDetails by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<Boolean?>(null) }
     val u by vm.ui.collectAsStateWithLifecycle()
     val info by vm.info.collectAsStateWithLifecycle()
     val lines by vm.lines.collectAsStateWithLifecycle()
     val quote by vm.quote.collectAsStateWithLifecycle()
+    val quoteVerified by vm.quoteVerified.collectAsStateWithLifecycle()
+    val couponCode by vm.couponCode.collectAsStateWithLifecycle()
     val placed by vm.placed.collectAsStateWithLifecycle()
     val account by vm.addresses.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -90,15 +94,29 @@ fun CheckoutScreen(
             AppCard {
                 Text(stringResource(R.string.your_details), style = MaterialTheme.typography.titleMedium)
                 Text(stringResource(R.string.no_account_needed), style = MaterialTheme.typography.bodySmall, color = secondaryText)
+                // Returning customer with saved, valid details: one summary line + Edit (repeat checkout in two taps)
+                val detailsValid = !vm.nameError(u) && !vm.phoneError(u)
+                LaunchedEffect(u.name.isNotBlank()) { if (editDetails == null && u.name.isNotBlank()) editDetails = !detailsValid }
+                if (detailsValid && editDetails == false) {
+                    Spacer(Modifier.height(Spacing.s))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(u.name, style = MaterialTheme.typography.titleSmall)
+                            Text("+91 " + u.phone.filter(Char::isDigit).takeLast(10), style = MaterialTheme.typography.bodyMedium, color = secondaryText)
+                        }
+                        AppButton(stringResource(R.string.acc_edit), { editDetails = true }, variant = ButtonVariant.Text)
+                    }
+                } else {
                 Spacer(Modifier.height(Spacing.m))
-                AppTextField(u.name, { v -> vm.edit { it.copy(name = v.take(60)) } }, stringResource(R.string.name),
-                    error = if (err && vm.nameError(u)) stringResource(R.string.name_error) else null,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words))
-                Spacer(Modifier.height(Spacing.s))
-                AppTextField(u.phone, { v -> vm.edit { it.copy(phone = v.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(16)) } },
-                    stringResource(R.string.mobile_number), prefix = "+91 ",
-                    error = if (err && vm.phoneError(u)) stringResource(R.string.phone_error) else null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+                    AppTextField(u.name, { v -> vm.edit { it.copy(name = v.take(60)) } }, stringResource(R.string.name),
+                        error = if (err && vm.nameError(u)) stringResource(R.string.name_error) else null,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words))
+                    Spacer(Modifier.height(Spacing.s))
+                    AppTextField(u.phone, { v -> vm.edit { it.copy(phone = v.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(16)) } },
+                        stringResource(R.string.mobile_number), prefix = "+91 ",
+                        error = if (err && vm.phoneError(u)) stringResource(R.string.phone_error) else null,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+                }
             }
 
             // 2. Pickup, table or delivery
@@ -180,7 +198,7 @@ fun CheckoutScreen(
                         (if (l.selectedOptions.isNotEmpty()) " (${l.selectedOptions.joinToString { it.name }})" else ""), Money.format(l.lineTotalPaise))
                 }
             }
-            quote?.let { PriceSummary(it, null, verified = true) }
+            quote?.let { PriceSummary(it, couponCode.ifBlank { null }, verified = quoteVerified) }
         }
         BottomActionBar {
             Row(Modifier.fillMaxWidth().heightIn(min = Size.touch).clickable { vm.edit { it.copy(termsAccepted = !it.termsAccepted) } },

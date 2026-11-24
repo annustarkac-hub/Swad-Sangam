@@ -33,13 +33,12 @@ class OrderViewModel @Inject constructor(
     val info: StateFlow<RestaurantInfo?> = menu.restaurant.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val offline = MutableStateFlow(false)
     val cancelError = MutableStateFlow<String?>(null)
-    val feedbackGiven = MutableStateFlow(true)
+    val feedbackGiven: StateFlow<Boolean> = orders.observeFeedbackGiven(token).stateIn(viewModelScope, SharingStarted.Eagerly, true)
     private var polling: Job? = null
 
     init {
         // Background fallback for status notifications when push is unavailable
         OrderStatusWorker.schedule(context)
-        viewModelScope.launch { feedbackGiven.value = orders.feedbackGiven(token) }
     }
 
     /** Poll only while this screen is visible (keeps backend usage low — PRD §9.4). */
@@ -49,10 +48,8 @@ class OrderViewModel @Inject constructor(
             while (isActive) {
                 val fresh = orders.refresh(token)
                 offline.value = fresh == null
-                if (fresh != null) {
-                    orders.markNotified(token, fresh.status)  // user is looking at it
-                    if (!fresh.status.isActive) break
-                }
+                // Not marked as notified here: the app-wide watcher still shows the top-bar notification
+                if (fresh != null && !fresh.status.isActive) break
                 delay(15_000)
             }
         }

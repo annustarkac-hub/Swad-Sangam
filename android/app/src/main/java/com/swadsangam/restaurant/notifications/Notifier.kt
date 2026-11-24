@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import com.swadsangam.restaurant.MainActivity
 import com.swadsangam.restaurant.R
 import com.swadsangam.restaurant.domain.OrderStatus
+import com.swadsangam.restaurant.domain.OrderType
 
 /** Customer order notifications (PRD FR-10). Push is supplementary; status is always in-app. */
 object Notifier {
@@ -31,7 +32,9 @@ object Notifier {
         Build.VERSION.SDK_INT < 33 ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
-    fun titleFor(context: Context, status: OrderStatus): Int? = when (status) {
+    fun titleFor(context: Context, status: OrderStatus, type: OrderType? = null): Int? = when (status) {
+        OrderStatus.READY if type == OrderType.DELIVERY -> R.string.notif_ready_delivery
+        OrderStatus.READY if type == OrderType.DINE_IN -> R.string.notif_ready_dine_in
         OrderStatus.PLACED -> R.string.notif_submitted
         OrderStatus.ACCEPTED -> R.string.notif_accepted
         OrderStatus.PREPARING -> R.string.notif_preparing
@@ -43,8 +46,8 @@ object Notifier {
         OrderStatus.UNKNOWN -> null
     }
 
-    fun showOrderStatus(context: Context, token: String?, orderNumber: String, status: OrderStatus, reason: String? = null) {
-        val title = titleFor(context, status)?.let { context.getString(it) } ?: return
+    fun showOrderStatus(context: Context, token: String?, orderNumber: String, status: OrderStatus, reason: String? = null, type: OrderType? = null) {
+        val title = titleFor(context, status, type)?.let { context.getString(it) } ?: return
         var body = context.getString(R.string.notif_body, orderNumber)
         if (!reason.isNullOrBlank() && status in setOf(OrderStatus.REJECTED, OrderStatus.CANCELLED)) {
             body += " " + context.getString(R.string.reason_prefix, reason)

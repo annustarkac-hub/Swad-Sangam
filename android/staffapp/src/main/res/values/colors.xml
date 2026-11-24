@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="staff_brand">#D63B06</color>
-    <color name="staff_accent">#FD4E11</color>
-    <color name="staff_nav">#131217</color>
-    <color name="staff_bg">#131217</color>
+    <color name="staff_brand">#B83227</color>
+    <color name="staff_accent">#B83227</color>
+    <color name="staff_nav">#141318</color>
+    <color name="staff_bg">#141318</color>
     <color name="staff_on_bg">#FFFFFF</color>
     <color name="staff_on_bg_muted">#C9C5CC</color>
 </resources>

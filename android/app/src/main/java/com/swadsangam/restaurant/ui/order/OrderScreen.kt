@@ -1,5 +1,8 @@
 package com.swadsangam.restaurant.ui.order
 
+import com.swadsangam.restaurant.ui.theme.Radius
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import com.swadsangam.restaurant.ui.theme.secondaryText
 import com.swadsangam.restaurant.ui.components.Tone
 import com.swadsangam.restaurant.ui.components.StatusChip
@@ -12,6 +15,13 @@ import com.swadsangam.restaurant.ui.components.AppTextField
 import com.swadsangam.restaurant.ui.components.AppCard
 import com.swadsangam.restaurant.ui.components.AppButton
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
+import com.swadsangam.restaurant.ui.theme.Border
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Call
@@ -90,14 +100,19 @@ fun statusLabel(s: OrderStatus): String = stringResource(
     },
 )
 
+/** Payment line that matches how the customer pays: cash on delivery, cash at the counter or UPI at the restaurant. */
 @Composable
-fun paymentStatusLabel(s: String): String = stringResource(
+fun paymentStatusLabel(s: String, type: OrderType = OrderType.PICKUP, method: PaymentMethod = PaymentMethod.CASH): String = stringResource(
     when (s) {
         "PAID" -> R.string.pay_paid
         "FAILED" -> R.string.pay_failed
         "REFUND_PENDING" -> R.string.pay_refund_pending
         "REFUNDED" -> R.string.pay_refunded
-        else -> R.string.pay_pending
+        else -> when {
+            method == PaymentMethod.UPI_AT_RESTAURANT -> R.string.pay_pending_upi
+            type == OrderType.DELIVERY -> R.string.pay_pending_cod
+            else -> R.string.pay_pending
+        }
     },
 )
 
@@ -157,8 +172,32 @@ fun OrderScreen(onFeedback: (String) -> Unit, onHome: () -> Unit, vm: OrderViewM
             if (o.status.isActive && o.status != OrderStatus.PLACED) {
                 o.estimatedReadyAt?.let { Text(stringResource(R.string.estimated_ready, TimeFmt.time(it)), style = MaterialTheme.typography.titleSmall) }
             }
+            if (o.status.isActive) {
+                // Overall progress at a glance (placed → delivered / handed over)
+                val steps = if (o.orderType == OrderType.DELIVERY)
+                    listOf(OrderStatus.PLACED, OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.OUT_FOR_DELIVERY, OrderStatus.COMPLETED)
+                else listOf(OrderStatus.PLACED, OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.COMPLETED)
+                val frac = (steps.indexOf(o.status).coerceAtLeast(0) + 1).toFloat() / steps.size
+                val animated by androidx.compose.animation.core.animateFloatAsState(frac, label = "progress")
+                Spacer(Modifier.height(Spacing.m))
+                androidx.compose.material3.LinearProgressIndicator(progress = { animated },
+                    modifier = Modifier.fillMaxWidth().height(Spacing.s).clip(RoundedCornerShape(Radius.s)),
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest)
+            }
             Spacer(Modifier.height(Spacing.m))
             Timeline(o)
+        }
+
+        // Free in-app delivery code: the customer tells it to the rider only after receiving the food
+        if (o.orderType == OrderType.DELIVERY && o.status.isActive && o.deliveryOtp != null) {
+            DeliveryCodeCard(o.deliveryOtp)
+        }
+        if (o.paymentStatus == "PENDING" && o.status.isActive && o.paymentMethod == PaymentMethod.CASH) {
+            StatusBanner(
+                if (o.orderType == OrderType.DELIVERY) stringResource(R.string.cod_pay_rider, Money.format(o.totalPaise))
+                else stringResource(R.string.pay_at_counter, Money.format(o.totalPaise)),
+                tone = Tone.Warning, icon = Icons.Default.Payments,
+            )
         }
 
         if (o.status == OrderStatus.READY && o.orderType == OrderType.PICKUP) {
@@ -198,7 +237,7 @@ fun OrderScreen(onFeedback: (String) -> Unit, onHome: () -> Unit, vm: OrderViewM
             if (o.deliveryFeePaise > 0) KeyValueRow(stringResource(R.string.delivery_fee), Money.format(o.deliveryFeePaise))
             SectionDivider()
             KeyValueRow(stringResource(R.string.total), Money.format(o.totalPaise), emphasize = true)
-            Text("${stringResource(R.string.payment)}: ${paymentStatusLabel(o.paymentStatus)}", style = MaterialTheme.typography.bodySmall, color = secondaryText)
+            Text("${stringResource(R.string.payment)}: ${paymentStatusLabel(o.paymentStatus, o.orderType, o.paymentMethod)}", style = MaterialTheme.typography.bodySmall, color = secondaryText)
         }
 
         // Actions
@@ -277,4 +316,27 @@ fun statusTone(s: OrderStatus): Tone = when (s) {
     OrderStatus.READY -> Tone.Success
     OrderStatus.UNKNOWN -> Tone.Neutral
     else -> Tone.Brand
+}
+
+/** Big, high-contrast 4-digit code card (dashed brand border), read out digit by digit by TalkBack. */
+@Composable
+private fun DeliveryCodeCard(code: String) {
+    val label = stringResource(R.string.delivery_code)
+    androidx.compose.material3.Surface(
+        shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        border = androidx.compose.foundation.BorderStroke(Border.mark, MaterialTheme.colorScheme.primary),
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = label + ": " + code.toCharArray().joinToString(" ") },
+    ) {
+        Column(Modifier.padding(Spacing.l), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Lock, null, modifier = Modifier.size(IconSize.s))
+                Spacer(Modifier.width(Spacing.xs))
+                Text(label.uppercase(), style = MaterialTheme.typography.labelLarge)
+            }
+            Text(code.toCharArray().joinToString(" "), style = MaterialTheme.typography.displaySmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                letterSpacing = 4.sp, fontFeatureSettings = "tnum"), modifier = Modifier.padding(vertical = Spacing.xs))
+            Text(stringResource(R.string.delivery_code_help), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+        }
+    }
 }

@@ -1,5 +1,7 @@
 package com.swadsangam.restaurant.ui.home
 
+import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.foundation.layout.statusBarsPadding
 import com.swadsangam.restaurant.ui.theme.secondaryText
 import com.swadsangam.restaurant.ui.components.ButtonVariant
 import com.swadsangam.restaurant.ui.components.AppCard
@@ -103,7 +105,7 @@ fun HomeScreen(
             // 1–2. Logo, name, location + directions shortcut
             item {
                 Column(
-                    Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).padding(Spacing.l),
+                    Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).statusBarsPadding().padding(Spacing.l),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(shape = RoundedCornerShape(Radius.m), color = MaterialTheme.colorScheme.surface, modifier = Modifier.size(Size.avatar)) {
@@ -114,8 +116,8 @@ fun HomeScreen(
                         }
                         Spacer(Modifier.width(Spacing.m))
                         Column(Modifier.weight(1f)) {
-                            Text(info?.name ?: stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall, color = AppTheme.colors.onBrandHeader)
-                            Text(stringResource(R.string.home_tagline), color = AppTheme.colors.onBrandHeader, style = MaterialTheme.typography.bodyMedium)
+                            Text(info?.name ?: stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onBackground)
+                            Text(stringResource(R.string.home_tagline), color = secondaryText, style = MaterialTheme.typography.bodyMedium)
                         }
                         // Pure Veg Mode (remembered on this phone)
                         Column(
@@ -123,10 +125,8 @@ fun HomeScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Switch(checked = s.pureVeg, onCheckedChange = null,
-                                colors = SwitchDefaults.colors(checkedTrackColor = AppTheme.colors.veg, checkedThumbColor = AppTheme.colors.onBrandHeader,
-                                    uncheckedTrackColor = AppTheme.colors.onBrandHeader.copy(alpha = 0.25f), uncheckedThumbColor = AppTheme.colors.onBrandHeader,
-                                    uncheckedBorderColor = AppTheme.colors.onBrandHeader.copy(alpha = 0.6f)))
-                            Text(stringResource(R.string.pure_veg), color = AppTheme.colors.onBrandHeader, style = MaterialTheme.typography.labelSmall)
+                                colors = SwitchDefaults.colors(checkedTrackColor = AppTheme.colors.veg, checkedThumbColor = MaterialTheme.colorScheme.surface))
+                            Text(stringResource(R.string.pure_veg), color = AppTheme.colors.veg, style = MaterialTheme.typography.labelSmall)
                         }
                     }
                     Spacer(Modifier.height(Spacing.s))
@@ -134,17 +134,17 @@ fun HomeScreen(
                         Modifier.heightIn(min = Size.touch).clickable { info?.let { vm.track(Analytics.DIRECTIONS); Intents.directions(context, it) } },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Default.LocationOn, null, tint = AppTheme.colors.onBrandHeader, modifier = Modifier.size(IconSize.s))
+                        Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(IconSize.s))
                         Spacer(Modifier.width(Spacing.xs))
-                        Text(stringResource(R.string.location_short), color = AppTheme.colors.onBrandHeader, style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.location_short), color = secondaryText, style = MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.width(Spacing.s))
-                        Text(stringResource(R.string.get_directions), color = AppTheme.colors.onBrandHeader, style = MaterialTheme.typography.labelLarge,
+                        Text(stringResource(R.string.get_directions), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge,
                             textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline)
                     }
                     Spacer(Modifier.height(Spacing.s))
                     // 3. Search bar (opens the menu with search focused)
                     Surface(
-                        shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         modifier = Modifier.fillMaxWidth().height(Size.touch).clickable(role = Role.Button) { onOpenMenu(null, true) },
                     ) {
                         Row(Modifier.padding(horizontal = Spacing.l), verticalAlignment = Alignment.CenterVertically) {
@@ -246,9 +246,12 @@ fun HomeScreen(
             section(titles[0], s.popular, hindi, onOpenItem) { vm.quickAdd(it, maxQty) }
             section(titles[1], s.budget, hindi, onOpenItem) { vm.quickAdd(it, maxQty) }
             section(titles[2], s.thalis, hindi, onOpenItem, onMore = { onOpenMenu("thalis", false) }) { vm.quickAdd(it, maxQty) }
-            section(titles[3], s.breakfastSnacks, hindi, onOpenItem) { vm.quickAdd(it, maxQty) }
-            section(titles[4], s.veg, hindi, onOpenItem) { vm.quickAdd(it, maxQty) }
-            section(titles[5], s.nonVeg, hindi, onOpenItem) { vm.quickAdd(it, maxQty) }
+            // Three curated rows (was six near-duplicate carousels), then one clear way into the full menu
+            item(key = "full-menu") {
+                AppButton(stringResource(R.string.view_full_menu, s.totalDishes), { onOpenMenu(null, false) },
+                    Modifier.fillMaxWidth().padding(horizontal = Spacing.gutter, vertical = Spacing.l), variant = ButtonVariant.Secondary,
+                    icon = Icons.Default.RestaurantMenu)
+            }
 
             // 10. Customer reviews — verified public rating only, no fabricated reviews (FR-12)
             if (info?.rating != null) {

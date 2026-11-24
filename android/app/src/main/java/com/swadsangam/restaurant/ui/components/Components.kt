@@ -1,5 +1,6 @@
 package com.swadsangam.restaurant.ui.components
 
+import androidx.compose.material.icons.filled.DeleteOutline
 import com.swadsangam.restaurant.ui.theme.Border
 
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -128,9 +129,11 @@ fun QuantityStepper(quantity: Int, onChange: (Int) -> Unit, max: Int, modifier: 
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = { onChange(quantity - 1) }, Modifier.size(Size.touch)) {
-            Icon(Icons.Default.Remove, stringResource(R.string.decrease_quantity), tint = MaterialTheme.colorScheme.primary)
+            // At 1, "−" becomes a bin: removing needs no separate delete button (saves width on small phones)
+            if (quantity <= 1) Icon(Icons.Default.DeleteOutline, stringResource(R.string.remove), tint = MaterialTheme.colorScheme.primary)
+            else Icon(Icons.Default.Remove, stringResource(R.string.decrease_quantity), tint = MaterialTheme.colorScheme.primary)
         }
-        Text("$quantity", style = MaterialTheme.typography.titleMedium, modifier = Modifier.width(Spacing.xl), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        Text("$quantity", style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"), modifier = Modifier.width(Spacing.xl), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         IconButton(onClick = { onChange(quantity + 1) }, enabled = quantity < max, modifier = Modifier.size(Size.touch)) {
             Icon(Icons.Default.Add, stringResource(R.string.increase_quantity), tint = MaterialTheme.colorScheme.primary)
         }
@@ -145,6 +148,9 @@ fun DishRow(
     cartQuantity: Int,
     onOpen: () -> Unit,
     onAdd: () -> Unit,
+    /** Set for dishes without options: shows an inline − qty + stepper once the dish is in the cart. */
+    onSetQuantity: ((Int) -> Unit)? = null,
+    maxQuantity: Int = 20,
 ) {
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(horizontal = Spacing.gutter, vertical = Spacing.m),
@@ -176,11 +182,19 @@ fun DishRow(
             DishImage(item.imageUrl, Modifier.size(Size.thumbnail).clip(RoundedCornerShape(Radius.m)))
             Spacer(Modifier.height(Spacing.s))
             if (item.isAvailable) {
-                AppButton(
-                    text = if (cartQuantity > 0) stringResource(R.string.add_more, cartQuantity) else stringResource(R.string.add),
-                    onClick = if (item.options.isEmpty()) onAdd else onOpen,
-                    variant = ButtonVariant.Secondary, modifier = Modifier.width(Size.thumbnail),
-                )
+                if (cartQuantity > 0 && item.options.isEmpty() && onSetQuantity != null) {
+                    QuantityStepper(cartQuantity, onSetQuantity, maxQuantity, Modifier.width(Size.thumbnail + Spacing.xl))
+                } else {
+                    AppButton(
+                        text = if (cartQuantity > 0) stringResource(R.string.add_more, cartQuantity) else stringResource(R.string.add),
+                        onClick = if (item.options.isEmpty()) onAdd else onOpen,
+                        variant = ButtonVariant.Secondary, modifier = Modifier.width(Size.thumbnail),
+                    )
+                }
+                if (item.options.isNotEmpty()) {
+                    Text(stringResource(R.string.customizable), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = Spacing.xxs))
+                }
             }
         }
     }

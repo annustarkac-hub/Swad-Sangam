@@ -25,6 +25,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
@@ -119,12 +123,14 @@ fun AppTextField(
     visualTransformation: VisualTransformation = VisualTransformation.None,
     prefix: String? = null,
     enabled: Boolean = true,
+    trailingIcon: (@Composable () -> Unit)? = null,
 ) {
     OutlinedTextField(
         value = value, onValueChange = onValueChange, modifier = modifier.fillMaxWidth(),
         label = { Text(label) }, singleLine = singleLine, minLines = minLines, enabled = enabled,
         isError = error != null, keyboardOptions = keyboardOptions, visualTransformation = visualTransformation,
         prefix = prefix?.let { { Text(it) } },
+        trailingIcon = trailingIcon,
         supportingText = (error ?: supporting)?.let { msg -> { Text(msg) } },
         shape = RoundedCornerShape(Radius.m),
     )
@@ -281,5 +287,47 @@ fun SearchField(
             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
         ),
+    )
+}
+
+/** Password field with a 48 dp show/hide toggle. */
+@Composable
+fun PasswordField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    showLabel: String,
+    hideLabel: String,
+    modifier: Modifier = Modifier,
+    supporting: String? = null,
+    imeAction: androidx.compose.ui.text.input.ImeAction = androidx.compose.ui.text.input.ImeAction.Done,
+) {
+    var visible by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    AppTextField(
+        value, onValueChange, label, modifier, supporting = supporting,
+        keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password, imeAction = imeAction),
+        visualTransformation = if (visible) VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+        trailingIcon = {
+            androidx.compose.material3.IconButton({ visible = !visible }) {
+                Icon(if (visible) androidx.compose.material.icons.Icons.Default.VisibilityOff else androidx.compose.material.icons.Icons.Default.Visibility,
+                    contentDescription = if (visible) hideLabel else showLabel)
+            }
+        },
+    )
+}
+
+/** Standard confirm dialog (destructive actions get the error colour). */
+@Composable
+fun ConfirmDialog(title: String, confirm: String, dismiss: String, onConfirm: () -> Unit, onDismiss: () -> Unit, danger: Boolean = false, body: String? = null) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = body?.let { { Text(it) } },
+        confirmButton = {
+            androidx.compose.material3.TextButton({ onConfirm(); onDismiss() }) {
+                Text(confirm, color = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+            }
+        },
+        dismissButton = { androidx.compose.material3.TextButton(onDismiss) { Text(dismiss) } },
     )
 }

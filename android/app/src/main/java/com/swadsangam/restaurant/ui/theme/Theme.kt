@@ -15,77 +15,80 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Design language (FoodGenz-style, licensed by the owner): vivid orange on warm cream, near-black partner surfaces,
-// Plus Jakarta Sans. Buttons use the deeper orange so white text passes WCAG AA (4.6:1); the vivid one is the accent.
-private val BrandOrange = Color(0xFFD03905) // #D63B06 nudged darker: 4.7:1 on cream as well as white
-private val BrandOrangeBright = Color(0xFFFD4E11)
-private val Navy = Color(0xFF131217)
-private val Saffron = Color(0xFFFFB020)
-private val Cream = Color(0xFFFFF8F4)
-private val TextInk = Color(0xFF1B1A1F)
-private val ErrorRed = Color(0xFFC8392F)
+// Swad Sangam's own palette (same tokens as the website and the admin app): tandoor crimson + saffron on warm
+// porcelain, logo green as secondary. Replaces the earlier orange, which customers said looked like another food app.
+private val Crimson = Color(0xFFB83227)        // 5.9:1 with white, 5.5:1 on porcelain
+private val Saffron = Color(0xFFC27C0E)        // 3.4:1 on white (icons/stars)
+private val Porcelain = Color(0xFFF8F6F3)
+private val TextInk = Color(0xFF1A1716)
+private val ErrorRed = Color(0xFFC8332B)
 
 private val Light = lightColorScheme(
-    primary = BrandOrange,
+    primary = Crimson,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFFFE1D3),
-    onPrimaryContainer = Color(0xFF4A1300),
+    primaryContainer = Color(0xFFFDF0EE),
+    onPrimaryContainer = Color(0xFF5C1610),
     secondary = Color(0xFF1F5F2C),   // logo green
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFFFF0E8),
-    onSecondaryContainer = Color(0xFF4A1300),
+    secondaryContainer = Color(0xFFFEF3E0),
+    onSecondaryContainer = Color(0xFF4A2A00),
     tertiary = Saffron,
-    onTertiary = TextInk,
-    background = Cream,
+    onTertiary = Color.White,
+    background = Porcelain,
     onBackground = TextInk,
     surface = Color.White,
     onSurface = TextInk,
-    surfaceVariant = Color(0xFFFBF1EA),
-    onSurfaceVariant = Color(0xFF6F6A72),
+    surfaceVariant = Color(0xFFF2EFEA),
+    onSurfaceVariant = Color(0xFF6B635E),
     surfaceContainerLowest = Color.White,
-    surfaceContainerLow = Color(0xFFFFFBF8),
-    surfaceContainer = Color(0xFFFFF4EE),
-    surfaceContainerHigh = Color(0xFFFBEDE5),
-    surfaceContainerHighest = Color(0xFFF5E6DD),
+    surfaceContainerLow = Color(0xFFFCFBF9),
+    surfaceContainer = Color(0xFFF6F3EF),
+    surfaceContainerHigh = Color(0xFFF2EFEA),
+    surfaceContainerHighest = Color(0xFFEAE5DF),
     outline = Color(0xFF8F837B),        // 3.5:1 — checkbox, radio, field borders must be visible (WCAG 1.4.11)
-    outlineVariant = Color(0xFFF0E6DF),
+    outlineVariant = Color(0xFFEAE5DF),
     error = ErrorRed,
     onError = Color.White,
     errorContainer = Color(0xFFFDECEA),
     onErrorContainer = Color(0xFF5C1210),
+    inverseSurface = Color(0xFF2A2527),
+    inverseOnSurface = Color(0xFFF4F1F0),
+    inversePrimary = Color(0xFFFF7A6B),
 )
 
 // Every role is set so no Material default (purple) leaks into dark mode.
 private val Dark = darkColorScheme(
-    primary = Color(0xFFFF7A45),
-    onPrimary = Color(0xFF131217),
-    primaryContainer = Color(0xFF5A2410),
-    onPrimaryContainer = Color(0xFFFFDBC9),
+    primary = Color(0xFFFF7A6B),
+    onPrimary = Color(0xFF141214),
+    primaryContainer = Color(0xFF4A2421),
+    onPrimaryContainer = Color(0xFFFFDAD5),
     secondary = Color(0xFF8FD19E),   // logo green, lightened for dark mode
     onSecondary = Color(0xFF0B2416),
-    secondaryContainer = Color(0xFF2A1A14),
-    onSecondaryContainer = Color(0xFFFFDBC9),
-    tertiary = Saffron,
+    secondaryContainer = Color(0xFF3A2B12),
+    onSecondaryContainer = Color(0xFFFFE2B8),
+    tertiary = Color(0xFFF5B742),
     onTertiary = Color(0xFF2B1C00),
-    background = Color(0xFF131217),
-    onBackground = Color(0xFFF4F1F3),
+    background = Color(0xFF121115),
+    onBackground = Color(0xFFF4F1F0),
     surface = Color(0xFF1C1B21),
-    onSurface = Color(0xFFF4F1F3),
-    surfaceVariant = Color(0xFF25232B),
-    onSurfaceVariant = Color(0xFFA7A2AB),
+    onSurface = Color(0xFFF4F1F0),
+    surfaceVariant = Color(0xFF26242D),
+    onSurfaceVariant = Color(0xFFA59FA6),
     surfaceContainerLowest = Color(0xFF0D0C10),
     surfaceContainerLow = Color(0xFF18171C),
     surfaceContainer = Color(0xFF1C1B21),
-    surfaceContainerHigh = Color(0xFF25232B),
-    surfaceContainerHighest = Color(0xFF2E2C34),
+    surfaceContainerHigh = Color(0xFF26242D),
+    surfaceContainerHighest = Color(0xFF2F2D36),
     outline = Color(0xFF8A858F),
-    outlineVariant = Color(0xFF2E2C34),
+    outlineVariant = Color(0xFF2F2D36),
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF5C1E1A),
     onErrorContainer = Color(0xFFFFDAD6),
+    inverseSurface = Color(0xFFF4F1F0),
+    inverseOnSurface = Color(0xFF1C1B21),
+    inversePrimary = Crimson,
 )
-
 
 // Plus Jakarta Sans (bundled, SIL OFL) — headings bold/extra-bold, prices bold
 val JakartaSans = FontFamily(
@@ -127,7 +130,8 @@ val AppShapes = androidx.compose.material3.Shapes(
     extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(Radius.xl),
 )
 
-val PriceStyle = TextStyle(fontFamily = JakartaSans, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+/** Prices and quantities use tabular figures so numbers never jump when they change. */
+val PriceStyle = TextStyle(fontFamily = JakartaSans, fontWeight = FontWeight.Bold, fontSize = 16.sp, fontFeatureSettings = "tnum")
 
 @Composable
 fun SwadSangamTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
