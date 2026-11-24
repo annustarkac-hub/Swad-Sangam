@@ -1,11 +1,21 @@
 package com.swadsangam.restaurant.ui.home
 
+import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.foundation.layout.statusBarsPadding
+import com.swadsangam.restaurant.ui.theme.secondaryText
+import com.swadsangam.restaurant.ui.components.ButtonVariant
+import com.swadsangam.restaurant.ui.components.AppCard
+import com.swadsangam.restaurant.ui.components.AppButton
+import com.swadsangam.restaurant.ui.theme.Radius
+import com.swadsangam.restaurant.ui.theme.AppTheme
+import com.swadsangam.restaurant.ui.theme.Size
+import com.swadsangam.restaurant.ui.theme.IconSize
+import com.swadsangam.restaurant.ui.theme.Spacing
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.heightIn
-import com.swadsangam.restaurant.ui.theme.Dimens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -91,58 +101,56 @@ fun HomeScreen(
     )
 
     PullToRefreshBox(isRefreshing = s.sync is SyncState.Loading, onRefresh = { vm.refresh() }, modifier = Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = Spacing.xl)) {
             // 1–2. Logo, name, location + directions shortcut
             item {
                 Column(
-                    Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).padding(16.dp),
+                    Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).statusBarsPadding().padding(Spacing.l),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(shape = RoundedCornerShape(Dimens.radiusM), color = Color.White, modifier = Modifier.size(52.dp)) {
+                        Surface(shape = RoundedCornerShape(Radius.m), color = MaterialTheme.colorScheme.surface, modifier = Modifier.size(Size.avatar)) {
                             androidx.compose.foundation.Image(
                                 androidx.compose.ui.res.painterResource(R.drawable.logo_mark), contentDescription = stringResource(R.string.app_name),
-                                modifier = Modifier.padding(5.dp),
+                                modifier = Modifier.padding(Spacing.xs),
                             )
                         }
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(Spacing.m))
                         Column(Modifier.weight(1f)) {
-                            Text(info?.name ?: stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall, color = Color.White)
-                            Text(stringResource(R.string.home_tagline), color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                            Text(info?.name ?: stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onBackground)
+                            Text(stringResource(R.string.home_tagline), color = secondaryText, style = MaterialTheme.typography.bodyMedium)
                         }
                         // Pure Veg Mode (remembered on this phone)
                         Column(
-                            Modifier.toggleable(value = s.pureVeg, role = Role.Switch, onValueChange = { vm.setPureVeg(it) }).padding(start = 8.dp),
+                            Modifier.toggleable(value = s.pureVeg, role = Role.Switch, onValueChange = { vm.setPureVeg(it) }).padding(start = Spacing.s),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Switch(checked = s.pureVeg, onCheckedChange = null,
-                                colors = SwitchDefaults.colors(checkedTrackColor = com.swadsangam.restaurant.ui.theme.SuccessGreen,
-                                    checkedThumbColor = Color.White, uncheckedTrackColor = Color.White.copy(alpha = 0.25f),
-                                    uncheckedThumbColor = Color.White, uncheckedBorderColor = Color.White.copy(alpha = 0.6f)))
-                            Text(stringResource(R.string.pure_veg), color = Color.White, style = MaterialTheme.typography.labelSmall)
+                                colors = SwitchDefaults.colors(checkedTrackColor = AppTheme.colors.veg, checkedThumbColor = MaterialTheme.colorScheme.surface))
+                            Text(stringResource(R.string.pure_veg), color = AppTheme.colors.veg, style = MaterialTheme.typography.labelSmall)
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Spacing.s))
                     Row(
-                        Modifier.heightIn(min = 48.dp).clickable { info?.let { vm.track(Analytics.DIRECTIONS); Intents.directions(context, it) } },
+                        Modifier.heightIn(min = Size.touch).clickable { info?.let { vm.track(Analytics.DIRECTIONS); Intents.directions(context, it) } },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Default.LocationOn, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.location_short), color = Color.White, style = MaterialTheme.typography.bodySmall)
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.get_directions), color = Color.White, style = MaterialTheme.typography.labelLarge,
+                        Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(IconSize.s))
+                        Spacer(Modifier.width(Spacing.xs))
+                        Text(stringResource(R.string.location_short), color = secondaryText, style = MaterialTheme.typography.bodySmall)
+                        Spacer(Modifier.width(Spacing.s))
+                        Text(stringResource(R.string.get_directions), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge,
                             textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline)
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Spacing.s))
                     // 3. Search bar (opens the menu with search focused)
                     Surface(
-                        shape = RoundedCornerShape(Dimens.radiusM), color = MaterialTheme.colorScheme.surface,
-                        modifier = Modifier.fillMaxWidth().height(Dimens.touch).clickable { onOpenMenu(null, true) },
+                        shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        modifier = Modifier.fillMaxWidth().height(Size.touch).clickable(role = Role.Button) { onOpenMenu(null, true) },
                     ) {
-                        Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.search_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(Modifier.padding(horizontal = Spacing.l), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(Spacing.s))
+                            Text(stringResource(R.string.search_hint), color = secondaryText, style = MaterialTheme.typography.bodyLarge)
                         }
                     }
                 }
@@ -176,11 +184,8 @@ fun HomeScreen(
                         else -> EmptyState(stringResource(R.string.loading_menu))
                     }
                     if (info != null) {
-                        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { vm.track(Analytics.CALL); Intents.call(context, info.phone) }, Modifier.weight(1f)) {
-                                Text(stringResource(R.string.call_restaurant))
-                            }
-                        }
+                        AppButton(stringResource(R.string.call_restaurant), { vm.track(Analytics.CALL); Intents.call(context, info.phone) },
+                            Modifier.fillMaxWidth().padding(Spacing.gutter), icon = Icons.Default.Call)
                     }
                 }
             }
@@ -189,15 +194,15 @@ fun HomeScreen(
             s.heroItem?.let { hero ->
                 item {
                     Card(
-                        Modifier.fillMaxWidth().padding(16.dp).height(180.dp).clickable { onOpenMenu("thalis", false) },
-                        shape = RoundedCornerShape(Dimens.radiusL),
+                        Modifier.fillMaxWidth().padding(Spacing.gutter).height(Size.heroBanner).clickable { onOpenMenu("thalis", false) },
+                        shape = MaterialTheme.shapes.large,
                     ) {
                         Box {
                             DishImage(hero.imageUrl, Modifier.fillMaxSize())
-                            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000)))))
-                            Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
-                                Text(stringResource(R.string.explore_thalis), style = MaterialTheme.typography.titleLarge, color = Color.White)
-                                Text(stringResource(R.string.fresh_budget), color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, MaterialTheme.colorScheme.scrim.copy(alpha = 0.8f)))))
+                            Column(Modifier.align(Alignment.BottomStart).padding(Spacing.l)) {
+                                Text(stringResource(R.string.explore_thalis), style = MaterialTheme.typography.titleLarge, color = AppTheme.colors.onBrandHeader)
+                                Text(stringResource(R.string.fresh_budget), color = AppTheme.colors.onBrandHeader, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
@@ -207,17 +212,17 @@ fun HomeScreen(
             // Offers / promotions
             if (s.offers.isNotEmpty()) {
                 item {
-                    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LazyRow(contentPadding = PaddingValues(horizontal = Spacing.l), horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
                         items(s.offers, key = { it.id }) { o ->
-                            Card(Modifier.width(280.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                                Column(Modifier.padding(12.dp)) {
+                            AppCard(Modifier.width(Size.offerCard), padding = PaddingValues(Spacing.m), container = MaterialTheme.colorScheme.secondaryContainer) {
+                                Column {
                                     if (o.imageUrl != null) {
-                                        DishImage(o.imageUrl, Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(8.dp)))
-                                        Spacer(Modifier.height(8.dp))
+                                        DishImage(o.imageUrl, Modifier.fillMaxWidth().height(Size.offerImage).clip(RoundedCornerShape(Radius.s)))
+                                        Spacer(Modifier.height(Spacing.s))
                                     }
                                     Text(o.title, style = MaterialTheme.typography.titleMedium)
-                                    o.description?.let { Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-                                    o.couponCode?.let { Spacer(Modifier.height(4.dp)); Tag(stringResource(R.string.use_code, it)) }
+                                    o.description?.let { Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSecondaryContainer) }
+                                    o.couponCode?.let { Spacer(Modifier.height(Spacing.xs)); Tag(stringResource(R.string.use_code, it)) }
                                 }
                             }
                         }
@@ -228,9 +233,9 @@ fun HomeScreen(
             // Category chips
             if (s.categories.isNotEmpty()) {
                 item {
-                    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyRow(contentPadding = PaddingValues(horizontal = Spacing.l, vertical = Spacing.m), horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
                         items(s.categories, key = { it.id }) { c ->
-                            AssistChip(onClick = { onOpenMenu(c.id, false) },
+                            AssistChip(onClick = { onOpenMenu(c.id, false) }, modifier = Modifier.heightIn(min = Size.touch),
                                 label = { Text(if (hindi && !c.nameHi.isNullOrBlank()) c.nameHi else c.name) })
                         }
                     }
@@ -241,24 +246,27 @@ fun HomeScreen(
             section(titles[0], s.popular, hindi, onOpenItem) { vm.quickAdd(it, maxQty) }
             section(titles[1], s.budget, hindi, onOpenItem) { vm.quickAdd(it, maxQty) }
             section(titles[2], s.thalis, hindi, onOpenItem, onMore = { onOpenMenu("thalis", false) }) { vm.quickAdd(it, maxQty) }
-            section(titles[3], s.breakfastSnacks, hindi, onOpenItem) { vm.quickAdd(it, maxQty) }
-            section(titles[4], s.veg, hindi, onOpenItem) { vm.quickAdd(it, maxQty) }
-            section(titles[5], s.nonVeg, hindi, onOpenItem) { vm.quickAdd(it, maxQty) }
+            // Three curated rows (was six near-duplicate carousels), then one clear way into the full menu
+            item(key = "full-menu") {
+                AppButton(stringResource(R.string.view_full_menu, s.totalDishes), { onOpenMenu(null, false) },
+                    Modifier.fillMaxWidth().padding(horizontal = Spacing.gutter, vertical = Spacing.l), variant = ButtonVariant.Secondary,
+                    icon = Icons.Default.RestaurantMenu)
+            }
 
             // 10. Customer reviews — verified public rating only, no fabricated reviews (FR-12)
             if (info?.rating != null) {
                 item {
                     SectionHeader(stringResource(R.string.customer_reviews))
-                    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Star, null, tint = MaterialTheme.colorScheme.tertiary)
-                            Spacer(Modifier.width(8.dp))
+                    AppCard(Modifier.padding(horizontal = Spacing.gutter)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Star, null, tint = AppTheme.colors.rating)
+                            Spacer(Modifier.width(Spacing.s))
                             Column(Modifier.weight(1f)) {
                                 Text(stringResource(R.string.rating_value, info.rating.toString()), style = MaterialTheme.typography.titleMedium)
-                                info.reviewCount?.let { Text(stringResource(R.string.public_reviews, it), style = MaterialTheme.typography.bodySmall) }
+                                info.reviewCount?.let { Text(stringResource(R.string.public_reviews, it), style = MaterialTheme.typography.bodySmall, color = secondaryText) }
                             }
                             info.reviewsUrl?.let { url ->
-                                OutlinedButton(onClick = { Intents.openUrl(context, url) }) { Text(stringResource(R.string.read_reviews)) }
+                                AppButton(stringResource(R.string.read_reviews), { Intents.openUrl(context, url) }, variant = ButtonVariant.Text)
                             }
                         }
                     }
@@ -269,23 +277,20 @@ fun HomeScreen(
             if (info != null) {
                 item {
                     SectionHeader(stringResource(R.string.timings), stringResource(R.string.more_info), onOpenInfo)
-                    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                        Column(Modifier.padding(16.dp)) {
+                    AppCard(Modifier.padding(horizontal = Spacing.gutter)) {
+                        Column {
                             HoursText(info)
-                            Spacer(Modifier.height(12.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = { vm.track(Analytics.CALL); Intents.call(context, info.phone) }, Modifier.weight(1f)) {
-                                    Icon(Icons.Default.Call, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.call))
-                                }
-                                OutlinedButton(onClick = { vm.track(Analytics.DIRECTIONS); Intents.directions(context, info) }, Modifier.weight(1f)) {
-                                    Icon(Icons.Default.Directions, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.directions))
-                                }
+                            Spacer(Modifier.height(Spacing.m))
+                            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                                AppButton(stringResource(R.string.call), { vm.track(Analytics.CALL); Intents.call(context, info.phone) }, Modifier.weight(1f),
+                                    variant = ButtonVariant.Secondary, icon = Icons.Default.Call)
+                                AppButton(stringResource(R.string.directions), { vm.track(Analytics.DIRECTIONS); Intents.directions(context, info) }, Modifier.weight(1f),
+                                    variant = ButtonVariant.Secondary, icon = Icons.Default.Directions)
                             }
-                            Spacer(Modifier.height(8.dp))
-                            Button(onClick = { onOpenMenu(null, false) }, Modifier.fillMaxWidth()) {
-                                Text(stringResource(if (info.acceptingOrders && info.anyOrderTypeEnabled) R.string.order_now else R.string.view_menu))
-                            }
-                            OutlinedButton(onClick = onOpenOrders, Modifier.fillMaxWidth()) { Text(stringResource(R.string.my_orders)) }
+                            Spacer(Modifier.height(Spacing.s))
+                            AppButton(stringResource(if (info.acceptingOrders && info.anyOrderTypeEnabled) R.string.order_now else R.string.view_menu),
+                                { onOpenMenu(null, false) }, Modifier.fillMaxWidth(), large = true)
+                            AppButton(stringResource(R.string.my_orders), onOpenOrders, Modifier.fillMaxWidth(), variant = ButtonVariant.Text)
                         }
                     }
                 }
@@ -306,7 +311,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.section(
     item(key = "section-$title") {
         Column {
             SectionHeader(title, if (onMore != null) stringResource(R.string.see_all) else null, onMore)
-            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            LazyRow(contentPadding = PaddingValues(horizontal = Spacing.l), horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
                 items(items, key = { it.id }) { item -> DishCard(item, hindi, { onOpenItem(item.id) }, { onAdd(item) }) }
             }
         }
@@ -315,21 +320,21 @@ private fun androidx.compose.foundation.lazy.LazyListScope.section(
 
 @Composable
 private fun DishCard(item: MenuItem, hindi: Boolean, onOpen: () -> Unit, onAdd: () -> Unit) {
-    Card(Modifier.width(164.dp).clickable(onClick = onOpen), shape = RoundedCornerShape(Dimens.radiusM)) {
-        DishImage(item.imageUrl, Modifier.fillMaxWidth().height(110.dp))
-        Column(Modifier.padding(10.dp)) {
+    Card(Modifier.width(Size.cardWidth).clickable(onClick = onOpen), shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+        DishImage(item.imageUrl, Modifier.fillMaxWidth().height(Size.cardImage))
+        Column(Modifier.padding(Spacing.m)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                FoodTypeMark(item.foodType, 14.dp)
-                Spacer(Modifier.width(6.dp))
+                FoodTypeMark(item.foodType, IconSize.xs)
+                Spacer(Modifier.width(Spacing.s))
                 Text(item.displayName(hindi), style = MaterialTheme.typography.titleSmall, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis)
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(if (item.variantGroups.isEmpty()) com.swadsangam.restaurant.core.Money.format(item.pricePaise)
                     else stringResource(R.string.from_price, com.swadsangam.restaurant.core.Money.format(item.pricePaise)),
                     style = com.swadsangam.restaurant.ui.theme.PriceStyle, modifier = Modifier.weight(1f))
-                androidx.compose.material3.TextButton(onClick = if (item.options.isEmpty()) onAdd else onOpen,
-                    modifier = Modifier.heightIn(min = Dimens.touch)) { Text(stringResource(R.string.add)) }
+                AppButton(stringResource(R.string.add), if (item.options.isEmpty()) onAdd else onOpen, variant = ButtonVariant.Secondary)
             }
         }
     }

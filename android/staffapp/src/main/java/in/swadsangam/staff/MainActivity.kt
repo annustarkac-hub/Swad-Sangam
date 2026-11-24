@@ -1,10 +1,17 @@
 package `in`.swadsangam.staff
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.ActivityNotFoundException
 import android.content.ContentValues
 import android.content.Intent
-import android.graphics.Color
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -28,12 +35,19 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import java.io.File
 
 /**
  * Swad Sangam Admin / Staff app. Shows the restaurant's admin web app (same login, roles and data)
@@ -44,14 +58,31 @@ import androidx.appcompat.app.AppCompatActivity
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
     private lateinit var offline: View
+    private lateinit var loading: View
     private var fileCallback: ValueCallback<Array<Uri>>? = null
-    /** Kept alive until Android has printed it (a local WebView could be garbage-collected mid-print). */
+    /** Kept alive until Android has printed it (a local WebView could be garbage-collected mid-print); destroyed on the next print / exit. */
     private var printer: WebView? = null
+    /** onPageFinished also runs after a failed load — this keeps the offline screen up until a load really succeeds. */
+    private var mainFrameFailed = false
+    private var cameraUri: Uri? = null
+    private var notifId = 1000
 
-    private val pickFiles = registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
-        fileCallback?.onReceiveValue(uris.toTypedArray())
+    /** File chooser: any accepted type (images AND PDFs), several files when allowed, plus "Take photo". */
+    private val chooseFiles = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
+        val data = res.data
+        val uris: Array<Uri>? = when {
+            res.resultCode != RESULT_OK -> null
+            data?.clipData != null -> Array(data.clipData!!.itemCount) { data.clipData!!.getItemAt(it).uri }
+            data?.data != null -> arrayOf(data.data!!)
+            cameraUri != null -> arrayOf(cameraUri!!) // camera wrote to our file; no data comes back
+            else -> null
+        }
+        fileCallback?.onReceiveValue(uris)
         fileCallback = null
+        cameraUri = null
     }
+
+    private val askNotify = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     private val siteBase: Uri = Uri.parse(BuildConfig.SITE_BASE)
 
@@ -59,9 +90,14 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (BuildConfig.KEEP_SCREEN_ON) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        createAlertChannel()
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            askNotify.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
 
         web = WebView(this).apply {
-            setBackgroundColor(Color.parseColor("#131217"))
+            setBackgroundColor(getColor(R.color.staff_bg))
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true          // login session + preferences
             settings.mediaPlaybackRequiresUserGesture = false // new-order alert sound
@@ -77,8 +113,10 @@ class MainActivity : AppCompatActivity() {
         CookieManager.getInstance().setAcceptCookie(true)
 
         offline = offlineView()
+        loading = loadingView()
         val root = FrameLayout(this)
         root.addView(web, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        root.addView(loading, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         root.addView(offline, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         setContentView(root)
 
@@ -99,7 +137,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() { super.onResume(); web.onResume() }
     override fun onPause() { web.onPause(); CookieManager.getInstance().flush(); super.onPause() }
-    override fun onDestroy() { web.destroy(); super.onDestroy() }
+    override fun onDestroy() { printer?.destroy(); printer = null; web.destroy(); super.onDestroy() }
 
     private fun isOwnSite(uri: Uri) = uri.scheme == "https" && uri.host == siteBase.host && (uri.path ?: "").startsWith(siteBase.path ?: "/")
 
@@ -120,12 +158,20 @@ class MainActivity : AppCompatActivity() {
             return true
         }
 
+        override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+            mainFrameFailed = false
+        }
+
         override fun onPageFinished(view: WebView, url: String?) {
-            offline.visibility = View.GONE
+            loading.visibility = View.GONE
+            if (!mainFrameFailed) offline.visibility = View.GONE
         }
 
         override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-            if (request.isForMainFrame) offline.visibility = View.VISIBLE
+            if (request.isForMainFrame) {
+                mainFrameFailed = true
+                offline.visibility = View.VISIBLE
+            }
         }
     }
 
@@ -133,8 +179,18 @@ class MainActivity : AppCompatActivity() {
         override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
             fileCallback?.onReceiveValue(null)
             fileCallback = callback
-            val type = params.acceptTypes.firstOrNull { it.isNotBlank() } ?: "*/*"
-            return try { pickFiles.launch(type); true } catch (e: ActivityNotFoundException) { fileCallback = null; false }
+            // accept="image/*,application/pdf" arrives as one or more strings; split and keep every type
+            val types = params.acceptTypes.flatMap { it.split(',') }.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+            val pick = Intent(Intent.ACTION_GET_CONTENT).addCategory(Intent.CATEGORY_OPENABLE).apply {
+                type = if (types.size == 1) types[0] else "*/*"
+                if (types.size > 1) putExtra(Intent.EXTRA_MIME_TYPES, types.toTypedArray())
+                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, params.mode == FileChooserParams.MODE_OPEN_MULTIPLE)
+            }
+            val chooser = Intent.createChooser(pick, getString(R.string.choose_file))
+            if (types.isEmpty() || types.any { it.startsWith("image/") || it == "*/*" }) {
+                cameraIntent()?.let { chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(it)) }
+            }
+            return try { chooseFiles.launch(chooser); true } catch (e: ActivityNotFoundException) { fileCallback = null; false }
         }
     }
 
@@ -146,6 +202,7 @@ class MainActivity : AppCompatActivity() {
         fun printHtml(title: String, html: String) = main.post {
             // Render the bill / KOT / payslip in an off-screen WebView, then hand it to Android printing
             val p = WebView(this@MainActivity)
+            printer?.destroy()
             printer = p
             p.settings.javaScriptEnabled = false
             p.webViewClient = object : WebViewClient() {
@@ -179,6 +236,10 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun openExternal(url: String) = main.post { openOutside(Uri.parse(url)) }
+
+        /** New online order / new delivery: a top-bar notification with sound (a WebView has no Notification API). */
+        @JavascriptInterface
+        fun notify(title: String, body: String) = main.post { showAlert(title.take(80), body.take(400)) }
     }
 
     private fun print(title: String, view: WebView) {
@@ -186,22 +247,82 @@ class MainActivity : AppCompatActivity() {
         pm.print("Swad Sangam – $title", view.createPrintDocumentAdapter(title), PrintAttributes.Builder().build())
     }
 
+    /** Camera capture into our cache, shared through FileProvider (no storage permission needed). */
+    private fun cameraIntent(): Intent? = runCatching {
+        val dir = File(cacheDir, "camera").apply { mkdirs() }
+        dir.listFiles()?.filter { System.currentTimeMillis() - it.lastModified() > 86_400_000 }?.forEach { it.delete() }
+        val file = File(dir, "photo_${System.currentTimeMillis()}.jpg")
+        val uri = FileProvider.getUriForFile(this, "$packageName.files", file)
+        cameraUri = uri
+        Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE).putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri)
+            .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            .takeIf { it.resolveActivity(packageManager) != null }
+    }.getOrNull()
+
+    private fun createAlertChannel() {
+        val sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val ch = NotificationChannel(ALERT_CHANNEL, getString(R.string.notif_channel_orders), NotificationManager.IMPORTANCE_HIGH).apply {
+            description = getString(R.string.notif_channel_orders_desc)
+            enableVibration(true)
+            setSound(sound, AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build())
+        }
+        getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
+    }
+
+    private fun showAlert(title: String, body: String) {
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+        val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val n = NotificationCompat.Builder(this, ALERT_CHANNEL)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setColor(getColor(R.color.staff_brand))
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .build()
+        try { NotificationManagerCompat.from(this).notify(notifId++, n) } catch (_: SecurityException) { }
+    }
+
+    /** Branded screen while the first page loads on slow data (instead of a blank dark screen). */
+    private fun loadingView(): View = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER
+        setBackgroundColor(getColor(R.color.staff_bg))
+        addView(ImageView(context).apply { setImageResource(R.mipmap.ic_launcher) }, LinearLayout.LayoutParams(dp(88), dp(88)))
+        addView(ProgressBar(context).apply { isIndeterminate = true }, LinearLayout.LayoutParams(dp(40), dp(40)).apply { topMargin = dp(20) })
+        addView(TextView(context).apply {
+            setText(R.string.loading); textSize = 15f; setTextColor(getColor(R.color.staff_on_bg_muted)); gravity = Gravity.CENTER
+            setPadding(0, dp(12), 0, 0)
+        })
+    }
+
+    companion object { private const val ALERT_CHANNEL = "staff_alerts" }
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
     private fun offlineView(): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER
-        setBackgroundColor(Color.parseColor("#131217"))
-        setPadding(64, 64, 64, 64)
+        setBackgroundColor(getColor(R.color.staff_bg))
+        val pad = dp(24); setPadding(pad, pad, pad, pad)
         visibility = View.GONE
         addView(TextView(context).apply {
-            setText(R.string.offline_title); textSize = 22f; setTextColor(Color.WHITE); gravity = Gravity.CENTER
+            setText(R.string.offline_title); textSize = 22f; setTextColor(getColor(R.color.staff_on_bg)); gravity = Gravity.CENTER
         })
         addView(TextView(context).apply {
-            setText(R.string.offline_body); textSize = 15f; setTextColor(Color.parseColor("#C9C5CC")); gravity = Gravity.CENTER
-            setPadding(0, 24, 0, 32)
+            setText(R.string.offline_body); textSize = 15f; setTextColor(getColor(R.color.staff_on_bg_muted)); gravity = Gravity.CENTER
+            setPadding(0, dp(12), 0, dp(20))
         })
         addView(Button(context).apply {
             setText(R.string.retry)
-            setOnClickListener { this@MainActivity.offline.visibility = View.GONE; web.reload() }
+            minHeight = dp(48); minimumHeight = dp(48)
+            setBackgroundColor(getColor(R.color.staff_brand)); setTextColor(getColor(R.color.staff_on_bg))
+            setOnClickListener { this@MainActivity.mainFrameFailed = false; this@MainActivity.offline.visibility = View.GONE; web.reload() }
         })
     }
 }

@@ -1,5 +1,15 @@
 package com.swadsangam.restaurant.ui.components
 
+import androidx.compose.material.icons.filled.DeleteOutline
+import com.swadsangam.restaurant.ui.theme.Border
+
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Info
+import com.swadsangam.restaurant.ui.theme.AppTheme
+import com.swadsangam.restaurant.ui.theme.IconSize
+import com.swadsangam.restaurant.ui.theme.Radius
+import com.swadsangam.restaurant.ui.theme.Size
+import com.swadsangam.restaurant.ui.theme.Spacing
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -14,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import com.swadsangam.restaurant.ui.theme.Dimens
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,17 +61,16 @@ import com.swadsangam.restaurant.R
 import com.swadsangam.restaurant.core.Money
 import com.swadsangam.restaurant.domain.FoodType
 import com.swadsangam.restaurant.domain.MenuItem
-import com.swadsangam.restaurant.ui.theme.NonVegBrown
 import com.swadsangam.restaurant.ui.theme.PriceStyle
-import com.swadsangam.restaurant.ui.theme.SuccessGreen
 
 /** Standard Indian veg (green dot) / non-veg (brown triangle) marks — visually distinct (PRD §2.3). */
 @Composable
-fun FoodTypeMark(type: FoodType, size: Dp = 16.dp) {
-    val color = if (type == FoodType.VEG) SuccessGreen else NonVegBrown
+fun FoodTypeMark(type: FoodType, size: Dp = Size.vegMark) {
+    val color = if (type == FoodType.VEG) AppTheme.colors.veg else AppTheme.colors.nonVeg
     val label = stringResource(if (type == FoodType.VEG) R.string.veg else R.string.non_veg)
     Box(
-        Modifier.size(size).border(1.5.dp, color, RoundedCornerShape(2.dp)).semantics { contentDescription = label },
+        // Indian FSSAI-style mark: square outline with a dot (veg) or triangle (non-veg)
+        Modifier.size(size).border(Border.mark, color, RoundedCornerShape(Radius.xxs)).semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.size(size * 0.55f)) {
@@ -100,7 +108,7 @@ fun Price(paise: Int, modifier: Modifier = Modifier, color: Color = MaterialThem
 fun DishImage(url: String?, modifier: Modifier) {
     val placeholder: @Composable () -> Unit = {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-            Icon(Icons.Default.Restaurant, null, tint = MaterialTheme.colorScheme.outline)
+            Icon(Icons.Default.Restaurant, null, Modifier.size(IconSize.l), tint = MaterialTheme.colorScheme.outline)
         }
     }
     if (url.isNullOrBlank()) {
@@ -117,14 +125,16 @@ fun DishImage(url: String?, modifier: Modifier) {
 @Composable
 fun QuantityStepper(quantity: Int, onChange: (Int) -> Unit, max: Int, modifier: Modifier = Modifier) {
     Row(
-        modifier.border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(Dimens.radiusS)),
+        modifier.border(Border.hairline, MaterialTheme.colorScheme.primary, RoundedCornerShape(Radius.s)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = { onChange(quantity - 1) }, Modifier.size(48.dp)) {
-            Icon(Icons.Default.Remove, stringResource(R.string.decrease_quantity), tint = MaterialTheme.colorScheme.primary)
+        IconButton(onClick = { onChange(quantity - 1) }, Modifier.size(Size.touch)) {
+            // At 1, "−" becomes a bin: removing needs no separate delete button (saves width on small phones)
+            if (quantity <= 1) Icon(Icons.Default.DeleteOutline, stringResource(R.string.remove), tint = MaterialTheme.colorScheme.primary)
+            else Icon(Icons.Default.Remove, stringResource(R.string.decrease_quantity), tint = MaterialTheme.colorScheme.primary)
         }
-        Text("$quantity", fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        IconButton(onClick = { onChange(quantity + 1) }, enabled = quantity < max, modifier = Modifier.size(48.dp)) {
+        Text("$quantity", style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"), modifier = Modifier.width(Spacing.xl), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        IconButton(onClick = { onChange(quantity + 1) }, enabled = quantity < max, modifier = Modifier.size(Size.touch)) {
             Icon(Icons.Default.Add, stringResource(R.string.increase_quantity), tint = MaterialTheme.colorScheme.primary)
         }
     }
@@ -138,23 +148,27 @@ fun DishRow(
     cartQuantity: Int,
     onOpen: () -> Unit,
     onAdd: () -> Unit,
+    /** Set for dishes without options: shows an inline − qty + stepper once the dish is in the cart. */
+    onSetQuantity: ((Int) -> Unit)? = null,
+    maxQuantity: Int = 20,
 ) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(horizontal = 16.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(horizontal = Spacing.gutter, vertical = Spacing.m),
         verticalAlignment = Alignment.Top,
     ) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 FoodTypeMark(item.foodType)
                 if (item.isPopular) {
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Spacing.s))
                     Tag(stringResource(R.string.popular))
                 }
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             Text(item.displayName(hindi), style = MaterialTheme.typography.titleMedium)
             Text(priceLabel(item), style = PriceStyle)
             item.displayDescription(hindi)?.let {
+                Spacer(Modifier.height(Spacing.xs))
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
@@ -163,70 +177,74 @@ fun DishRow(
                     style = MaterialTheme.typography.labelMedium)
             }
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Spacing.m))
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            DishImage(item.imageUrl, Modifier.size(104.dp).clip(RoundedCornerShape(Dimens.radiusM)))
-            Spacer(Modifier.height(6.dp))
+            DishImage(item.imageUrl, Modifier.size(Size.thumbnail).clip(RoundedCornerShape(Radius.m)))
+            Spacer(Modifier.height(Spacing.s))
             if (item.isAvailable) {
-                OutlinedButton(onClick = if (item.options.isEmpty()) onAdd else onOpen, modifier = Modifier.heightIn(min = Dimens.touch),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)) {
-                    Text(if (cartQuantity > 0) stringResource(R.string.add_more, cartQuantity) else stringResource(R.string.add))
+                if (cartQuantity > 0 && item.options.isEmpty() && onSetQuantity != null) {
+                    QuantityStepper(cartQuantity, onSetQuantity, maxQuantity, Modifier.width(Size.thumbnail + Spacing.xl))
+                } else {
+                    AppButton(
+                        text = if (cartQuantity > 0) stringResource(R.string.add_more, cartQuantity) else stringResource(R.string.add),
+                        onClick = if (item.options.isEmpty()) onAdd else onOpen,
+                        variant = ButtonVariant.Secondary, modifier = Modifier.width(Size.thumbnail),
+                    )
+                }
+                if (item.options.isNotEmpty()) {
+                    Text(stringResource(R.string.customizable), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = Spacing.xxs))
                 }
             }
         }
     }
 }
 
+/** Small pill label. Kept for existing call sites; see [StatusChip]. */
 @Composable
-fun Tag(text: String, color: Color = MaterialTheme.colorScheme.secondaryContainer) {
-    Surface(color = color, shape = RoundedCornerShape(50)) {
-        Text(text, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
-    }
-}
+fun Tag(text: String, tone: Tone = Tone.Brand) = StatusChip(text, tone = tone)
 
 @Composable
 fun SectionHeader(title: String, action: String? = null, onAction: (() -> Unit)? = null) {
-    Row(Modifier.fillMaxWidth().padding(start = Dimens.gutter, end = 8.dp, top = 20.dp, bottom = 8.dp),
+    Row(Modifier.fillMaxWidth().padding(start = Spacing.gutter, end = Spacing.s, top = Spacing.xl, bottom = Spacing.s),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Text(title, style = MaterialTheme.typography.titleLarge)
         if (action != null && onAction != null) {
-            androidx.compose.material3.TextButton(onClick = onAction) { Text(action) }
+            AppButton(action, onAction, variant = ButtonVariant.Text)
         }
     }
 }
 
+/** Screen-level banner with the standard gutter. isError → error tone, otherwise warning tone. */
 @Composable
-fun InfoBanner(text: String, modifier: Modifier = Modifier, isError: Boolean = false, action: String? = null, onAction: (() -> Unit)? = null) {
-    Card(
-        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
-        ),
-    ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            if (action != null && onAction != null) {
-                androidx.compose.material3.TextButton(onClick = onAction) { Text(action) }
-            }
-        }
-    }
+fun InfoBanner(text: String, modifier: Modifier = Modifier, isError: Boolean = false, action: String? = null, onAction: (() -> Unit)? = null,
+               tone: Tone = if (isError) Tone.Error else Tone.Warning) {
+    StatusBanner(text, modifier.padding(horizontal = Spacing.gutter, vertical = Spacing.xs), tone = tone,
+        icon = if (tone == Tone.Error) Icons.Default.ErrorOutline else Icons.Default.Info, action = action, onAction = onAction)
 }
 
+/** Empty / offline / not-found state: illustration icon, title, body and one action. */
 @Composable
 fun EmptyState(title: String, body: String? = null, actionLabel: String? = null, onAction: (() -> Unit)? = null, offline: Boolean = false) {
-    Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(if (offline) Icons.Default.CloudOff else Icons.Default.Restaurant, null,
-            Modifier.size(56.dp), tint = MaterialTheme.colorScheme.outline)
-        Spacer(Modifier.height(12.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.xxl, vertical = Spacing.xxxl), horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(shape = androidx.compose.foundation.shape.CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(IconSize.hero + Spacing.xl)) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(if (offline) Icons.Default.CloudOff else Icons.Default.Restaurant, null, Modifier.size(IconSize.hero / 2),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
+        }
+        Spacer(Modifier.height(Spacing.l))
+        Text(title, style = MaterialTheme.typography.titleLarge, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         body?.let {
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.s))
             Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
         if (actionLabel != null && onAction != null) {
-            Spacer(Modifier.height(12.dp))
-            Button(onClick = onAction) { Text(actionLabel) }
+            Spacer(Modifier.height(Spacing.xl))
+            AppButton(actionLabel, onAction)
         }
     }
 }
+
+/** Corner radius of the veg / non-veg mark (FSSAI-style square). */

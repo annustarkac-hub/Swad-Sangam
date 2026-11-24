@@ -45,6 +45,7 @@ data class MenuState(
     val info: RestaurantInfo? = null,
     val priceCeilingPaise: Int = 0,
     val loaded: Boolean = false,
+    val plainLineKeys: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -85,6 +86,9 @@ class MenuViewModel @Inject constructor(
 ) : ViewModel() {
     private val filters = MutableStateFlow(MenuFilters(categoryId = savedState.get<String>("category")?.takeIf { it.isNotBlank() }))
 
+    val pureVeg: StateFlow<Boolean> = prefs.pureVeg.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    val refreshing = MutableStateFlow(false)
+
     val state: StateFlow<MenuState> = combine(menu.categories, combine(menu.items, prefs.pureVeg) { i, v -> if (v) i.filter { it.foodType == com.swadsangam.restaurant.domain.FoodType.VEG } else i },
         filters, cart.lines, menu.restaurant) { cats, items, f, lines, info ->
         val filtered = MenuFilter.apply(items, cats, f)
@@ -96,6 +100,7 @@ class MenuViewModel @Inject constructor(
             results = filtered,
             filters = f,
             cartQuantities = lines.groupBy { it.itemId }.mapValues { e -> e.value.sumOf { it.quantity } },
+            plainLineKeys = lines.filter { it.optionIds.isEmpty() }.associate { it.itemId to it.key },
             info = info,
             priceCeilingPaise = items.maxOfOrNull { it.pricePaise } ?: 0,
             loaded = true,
@@ -111,7 +116,14 @@ class MenuViewModel @Inject constructor(
     }
 
     fun update(f: (MenuFilters) -> MenuFilters) { filters.value = f(filters.value) }
-    fun refresh() = viewModelScope.launch { menu.refresh() }
+    fun refresh() = viewModelScope.launch { refreshing.value = true; menu.refresh(); refreshing.value = false }
+    fun setPureVeg(on: Boolean) = viewModelScope.launch { prefs.setPureVeg(on) }
+
+    /** Inline stepper on a plain dish (no options): 0 removes it from the cart. */
+    fun setQuantity(item: MenuItem, quantity: Int) = viewModelScope.launch {
+        val key = state.value.plainLineKeys[item.id] ?: return@launch
+        cart.setQuantity(key, quantity, state.value.info?.maxItemQuantity ?: 20)
+    }
 
     fun quickAdd(item: MenuItem) = viewModelScope.launch {
         cart.add(item.id, emptyList(), 1, state.value.info?.maxItemQuantity ?: 20)

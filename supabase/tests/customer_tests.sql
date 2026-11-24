@@ -67,7 +67,12 @@ select pg_temp.check((select customer_user_id from public.orders where id = (sel
 set role anon;
 select pg_temp.check((public.submit_feedback(jsonb_build_object('orderToken', (select r->'order'->>'accessToken' from g), 'overall', 5))->>'error') is not null, 'cannot rate an unfinished order');
 reset role;
-insert into public.feedback(overall, comments, consent_to_publish) values (4, 'Tasty momos', true), (2, 'private note', false);
+-- reviews must belong to a real completed order (order-less feedback is never published)
+insert into public.feedback(order_id, overall, comments, consent_to_publish)
+select o.id, v.overall, v.comments, v.consent
+  from (select id, row_number() over (order by created_at) n from public.orders
+         where order_status = 'COMPLETED' and not exists (select 1 from public.feedback f where f.order_id = orders.id)) o
+  join (values (1, 4, 'Tasty momos', true), (2, 2, 'private note', false)) v(n, overall, comments, consent) on v.n = o.n;
 set role anon;
 select pg_temp.check((public.public_reviews()->>'count')::int >= 2, 'review count');
 select pg_temp.check(not (public.public_reviews()::text like '%private note%'), 'unpublished comment hidden');

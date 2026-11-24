@@ -1,5 +1,36 @@
 package com.swadsangam.restaurant.ui.account
 
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
+import com.swadsangam.restaurant.ui.theme.secondaryText
+import com.swadsangam.restaurant.ui.theme.IconSize
+import com.swadsangam.restaurant.ui.theme.Size
+import com.swadsangam.restaurant.ui.components.Tone
+import com.swadsangam.restaurant.ui.components.StatusChip
+import com.swadsangam.restaurant.ui.components.StatusBanner
+import com.swadsangam.restaurant.ui.components.LoadingState
+import com.swadsangam.restaurant.ui.components.ButtonVariant
+import com.swadsangam.restaurant.ui.components.AppTextField
+import com.swadsangam.restaurant.ui.components.AppCard
+import com.swadsangam.restaurant.ui.components.AppButton
+import com.swadsangam.restaurant.ui.components.ConfirmDialog
+import com.swadsangam.restaurant.ui.components.PasswordField
+import com.swadsangam.restaurant.ui.theme.Spacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,7 +73,6 @@ import com.swadsangam.restaurant.data.auth.AuthResult
 import com.swadsangam.restaurant.data.remote.AddressDto
 import com.swadsangam.restaurant.data.remote.AddressWrite
 import com.swadsangam.restaurant.ui.components.Tag
-import com.swadsangam.restaurant.ui.theme.Dimens
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -72,14 +102,13 @@ class AccountViewModel @Inject constructor(private val auth: AuthRepository) : V
 @Composable
 fun AccountScreen(onMyOrders: () -> Unit, vm: AccountViewModel = androidx.hilt.navigation.compose.hiltViewModel()) {
     val account by vm.account.collectAsStateWithLifecycle()
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Dimens.gutter), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    if (!vm.loaded) { LoadingState(stringResource(R.string.loading)); return }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = Spacing.gutter, vertical = Spacing.l), verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+        // Errors/confirmations at the TOP, so the keyboard never hides them
+        vm.message?.let { (ok, text) -> StatusBanner(text, tone = if (ok) Tone.Success else Tone.Error) }
         when {
-            !vm.loaded -> CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
             account == null -> AuthForm(vm)
             else -> ProfileSection(vm, account!!.email, account!!.profile?.fullName.orEmpty(), account!!.profile?.phone.orEmpty(), account!!.addresses, onMyOrders)
-        }
-        vm.message?.let { (ok, text) ->
-            Text(text, color = if (ok) com.swadsangam.restaurant.ui.theme.SuccessGreen else MaterialTheme.colorScheme.error)
         }
     }
 }
@@ -94,27 +123,30 @@ private fun AuthForm(vm: AccountViewModel) {
     val msgs = AuthMessages.current()
     Text(stringResource(if (mode == "signup") R.string.acc_create else if (mode == "forgot") R.string.acc_reset else R.string.acc_login),
         style = MaterialTheme.typography.headlineSmall)
-    Text(stringResource(R.string.acc_why), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(stringResource(R.string.acc_why), style = MaterialTheme.typography.bodyMedium, color = secondaryText)
     if (mode == "signup") {
-        OutlinedTextField(name, { name = it.take(60) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.name)) }, singleLine = true)
-        OutlinedTextField(phone, { phone = it.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(16) }, Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.mobile_number)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+        AppTextField(name, { name = it.take(60) }, stringResource(R.string.name), keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next))
+        AppTextField(phone, { phone = it.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(16) }, stringResource(R.string.mobile_number),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next))
     }
-    OutlinedTextField(email, { email = it.trim() }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.acc_email)) }, singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
+    AppTextField(email, { email = it.trim() }, stringResource(R.string.acc_email),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next))
     if (mode != "forgot") {
-        OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.acc_password)) }, singleLine = true,
-            visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+        PasswordField(password, { password = it }, stringResource(R.string.acc_password),
+            showLabel = stringResource(R.string.show_password), hideLabel = stringResource(R.string.hide_password),
+            supporting = if (mode == "signup") stringResource(R.string.acc_min_8) else null)
     }
     val invalidEmail = stringResource(R.string.acc_bad_email)
     val badDetails = stringResource(R.string.acc_bad_details)
     val shortPass = stringResource(R.string.acc_short_password)
-    Button(
+    AppButton(
+        text = stringResource(if (mode == "signup") R.string.acc_create else if (mode == "forgot") R.string.acc_send_reset else R.string.acc_login),
         onClick = {
             when {
                 !Regex("^\\S+@\\S+\\.\\S+$").matches(email) -> vm.message = false to invalidEmail
                 mode == "forgot" -> vm.reset(email) { r -> if (r is AuthResult.Error) false to msgs.error(r.message) else true to msgs.resetSent }
-                password.length < 6 -> vm.message = false to shortPass
+                mode == "login" && password.isEmpty() -> vm.message = false to shortPass
+                mode == "signup" && password.length < 8 -> vm.message = false to shortPass
                 mode == "login" -> vm.signIn(email, password) { r -> (r as? AuthResult.Error)?.let { false to msgs.error(it.message) } }
                 else -> {
                     val ph = PhoneValidator.normalize(phone)
@@ -129,17 +161,14 @@ private fun AuthForm(vm: AccountViewModel) {
                 }
             }
         },
-        enabled = !vm.busy, modifier = Modifier.fillMaxWidth().heightIn(min = Dimens.buttonTall),
-    ) {
-        if (vm.busy) CircularProgressIndicator(strokeWidth = 2.dp)
-        else Text(stringResource(if (mode == "signup") R.string.acc_create else if (mode == "forgot") R.string.acc_send_reset else R.string.acc_login))
-    }
+        modifier = Modifier.fillMaxWidth(), large = true, enabled = !vm.busy, loading = vm.busy,
+    )
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        if (mode == "login") TextButton({ mode = "signup"; vm.message = null }) { Text(stringResource(R.string.acc_new_here)) }
-        else TextButton({ mode = "login"; vm.message = null }) { Text(stringResource(R.string.acc_have_account)) }
-        if (mode == "login") TextButton({ mode = "forgot"; vm.message = null }) { Text(stringResource(R.string.acc_forgot)) }
+        if (mode == "login") AppButton(stringResource(R.string.acc_new_here), { mode = "signup"; vm.message = null }, variant = ButtonVariant.Text)
+        else AppButton(stringResource(R.string.acc_have_account), { mode = "login"; vm.message = null }, variant = ButtonVariant.Text)
+        if (mode == "login") AppButton(stringResource(R.string.acc_forgot), { mode = "forgot"; vm.message = null }, variant = ButtonVariant.Text)
     }
-    Text(stringResource(R.string.acc_guest_ok), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    StatusBanner(stringResource(R.string.acc_guest_ok), tone = Tone.Neutral, icon = Icons.Default.Info)
 }
 
 @Composable
@@ -148,49 +177,67 @@ private fun ProfileSection(vm: AccountViewModel, email: String, savedName: Strin
     var phone by remember(savedPhone) { mutableStateOf(savedPhone) }
     var editing by remember { mutableStateOf<AddressDto?>(null) }
     var adding by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf<AddressDto?>(null) }
     val saved = stringResource(R.string.acc_saved)
     val failed = stringResource(R.string.acc_save_failed)
     val badDetails = stringResource(R.string.acc_bad_details)
 
-    Text(stringResource(R.string.acc_profile), style = MaterialTheme.typography.headlineSmall)
-    Text(email, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    OutlinedTextField(name, { name = it.take(60) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.name)) }, singleLine = true)
-    OutlinedTextField(phone, { phone = it.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(16) }, Modifier.fillMaxWidth(),
-        label = { Text(stringResource(R.string.mobile_number)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
-    Button({
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Surface(Modifier.size(Size.avatar), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+            Box(contentAlignment = Alignment.Center) {
+                Text((savedName.ifBlank { email }).take(1).uppercase(), style = MaterialTheme.typography.titleLarge)
+            }
+        }
+        Spacer(Modifier.width(Spacing.m))
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.acc_profile), style = MaterialTheme.typography.headlineSmall)
+            Text(email, style = MaterialTheme.typography.bodyMedium, color = secondaryText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+    AppCard {
+      Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+    AppTextField(name, { name = it.take(60) }, stringResource(R.string.name), keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next))
+    AppTextField(phone, { phone = it.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(16) }, stringResource(R.string.mobile_number),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+    AppButton(stringResource(R.string.acc_save_profile), {
         val ph = PhoneValidator.normalize(phone)
         if (name.trim().length < 2 || ph == null) vm.message = false to badDetails else vm.saveProfile(name, ph, saved, failed)
-    }, enabled = !vm.busy) { Text(stringResource(R.string.acc_save_profile)) }
-
-    HorizontalDivider()
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(R.string.acc_addresses), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-        if (!adding && editing == null && addresses.size < 10) TextButton({ adding = true }) { Text("+ " + stringResource(R.string.add)) }
+    }, Modifier.fillMaxWidth(), enabled = !vm.busy, loading = vm.busy)
+      }
     }
-    if (addresses.isEmpty() && !adding) Text(stringResource(R.string.acc_no_address), color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+    Row(Modifier.padding(top = Spacing.s), verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.acc_addresses), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+        if (!adding && editing == null && addresses.size < 10) AppButton(stringResource(R.string.add), { adding = true }, variant = ButtonVariant.Text, icon = Icons.Default.Add)
+    }
+    if (addresses.isEmpty() && !adding) Text(stringResource(R.string.acc_no_address), style = MaterialTheme.typography.bodyMedium, color = secondaryText)
     addresses.forEach { a ->
         if (editing?.id == a.id) AddressForm(vm, a, addresses.isEmpty()) { editing = null }
-        else Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(a.label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    if (a.isDefault) Tag(stringResource(R.string.acc_default))
-                }
-                Text(a.address + (a.landmark?.let { " · $it" } ?: ""), style = MaterialTheme.typography.bodyMedium)
-                Row {
-                    if (!a.isDefault) TextButton({ vm.saveAddress(a.id, AddressWrite(a.label, a.address, a.landmark, true), {}) { it } }) { Text(stringResource(R.string.acc_make_default)) }
-                    TextButton({ editing = a }) { Text(stringResource(R.string.acc_edit)) }
-                    TextButton({ vm.deleteAddress(a.id) }) { Text(stringResource(R.string.acc_delete), color = MaterialTheme.colorScheme.error) }
-                }
+        else AppCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Place, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(IconSize.m))
+                Spacer(Modifier.width(Spacing.s))
+                Text(a.label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                if (a.isDefault) StatusChip(stringResource(R.string.acc_default), tone = Tone.Success)
+            }
+            Text(a.address + (a.landmark?.let { " · $it" } ?: ""), style = MaterialTheme.typography.bodyMedium, color = secondaryText,
+                modifier = Modifier.padding(top = Spacing.xs))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                if (!a.isDefault) AppButton(stringResource(R.string.acc_make_default), { vm.saveAddress(a.id, AddressWrite(a.label, a.address, a.landmark, true), {}) { it } }, variant = ButtonVariant.Text)
+                AppButton(stringResource(R.string.acc_edit), { editing = a }, variant = ButtonVariant.Text)
+                AppButton(stringResource(R.string.acc_delete), { deleting = a }, variant = ButtonVariant.Danger)
             }
         }
     }
     if (adding) AddressForm(vm, null, addresses.isEmpty()) { adding = false }
+    deleting?.let { d ->
+        ConfirmDialog(stringResource(R.string.delete_address_q), stringResource(R.string.acc_delete), stringResource(R.string.cancel),
+            onConfirm = { vm.deleteAddress(d.id) }, onDismiss = { deleting = null }, danger = true, body = d.address)
+    }
 
-    HorizontalDivider()
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onMyOrders, Modifier.weight(1f)) { Text(stringResource(R.string.my_orders)) }
-        OutlinedButton({ vm.signOut() }, Modifier.weight(1f)) { Text(stringResource(R.string.acc_logout)) }
+    Row(Modifier.padding(top = Spacing.s), horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+        AppButton(stringResource(R.string.my_orders), onMyOrders, Modifier.weight(1f), variant = ButtonVariant.Secondary, icon = Icons.AutoMirrored.Filled.ReceiptLong)
+        AppButton(stringResource(R.string.acc_logout), { vm.signOut() }, Modifier.weight(1f), variant = ButtonVariant.Text, icon = Icons.AutoMirrored.Filled.Logout)
     }
 }
 
@@ -202,22 +249,22 @@ private fun AddressForm(vm: AccountViewModel, a: AddressDto?, first: Boolean, on
     var isDefault by remember { mutableStateOf(a?.isDefault ?: first) }
     val full = stringResource(R.string.address_error)
     val tooMany = stringResource(R.string.acc_too_many)
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(label, { label = it.take(30) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.acc_label)) }, singleLine = true)
-            OutlinedTextField(address, { address = it.take(300) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.delivery_address)) }, minLines = 2)
-            OutlinedTextField(landmark, { landmark = it.take(120) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.landmark)) }, singleLine = true)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(isDefault, { isDefault = it }); Text(stringResource(R.string.acc_make_default))
+    AppCard {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+            AppTextField(label, { label = it.take(30) }, stringResource(R.string.acc_label))
+            AppTextField(address, { address = it.take(300) }, stringResource(R.string.delivery_address), singleLine = false, minLines = 2)
+            AppTextField(landmark, { landmark = it.take(120) }, stringResource(R.string.landmark))
+            Row(Modifier.fillMaxWidth().heightIn(min = Size.touch).clickable { isDefault = !isDefault }, verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(isDefault, { isDefault = it }); Text(stringResource(R.string.acc_make_default), style = MaterialTheme.typography.bodyMedium)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button({
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                AppButton(stringResource(R.string.acc_save_address), {
                     if (address.trim().length < 10) vm.message = false to full
                     else vm.saveAddress(a?.id, AddressWrite(label.trim().ifBlank { "Home" }, address.trim(), landmark.trim().ifBlank { null }, isDefault), onDone) {
                         if (it.contains("TOO_MANY")) tooMany else it
                     }
-                }, enabled = !vm.busy) { Text(stringResource(R.string.acc_save_address)) }
-                TextButton(onDone) { Text(stringResource(R.string.cancel)) }
+                }, Modifier.weight(1f), enabled = !vm.busy, loading = vm.busy)
+                AppButton(stringResource(R.string.cancel), onDone, variant = ButtonVariant.Text)
             }
         }
     }

@@ -6,6 +6,7 @@ import { fromPaise, rupees, slugify, toPaise } from "../lib/format";
 import { toWebp } from "../lib/image";
 import { friendlyError, supabase } from "../lib/supabase";
 import type { Category, ItemOption, MenuItem } from "../lib/types";
+import { askConfirm } from "../components/Dialogs";
 
 const EMPTY: MenuItem = {
   id: "", name: "", name_hi: null, category_id: "", description: null, description_hi: null, price_paise: 0,
@@ -182,7 +183,7 @@ function ItemEditor({ item, cats, onClose, onSaved }: { item: MenuItem; cats: Ca
   }
 
   async function remove() {
-    if (!confirm(`Delete "${item.name}" permanently? Past orders keep their own copy of the name and price. Archiving is usually better.`)) return;
+    if (!await askConfirm(`Delete "${item.name}" permanently? Past orders keep their own copy of the name and price. Archiving is usually better.`, { ok: "Delete", danger: true })) return;
     const { error } = await supabase.from("menu_items").delete().eq("id", item.id);
     if (error) setErr(friendlyError(error.message)); else onSaved();
   }

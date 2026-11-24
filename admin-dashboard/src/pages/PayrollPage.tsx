@@ -4,6 +4,7 @@ import Modal from "../components/Modal";
 import { esc, printHtml, rpc, selectAll, type Tender } from "../lib/erp";
 import { fromPaise, rupees, todayIST, toPaise } from "../lib/format";
 import { supabase } from "../lib/supabase";
+import { askConfirm } from "../components/Dialogs";
 
 interface Employee { id: number; name: string; phone: string | null; designation: string; monthly_salary_paise: number; joined_on: string | null; weekly_off: number | null; is_active: boolean }
 interface Att { employee_id: number; day: string; status: string; overtime_hours: number }
@@ -57,8 +58,8 @@ function Attendance() {
         <tbody>{emps.map((e) => (
           <tr key={e.id}><td>{e.name}</td>{Array.from({ length: days }, (_, i) => {
             const d = `${month}-${String(i + 1).padStart(2, "0")}`; const s = status(e.id, d);
-            return <td key={i} onClick={() => d <= todayIST() && void cycle(e, d)} style={{ cursor: "pointer", textAlign: "center", padding: 2,
-              background: s === "ABSENT" || s === "LEAVE" ? "#f8d3d0" : s === "HALF_DAY" ? "#fde2b8" : s ? "#d6f2df" : undefined }} className="small">{s ? LABEL[s] : "·"}</td>;
+            return <td key={i} onClick={() => d <= todayIST() && void cycle(e, d)} style={{ cursor: "pointer", textAlign: "center", padding: 2 }}
+              className={"small att " + (s === "ABSENT" || s === "LEAVE" ? "att-off" : s === "HALF_DAY" ? "att-half" : s ? "att-on" : "")}>{s ? LABEL[s] : "·"}</td>;
           })}</tr>
         ))}</tbody>
       </table></div>
@@ -137,12 +138,25 @@ function Payroll({ canRun }: { canRun: boolean }) {
   const [adjust, setAdjust] = useState<Record<string, { bonusPaise?: number; otherDeductionPaise?: number; advanceRecoveryPaise?: number }>>({});
   const [tender, setTender] = useState<Tender>("BANK");
   const [msg, setMsg] = useState<string | null>(null);
+  /** What is typed in the bonus / recovery / deduction boxes (controlled — no lost edits when "Run payroll" is clicked) */
+  const [typed, setTyped] = useState<Record<string, string>>({});
+  const [previewing, setPreviewing] = useState(false);
   const load = async () => {
+    setPreviewing(true);
     try { setRows(await rpc<Preview[]>("payroll_preview", { p_month: month + "-01", p_adjust: adjust })); } catch (e) { setMsg((e as Error).message); }
+    finally { setPreviewing(false); }
   };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void load(); }, [month, JSON.stringify(adjust)]);
-  const setAdj = (id: number, k: string, v: string) => setAdjust({ ...adjust, [id]: { ...adjust[id], [k]: v === "" ? undefined : toPaise(v) ?? 0 } });
+  // Preview refresh is debounced while typing
+  useEffect(() => { const t = setTimeout(() => void load(), 400); return () => clearTimeout(t); },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [month, JSON.stringify(adjust)]);
+  const badAdj = Object.values(typed).some((v) => v !== "" && (toPaise(v) == null || (toPaise(v) ?? 0) < 0));
+  const setAdj = (id: number, k: string, v: string) => {
+    setTyped({ ...typed, [id + ":" + k]: v });
+    const p = toPaise(v);
+    if (v === "" || (p != null && p >= 0)) setAdjust({ ...adjust, [id]: { ...adjust[id], [k]: v === "" ? undefined : p ?? 0 } });
+  };
+  const val = (id: number, k: string, fallback = "") => typed[id + ":" + k] ?? fallback;
   function payslip(p: Preview) {
     printHtml(`Payslip ${p.name}`, `<div class="doc"><h2>Swad Sangam — Payslip</h2><h3>${esc(p.name)} · ${esc(p.designation)} · ${month}</h3>
       <table><tr><td>Monthly salary</td><td class="r">${rupees(p.monthlyPaise)}</td></tr>
@@ -160,9 +174,9 @@ function Payroll({ canRun }: { canRun: boolean }) {
         <tbody>{rows.map((p) => (
           <tr key={p.employeeId}><td>{p.name}<div className="small muted">{p.designation}</div></td><td className="right">{p.payableDays}/{p.daysInMonth}</td>
             <td className="right">{rupees(p.grossPaise)}</td><td className="right">{rupees(p.overtimePaise)}</td>
-            <td><input style={{ width: 80 }} disabled={p.alreadyPaid} defaultValue={fromPaise(p.bonusPaise) || ""} onBlur={(e) => setAdj(p.employeeId, "bonusPaise", e.target.value)} /></td>
-            <td><input style={{ width: 90 }} disabled={p.alreadyPaid} placeholder={`of ${rupees(p.advanceOutstandingPaise)}`} onBlur={(e) => setAdj(p.employeeId, "advanceRecoveryPaise", e.target.value)} /></td>
-            <td><input style={{ width: 80 }} disabled={p.alreadyPaid} onBlur={(e) => setAdj(p.employeeId, "otherDeductionPaise", e.target.value)} /></td>
+            <td><input style={{ width: 80 }} disabled={p.alreadyPaid} inputMode="decimal" aria-label={`Bonus for ${p.name}`} value={val(p.employeeId, "bonusPaise", fromPaise(p.bonusPaise) === "0" ? "" : fromPaise(p.bonusPaise))} onChange={(e) => setAdj(p.employeeId, "bonusPaise", e.target.value)} /></td>
+            <td><input style={{ width: 90 }} disabled={p.alreadyPaid} inputMode="decimal" aria-label={`Advance recovery for ${p.name}`} placeholder={`of ${rupees(p.advanceOutstandingPaise)}`} value={val(p.employeeId, "advanceRecoveryPaise")} onChange={(e) => setAdj(p.employeeId, "advanceRecoveryPaise", e.target.value)} /></td>
+            <td><input style={{ width: 80 }} disabled={p.alreadyPaid} inputMode="decimal" aria-label={`Other deduction for ${p.name}`} value={val(p.employeeId, "otherDeductionPaise")} onChange={(e) => setAdj(p.employeeId, "otherDeductionPaise", e.target.value)} /></td>
             <td className="right"><b>{rupees(p.netPaise)}</b></td>
             <td>{p.alreadyPaid ? <span className="badge READY">Paid</span> : null} <button className="link" onClick={() => payslip(p)}>Payslip</button></td></tr>
         ))}</tbody>
@@ -170,8 +184,9 @@ function Payroll({ canRun }: { canRun: boolean }) {
       {canRun && (
         <div className="row" style={{ marginTop: 8 }}>
           <select style={{ maxWidth: 120 }} value={tender} onChange={(e) => setTender(e.target.value as Tender)}>{["BANK", "UPI", "CASH"].map((t) => <option key={t}>{t}</option>)}</select>
-          <button onClick={async () => {
-            if (!confirm(`Pay salaries for ${month} by ${tender}? This posts to the accounts and cannot be edited.`)) return;
+          {badAdj && <span className="error small">Fix the amounts (numbers ≥ 0 only).</span>}
+          <button disabled={previewing || badAdj} onClick={async () => {
+            if (!(await askConfirm(`Pay salaries for ${month} by ${tender}? This posts to the accounts and cannot be edited.`, { ok: "Pay salaries" }))) return;
             try { const r = await rpc<{ employeesPaid: number; totalNetPaise: number }>("run_payroll", { p_month: month + "-01", p_tender: tender, p_adjust: adjust });
               setMsg(`Paid ${r.employeesPaid} employee(s), total ${rupees(r.totalNetPaise)}.`); void load(); }
             catch (e) { setMsg((e as Error).message); }

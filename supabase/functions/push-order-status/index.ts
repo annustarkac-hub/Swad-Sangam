@@ -15,6 +15,8 @@ const MESSAGES: Record<string, { title: string; body: string }> = {
   ACCEPTED: { title: "Order accepted", body: "Swad Sangam has accepted your order {n}." },
   PREPARING: { title: "Being prepared", body: "Your order {n} is being prepared." },
   READY: { title: "Ready for pickup", body: "Your order {n} is ready. Please collect it." },
+  READY_DELIVERY: { title: "Order packed", body: "Your order {n} is packed and waiting for the rider." },
+  READY_DINE_IN: { title: "Food is ready", body: "Your order {n} is ready and will be served shortly." },
   OUT_FOR_DELIVERY: { title: "Out for delivery", body: "Your order {n} is on its way." },
   COMPLETED: { title: "Order completed", body: "Thank you! Order {n} is complete." },
   REJECTED: { title: "Order not accepted", body: "Sorry, order {n} could not be accepted." },
@@ -87,15 +89,18 @@ Deno.serve(async (req) => {
   // Read the committed state (notify only after the change is committed — PRD §11 rule 10)
   const { data: order, error } = await supabase
     .from("orders")
-    .select("order_number, order_status, fcm_token, rejection_reason")
+    .select("order_number, order_status, order_type, access_token, fcm_token, rejection_reason, cancel_reason")
     .eq("id", orderId)
     .single();
   if (error || !order?.fcm_token) return new Response("No token", { status: 200 });
 
-  const template = MESSAGES[order.order_status];
+  const key = order.order_status === "READY" && order.order_type !== "PICKUP"
+    ? `READY_${order.order_type}` : order.order_status;
+  const template = MESSAGES[key] ?? MESSAGES[order.order_status];
   if (!template) return new Response("No message for status", { status: 200 });
   let body = template.body.replace("{n}", order.order_number);
   if (order.order_status === "REJECTED" && order.rejection_reason) body += ` Reason: ${order.rejection_reason}`;
+  if (order.order_status === "CANCELLED" && order.cancel_reason) body += ` Reason: ${order.cancel_reason}`;
 
   const saJson = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
   if (!saJson) return new Response("Push not configured", { status: 200 });
@@ -108,9 +113,14 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       message: {
         token: order.fcm_token,
-        notification: { title: template.title, body },
-        data: { orderId, status: order.order_status, orderNumber: order.order_number },
-        android: { priority: "high", notification: { channel_id: "order_updates" } },
+        // Data-only: the app's PushService always runs (foreground, background or killed), refreshes the
+        // order and shows a localized notification that opens the order. The token is the device's own.
+        data: {
+          orderId, status: order.order_status, orderNumber: order.order_number, orderType: order.order_type,
+          token: order.access_token, title: template.title, body,
+          reason: (order.order_status === "REJECTED" ? order.rejection_reason : order.cancel_reason) ?? "",
+        },
+        android: { priority: "high" },
       },
     }),
   });

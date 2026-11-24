@@ -69,4 +69,5 @@ fun OrderDto.toDomain(token: String) = Order(
             it.options.map { o -> o.name }, it.lineTotalPaise)
     },
     history = history.map { StatusEvent(OrderStatus.parse(it.status), it.at) },
+    deliveryOtp = deliveryOtp?.takeIf { it.length == 4 && it.all(Char::isDigit) },
 )

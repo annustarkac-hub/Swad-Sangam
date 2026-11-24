@@ -19,8 +19,11 @@ export default function TablesPage() {
     setResv((data as Reservation[]) ?? []);
   };
   useEffect(() => { void load().catch((e) => setErr(e.message)); }, []);
-  const setStatus = async (id: number, status: string, table = "restaurant_tables") => { await supabase.from(table).update({ status }).eq("id", id); void load(); };
-  const color = (s: string) => ({ FREE: "#d6f2df", OCCUPIED: "#f8d3d0", CLEANING: "#fde2b8", RESERVED: "#dbe8ff" })[s];
+  const setStatus = async (id: number, status: string, table = "restaurant_tables") => {
+    const { error } = await supabase.from(table).update({ status }).eq("id", id);
+    if (error) setErr(error.message); else { setErr(null); void load(); }
+  };
+  const call = async (fn: string, args: Record<string, unknown>) => { try { await rpc(fn, args); setErr(null); void load(); } catch (e) { setErr((e as Error).message); } };
   return (
     <div>
       <h1>Tables & reservations</h1>
@@ -29,14 +32,14 @@ export default function TablesPage() {
       {err && <p className="error">{err}</p>}
       <div className="grid tight">
         {tables.map((x) => (
-          <div key={x.id} className="card" style={{ background: color(x.status) }}>
+          <div key={x.id} className={"card table-st st-" + x.status}>
             <b>{x.name}</b> <span className="small">({x.seats} seats)</span><div className="small">{x.status}</div>
             <select className="small" value={x.status} onChange={(e) => void setStatus(x.id, e.target.value)}>{["FREE", "OCCUPIED", "CLEANING", "RESERVED"].map((s) => <option key={s}>{s}</option>)}</select>
             <div className="row" style={{ marginTop: 6 }}>
               {x.session_code
                 ? <><span className="small">QR code: <b style={{ fontSize: "1.2rem", letterSpacing: 2 }}>{x.session_code}</b></span>
-                    <button className="link small" onClick={async () => { await rpc("close_table_session", { p_table_id: x.id }); void load(); }}>End</button></>
-                : <button className="secondary small" onClick={async () => { await rpc("open_table_session", { p_table_id: x.id }); void load(); }}>Seat guests · get code</button>}
+                    <button className="link small" onClick={() => void call("close_table_session", { p_table_id: x.id })}>End</button></>
+                : <button className="secondary small" onClick={() => void call("open_table_session", { p_table_id: x.id })}>Seat guests · get code</button>}
             </div>
           </div>
         ))}
@@ -64,8 +67,8 @@ export default function TablesPage() {
           if (error) setErr(error.message); else { setR({ ...r, name: "", phone: "", notes: "" }); void load(); }
         }}>Book</button>
         <button className="secondary small" onClick={async () => {
-          await supabase.from("reservations").insert({ customer_name: r.name || "Walk-in", phone: r.phone || null, party_size: Number(r.size), reserved_for: new Date().toISOString(), status: "WAITING" });
-          void load();
+          const { error } = await supabase.from("reservations").insert({ customer_name: r.name || "Walk-in", phone: r.phone || null, party_size: Number(r.size), reserved_for: new Date().toISOString(), status: "WAITING" });
+          if (error) setErr(error.message); else void load();
         }}>Add to waiting list</button>
       </div>
       <table style={{ marginTop: 8 }}><tbody>{resv.map((x) => (

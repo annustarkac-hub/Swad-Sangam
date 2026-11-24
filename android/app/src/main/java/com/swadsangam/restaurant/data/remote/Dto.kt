@@ -162,6 +162,8 @@ data class OrderDto(
     val createdAt: String,
     val restaurantPhone: String = "",
     val canCancel: Boolean = false,
+    /** 4-digit handover code — only sent to the customer, only while a delivery is on its way */
+    val deliveryOtp: String? = null,
     val items: List<OrderLineDto> = emptyList(),
     val history: List<HistoryDto> = emptyList(),
 )

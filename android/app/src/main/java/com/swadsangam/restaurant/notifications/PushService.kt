@@ -22,16 +22,19 @@ class PushService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
+        // Data-only message from push-order-status: runs in foreground AND background, so we always
+        // refresh the order and show our own localized notification that opens the order.
         val number = message.data["orderNumber"] ?: return
         val status = OrderStatus.parse(message.data["status"])
+        val type = runCatching { com.swadsangam.restaurant.domain.OrderType.valueOf(message.data["orderType"] ?: "") }.getOrNull()
+        val reason = message.data["reason"]?.takeIf { it.isNotBlank() }
         scope.launch {
-            // Find our token for this order, refresh it so the in-app state matches.
-            val token = orders.myOrdersTokenFor(number)
+            val token = message.data["token"]?.takeIf { it.isNotBlank() } ?: orders.myOrdersTokenFor(number)
             if (token != null) {
                 orders.refresh(token)
                 orders.markNotified(token, status)
             }
-            Notifier.showOrderStatus(applicationContext, token, number, status, null)
+            Notifier.showOrderStatus(applicationContext, token, number, status, reason, type)
         }
     }
 }

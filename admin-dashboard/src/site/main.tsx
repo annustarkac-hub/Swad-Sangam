@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { isConfigured } from "../lib/supabase";
 import SiteApp from "./SiteApp";
+import { DialogHost } from "../components/Dialogs";
 import "@fontsource/plus-jakarta-sans/400.css";
 import "@fontsource/plus-jakarta-sans/600.css";
 import "@fontsource/plus-jakarta-sans/700.css";
@@ -11,6 +12,7 @@ import "./site.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     {isConfigured ? <SiteApp /> : <p style={{ padding: 24 }}>Website not configured yet — see docs/SETUP_GUIDE.md.</p>}
+    <DialogHost />
   </React.StrictMode>,
 );
 

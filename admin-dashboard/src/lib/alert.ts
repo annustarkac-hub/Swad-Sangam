@@ -1,4 +1,6 @@
-/** New-order alert: a short beep pattern via WebAudio + optional browser notification. */
+import { appBridge } from "./native";
+
+/** New-order alert: a short beep pattern via WebAudio + a system notification (native in the Android apps). */
 let ctx: AudioContext | null = null;
 
 export function unlockAudio() {
@@ -26,10 +28,19 @@ export function playAlert() {
   }
 }
 
+/** Shows a top-bar notification: Android app → native notification (WebView has no Notification API); browser → Web Notification. */
+export function notifyNative(title: string, body: string) {
+  const b = appBridge();
+  if (b?.notify) {
+    try { b.notify(title, body); return; } catch { /* older app without notify */ }
+  }
+  browserNotify(title, body);
+}
+
 export function browserNotify(title: string, body: string) {
   if (!("Notification" in window)) return;
   if (Notification.permission === "granted") {
-    new Notification(title, { body, icon: "./favicon.svg" });
+    new Notification(title, { body, icon: "./logo-mark.png" });
   }
 }
 

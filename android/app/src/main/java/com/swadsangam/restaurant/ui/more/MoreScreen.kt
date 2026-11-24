@@ -1,5 +1,20 @@
 package com.swadsangam.restaurant.ui.more
 
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Arrangement
+import com.swadsangam.restaurant.ui.theme.secondaryText
+import com.swadsangam.restaurant.ui.theme.Size
+import com.swadsangam.restaurant.ui.components.ListRow
+import com.swadsangam.restaurant.ui.components.BottomActionBar
+import com.swadsangam.restaurant.ui.components.ButtonVariant
+import com.swadsangam.restaurant.ui.components.AppCard
+import com.swadsangam.restaurant.ui.components.AppButton
+import com.swadsangam.restaurant.ui.theme.Spacing
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -7,7 +22,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -26,7 +40,6 @@ import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -39,10 +52,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -69,12 +80,16 @@ class MoreViewModel @Inject constructor(
     private val cart: CartRepository,
     private val prefs: UserPrefs,
     private val analytics: Analytics,
+    private val auth: com.swadsangam.restaurant.data.auth.AuthRepository,
 ) : ViewModel() {
+    val account = auth.account
     val info = menu.restaurant.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     fun track(e: String) = analytics.track(e)
 
     /** Removes everything this app stored on the phone (orders list, cart, saved name/phone). */
     fun clearLocalData() = viewModelScope.launch {
+        // Also log out: otherwise the saved login would sync the orders straight back
+        runCatching { auth.signOut() }
         orders.clearHistory(); cart.clear(); prefs.clearAll()
     }
 }
@@ -86,31 +101,55 @@ fun MoreScreen(onInfo: () -> Unit, onMenu: () -> Unit, onFeedback: () -> Unit, o
     val context = LocalContext.current
     var langDialog by remember { mutableStateOf(false) }
     var clearDialog by remember { mutableStateOf(false) }
+    val account by vm.account.collectAsStateWithLifecycle()
     val i = info ?: return
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Entry(Icons.Default.AccountCircle, stringResource(R.string.acc_account), onAccount)
-        Entry(Icons.Default.Info, stringResource(R.string.restaurant_info), onInfo)
-        Entry(Icons.Default.RestaurantMenu, stringResource(R.string.view_menu), onMenu)
-        Entry(Icons.Default.Call, stringResource(R.string.call_restaurant)) { vm.track(Analytics.CALL); Intents.call(context, i.phone) }
-        Entry(Icons.Default.Directions, stringResource(R.string.get_directions)) { vm.track(Analytics.DIRECTIONS); Intents.directions(context, i) }
-        Entry(Icons.Default.Share, stringResource(R.string.share_restaurant)) { vm.track(Analytics.SHARE); Intents.share(context, i) }
-        Entry(Icons.Default.RateReview, stringResource(R.string.give_feedback), onFeedback)
-        i.supportEmail?.let { email -> Entry(Icons.Default.Email, stringResource(R.string.support_email, email)) { Intents.email(context, email) } }
-        i.whatsappPhone?.let { wa ->
-            Entry(Icons.AutoMirrored.Filled.Chat, stringResource(R.string.whatsapp)) {
-                Intents.openUrl(context, "https://wa.me/" + wa.filter { it.isDigit() })
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = Spacing.gutter, vertical = Spacing.l),
+        verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+        // Profile header: greeting when signed in, a reason to sign in when not
+        AppCard(onClick = onAccount) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.Surface(Modifier.size(Size.avatar), shape = androidx.compose.foundation.shape.CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+                    androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
+                        val name = account?.profile?.fullName?.takeIf { it.isNotBlank() }
+                        if (name != null) Text(name.take(1).uppercase(), style = MaterialTheme.typography.titleLarge)
+                        else Icon(Icons.Default.AccountCircle, null)
+                    }
+                }
+                Spacer(Modifier.width(Spacing.m))
+                Column(Modifier.weight(1f)) {
+                    val name = account?.profile?.fullName?.takeIf { it.isNotBlank() }
+                    Text(if (name != null) stringResource(R.string.hello_name, name) else stringResource(R.string.hello_guest), style = MaterialTheme.typography.titleMedium)
+                    Text(account?.email ?: stringResource(R.string.sign_in_benefit), style = MaterialTheme.typography.bodySmall, color = secondaryText)
+                }
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = secondaryText)
             }
         }
-        HorizontalDivider()
-        Entry(Icons.Default.Language, stringResource(R.string.language)) { langDialog = true }
-        i.privacyPolicyUrl?.let { url -> Entry(Icons.Default.Policy, stringResource(R.string.privacy_policy)) { Intents.openUrl(context, url) } }
-        i.termsUrl?.let { url -> Entry(Icons.Default.Policy, stringResource(R.string.order_terms)) { Intents.openUrl(context, url) } }
-        Entry(Icons.Default.DeleteOutline, stringResource(R.string.clear_my_data)) { clearDialog = true }
+        Group {
+            ListRow(stringResource(R.string.acc_account), Icons.Default.AccountCircle, onAccount)
+            ListRow(stringResource(R.string.restaurant_info), Icons.Default.Info, onInfo)
+            ListRow(stringResource(R.string.view_menu), Icons.Default.RestaurantMenu, onMenu)
+        }
+        Group {
+            ListRow(stringResource(R.string.call_restaurant), Icons.Default.Call, { vm.track(Analytics.CALL); Intents.call(context, i.phone) })
+            ListRow(stringResource(R.string.get_directions), Icons.Default.Directions, { vm.track(Analytics.DIRECTIONS); Intents.directions(context, i) })
+            i.whatsappPhone?.let { wa ->
+                ListRow(stringResource(R.string.whatsapp), Icons.AutoMirrored.Filled.Chat, { Intents.openUrl(context, "https://wa.me/" + wa.filter { it.isDigit() }) })
+            }
+            i.supportEmail?.let { email -> ListRow(stringResource(R.string.support_email, email), Icons.Default.Email, { Intents.email(context, email) }) }
+            ListRow(stringResource(R.string.share_restaurant), Icons.Default.Share, { vm.track(Analytics.SHARE); Intents.share(context, i) })
+            ListRow(stringResource(R.string.give_feedback), Icons.Default.RateReview, onFeedback)
+        }
+        Group {
+            ListRow(stringResource(R.string.language), Icons.Default.Language, { langDialog = true })
+            i.privacyPolicyUrl?.let { url -> ListRow(stringResource(R.string.privacy_policy), Icons.Default.Policy, { Intents.openUrl(context, url) }) }
+            i.termsUrl?.let { url -> ListRow(stringResource(R.string.order_terms), Icons.Default.Policy, { Intents.openUrl(context, url) }) }
+            ListRow(stringResource(R.string.clear_my_data), Icons.Default.DeleteOutline, { clearDialog = true }, showChevron = false)
+        }
         Text(
             stringResource(R.string.version, BuildConfig.VERSION_NAME) + (i.fssaiNumber?.let { "\n" + stringResource(R.string.fssai_no, it) } ?: ""),
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodySmall, color = secondaryText, modifier = Modifier.padding(horizontal = Spacing.s),
         )
     }
 
@@ -122,11 +161,12 @@ fun MoreScreen(onInfo: () -> Unit, onMenu: () -> Unit, onFeedback: () -> Unit, o
             text = {
                 Column {
                     listOf("" to stringResource(R.string.lang_system), "en" to "English", "hi" to "हिन्दी").forEach { (tag, label) ->
-                        Row(Modifier.fillMaxWidth().clickable {
+                        Row(Modifier.fillMaxWidth().heightIn(min = Size.touch).clickable {
                             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag)); langDialog = false
                         }, verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(current == tag, null)
-                            Text(label)
+                            Spacer(Modifier.width(Spacing.s))
+                            Text(label, style = MaterialTheme.typography.bodyLarge)
                         }
                     }
                 }
@@ -145,13 +185,10 @@ fun MoreScreen(onInfo: () -> Unit, onMenu: () -> Unit, onFeedback: () -> Unit, o
     }
 }
 
+/** A rounded card holding a group of [ListRow]s (settings-style list). */
 @Composable
-private fun Entry(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(16.dp))
-        Text(label, style = MaterialTheme.typography.bodyLarge)
-    }
+private fun Group(content: @Composable ColumnScope.() -> Unit) {
+    AppCard(padding = PaddingValues(vertical = Spacing.xs), content = content)
 }
 
 /** FR-11 restaurant information. */
@@ -160,33 +197,52 @@ fun RestaurantInfoScreen(onMenu: () -> Unit, vm: MoreViewModel = androidx.hilt.n
     val info by vm.info.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val i = info ?: return
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        Text(i.name, style = MaterialTheme.typography.headlineSmall)
-        Text(stringResource(R.string.cuisine_line), style = MaterialTheme.typography.bodyMedium)
-        i.rating?.let { Text(stringResource(R.string.rating_value, it.toString()) + (i.reviewCount?.let { n -> " · " + stringResource(R.string.public_reviews, n) } ?: "")) }
-        Block(stringResource(R.string.address)) { Text(i.address) }
-        Block(stringResource(R.string.phone)) { Text(i.phone) }
-        Block(stringResource(R.string.opening_hours)) { HoursText(i) }
-        Block(stringResource(R.string.food_categories)) { Text(stringResource(R.string.food_categories_value)) }
-        Block(stringResource(R.string.dine_in)) { Text(i.dineInInfo ?: stringResource(R.string.dine_in_default)) }
-        i.parkingInfo?.let { Block(stringResource(R.string.parking)) { Text(it) } }
-        if (i.deliveryEnabled) Block(stringResource(R.string.delivery)) { Text(i.deliveryAreaNote ?: stringResource(R.string.delivery_available)) }
-        i.supportEmail?.let { Block(stringResource(R.string.customer_support)) { Text(it) } }
-        i.fssaiNumber?.let { Block(stringResource(R.string.fssai)) { Text(it) } }
-        i.gstin?.let { Block("GSTIN") { Text(it) } }
-        Spacer(Modifier.height(16.dp))
-        androidx.compose.material3.Button({ vm.track(Analytics.CALL); Intents.call(context, i.phone) }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.call_restaurant)) }
-        androidx.compose.material3.OutlinedButton({ vm.track(Analytics.DIRECTIONS); Intents.directions(context, i) }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.get_directions)) }
-        androidx.compose.material3.OutlinedButton({ vm.track(Analytics.SHARE); Intents.share(context, i) }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.share_restaurant)) }
-        androidx.compose.material3.OutlinedButton(onMenu, Modifier.fillMaxWidth()) { Text(stringResource(R.string.view_menu)) }
+    Column(Modifier.fillMaxSize()) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = Spacing.gutter, vertical = Spacing.l),
+            verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+            Column {
+                Text(i.name, style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.cuisine_line), style = MaterialTheme.typography.bodyMedium, color = secondaryText)
+                i.rating?.let {
+                    Text(stringResource(R.string.rating_value, it.toString()) + (i.reviewCount?.let { n -> " · " + stringResource(R.string.public_reviews, n) } ?: ""),
+                        style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            AppCard {
+                Block(stringResource(R.string.address)) { Text(i.address, style = MaterialTheme.typography.bodyMedium) }
+                Block(stringResource(R.string.phone)) { Text(i.phone, style = MaterialTheme.typography.bodyMedium) }
+                Block(stringResource(R.string.opening_hours)) { HoursText(i) }
+            }
+            AppCard {
+                Block(stringResource(R.string.food_categories)) { Text(stringResource(R.string.food_categories_value), style = MaterialTheme.typography.bodyMedium) }
+                Block(stringResource(R.string.dine_in)) { Text(i.dineInInfo ?: stringResource(R.string.dine_in_default), style = MaterialTheme.typography.bodyMedium) }
+                i.parkingInfo?.let { Block(stringResource(R.string.parking)) { Text(it, style = MaterialTheme.typography.bodyMedium) } }
+                if (i.deliveryEnabled) Block(stringResource(R.string.delivery)) { Text(i.deliveryAreaNote ?: stringResource(R.string.delivery_available), style = MaterialTheme.typography.bodyMedium) }
+                i.supportEmail?.let { Block(stringResource(R.string.customer_support)) { Text(it, style = MaterialTheme.typography.bodyMedium) } }
+                i.fssaiNumber?.let { Block(stringResource(R.string.fssai)) { Text(it, style = MaterialTheme.typography.bodyMedium) } }
+                i.gstin?.let { Block("GSTIN") { Text(it, style = MaterialTheme.typography.bodyMedium) } }
+            }
+            AppButton(stringResource(R.string.view_menu), onMenu, Modifier.fillMaxWidth(), variant = ButtonVariant.Secondary, icon = Icons.Default.RestaurantMenu)
+        }
+        BottomActionBar {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                AppButton(stringResource(R.string.call), { vm.track(Analytics.CALL); Intents.call(context, i.phone) }, Modifier.weight(1f), icon = Icons.Default.Call)
+                AppButton(stringResource(R.string.directions), { vm.track(Analytics.DIRECTIONS); Intents.directions(context, i) }, Modifier.weight(1f),
+                    variant = ButtonVariant.Secondary, icon = Icons.Default.Directions)
+                IconButton({ vm.track(Analytics.SHARE); Intents.share(context, i) }, Modifier.size(Size.touch)) {
+                    Icon(Icons.Default.Share, stringResource(R.string.share_restaurant), tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
     }
 }
 
 @Composable
 private fun Block(title: String, content: @Composable () -> Unit) {
-    Spacer(Modifier.height(12.dp))
-    Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-    content()
+    Column(Modifier.padding(vertical = Spacing.xs)) {
+        Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        content()
+    }
 }
 
 @Composable
@@ -203,7 +259,7 @@ fun HoursText(i: RestaurantInfo) {
         }
     }
     if (!i.hoursVerified) {
-        Text(stringResource(R.string.hours_unverified), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.hours_unverified), style = MaterialTheme.typography.bodySmall, color = secondaryText)
     }
 }
 

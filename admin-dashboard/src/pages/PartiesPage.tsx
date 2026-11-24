@@ -137,13 +137,15 @@ function Statement({ kind, party, onClose }: { kind: Kind; party: Party; onClose
   const [from, setFrom] = useState(todayIST(-90));
   const [to, setTo] = useState(todayIST());
   const [data, setData] = useState<Parameters<typeof LedgerTable>[0]["data"] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
     rpc<NonNullable<typeof data>>("account_ledger", { p_code: kind === "CUSTOMER" ? "1100" : "2000", p_from: from, p_to: to, p_party_type: kind, p_party_id: party.id })
-      .then(setData);
+      .then((d) => { setData(d); setErr(null); }, (e: Error) => setErr(e.message));
   }, [from, to, kind, party.id]);
   return (
     <Modal title={`Statement — ${party.name}`} onClose={onClose}>
       <DateRange from={from} to={to} onChange={(a, b) => { setFrom(a); setTo(b); }} />
+      {err && <p className="error" role="alert">{err}</p>}
       <p className="small muted">{kind === "CUSTOMER" ? "Dr = customer owes you" : "Cr = you owe the supplier"}</p>
       {data && <LedgerTable data={data} file={`statement-${party.name}-${from}-${to}.csv`} />}
       <button className="secondary small" onClick={() => printPage()}>Print / PDF</button>

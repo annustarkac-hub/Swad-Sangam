@@ -164,7 +164,8 @@ class OrderRepository @Inject constructor(
         null
     }
 
-    data class StatusChange(val token: String, val orderNumber: String, val status: OrderStatus, val reason: String?)
+    data class StatusChange(val token: String, val orderNumber: String, val status: OrderStatus, val reason: String?,
+                            val type: com.swadsangam.restaurant.domain.OrderType? = null)
 
     /**
      * Refreshes all orders on this device and returns status changes that have not
@@ -183,7 +184,8 @@ class OrderRepository @Inject constructor(
             val token = dto.accessToken ?: continue
             val old = local.firstOrNull { it.accessToken == token }
             if (old != null && old.notifiedStatus != dto.orderStatus) {
-                changes += StatusChange(token, dto.orderNumber, OrderStatus.parse(dto.orderStatus), dto.rejectionReason ?: dto.cancelReason)
+                changes += StatusChange(token, dto.orderNumber, OrderStatus.parse(dto.orderStatus), dto.rejectionReason ?: dto.cancelReason,
+                    runCatching { com.swadsangam.restaurant.domain.OrderType.valueOf(dto.orderType) }.getOrNull())
             }
             save(dto, token, notified = dto.orderStatus)
         }
@@ -227,6 +229,9 @@ class OrderRepository @Inject constructor(
     }
 
     suspend fun feedbackGiven(token: String) = dao.byTokenNow(token)?.feedbackGiven ?: false
+
+    /** Live "already rated" flag, so the Rate button disappears right after the feedback screen returns. */
+    fun observeFeedbackGiven(token: String): Flow<Boolean> = dao.byToken(token).map { it?.feedbackGiven ?: false }
 
     suspend fun clearHistory() = dao.clear()
 }

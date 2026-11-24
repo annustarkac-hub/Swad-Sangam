@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { browserNotify, playAlert } from "../lib/alert";
+import { notifyNative, playAlert } from "../lib/alert";
 import { supabase } from "../lib/supabase";
 import type { Order, OrderStatus } from "../lib/types";
 
@@ -29,7 +29,7 @@ export function useLiveOrders(statuses: OrderStatus[], opts: { alertOnNew?: bool
       const fresh = list.filter((o) => o.orderStatus === "PLACED" && known.current && !known.current.has(o.id));
       if (fresh.length) {
         playAlert();
-        browserNotify("New order", fresh.map((o) => `${o.orderNumber} — ${o.customerName}`).join("\n"));
+        notifyNative("New online order", fresh.map((o) => `${o.orderNumber} — ${o.customerName}`).join("\n"));
       }
       known.current = new Set(list.map((o) => o.id));
     }
@@ -37,15 +37,20 @@ export function useLiveOrders(statuses: OrderStatus[], opts: { alertOnNew?: bool
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, opts.kitchen, opts.alertOnNew]);
 
+  const instance = useRef(Math.random().toString(36).slice(2));
   useEffect(() => {
     void load();
+    // Debounced: a burst of changes (status + payment + history) triggers one reload, not five 200-order fetches
+    let pending: ReturnType<typeof setTimeout> | null = null;
+    const schedule = () => { if (pending) clearTimeout(pending); pending = setTimeout(() => void load(), 600); };
     const channel = supabase
-      .channel("orders-live-" + key)
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => void load())
+      .channel("orders-live-" + key + "-" + instance.current)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, schedule)
       .subscribe((status) => setConnected(status === "SUBSCRIBED"));
     // Kitchen role cannot receive order rows over Realtime (RLS hides customer data), so it polls faster.
     const timer = setInterval(() => void load(), opts.kitchen ? 15000 : 30000);
     return () => {
+      if (pending) clearTimeout(pending);
       clearInterval(timer);
       void supabase.removeChannel(channel);
     };

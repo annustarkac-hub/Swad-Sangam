@@ -99,7 +99,7 @@ export default function ReportsPage() {
               <>
                 <h2>Monthly sales</h2>
                 <table><thead><tr><th>Month</th><th className="right">Orders</th><th className="right">Completed</th><th className="right">Gross</th></tr></thead><tbody>
-                  {months.map((m) => <tr key={m.month}><td>{new Date(m.month + "-01T00:00:00").toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</td>
+                  {months.map((m) => <tr key={m.month}><td>{new Date(m.month + "-01T00:00:00+05:30").toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "Asia/Kolkata" })}</td>
                     <td className="right">{m.orders}</td><td className="right">{m.completed}</td><td className="right">{rupees(m.grossPaise)}</td></tr>)}
                 </tbody></table>
               </>
@@ -146,7 +146,7 @@ export default function ReportsPage() {
             {FUNNEL.map((k) => (
               <tr key={k}>
                 <td style={{ width: 200 }}>{k.replace(/_/g, " ")}</td>
-                <td><div className="bar" style={{ width: `${((r.funnel?.[k] ?? 0) / maxFunnel) * 100}%`, background: "#9E3528" }} /></td>
+                <td><div className="bar" style={{ width: `${((r.funnel?.[k] ?? 0) / maxFunnel) * 100}%`, background: "var(--brand)" }} /></td>
                 <td className="right" style={{ width: 80 }}>{r.funnel?.[k] ?? 0}</td>
               </tr>
             ))}

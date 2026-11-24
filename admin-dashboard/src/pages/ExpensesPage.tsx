@@ -26,6 +26,10 @@ export default function ExpensesPage() {
   const [f, setF] = useState({ account: "5400", amount: "", tender: "CASH" as Tender, supplier: "", vendor: "", notes: "", date: todayIST() });
   const [file, setFile] = useState<File | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
+  const decide = async (id: number, approve: boolean) => {
+    try { await rpc("decide_expense", { p_id: id, p_approve: approve }); void load(); }
+    catch (e) { setMsg({ ok: false, t: (e as Error).message }); }
+  };
 
   const load = async () => {
     setAccounts((await selectAll<Account>("accounts", "code")).filter((a) => a.type === "EXPENSE" && a.is_active));
@@ -105,8 +109,8 @@ export default function ExpensesPage() {
             <td className="row">
               {r.receipt_path && <button className="link" onClick={() => void openReceipt(r.receipt_path!)}>Bill</button>}
               {approver && r.status === "PENDING" && <>
-                <button className="ok small" onClick={async () => { await rpc("decide_expense", { p_id: r.id, p_approve: true }); void load(); }}>Approve</button>
-                <button className="danger small" onClick={async () => { await rpc("decide_expense", { p_id: r.id, p_approve: false }); void load(); }}>Reject</button></>}
+                <button className="ok small" onClick={() => void decide(r.id, true)}>Approve</button>
+                <button className="danger small" onClick={() => void decide(r.id, false)}>Reject</button></>}
             </td></tr>
         ))}</tbody>
       </table></div>

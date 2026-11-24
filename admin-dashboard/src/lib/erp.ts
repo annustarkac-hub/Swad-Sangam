@@ -47,7 +47,7 @@ export function upiLink(upiId: string, payee: string, amountPaise: number, note:
 
 export function printHtml(title: string, bodyHtml: string, widthMm?: number) {
   const page = widthMm ? `@page { size: ${widthMm}mm auto; margin: 2mm; } body { width: ${widthMm - 4}mm; }` : "@page { margin: 12mm; }";
-  const head = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
+  const head = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>
     ${page}
     body { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: ${widthMm ? (widthMm < 70 ? "10px" : "12px") : "13px"}; color: #000; margin: 0 auto; }
     h1,h2,h3 { margin: 4px 0; text-align: center; } table { width: 100%; border-collapse: collapse; }
@@ -59,8 +59,11 @@ export function printHtml(title: string, bodyHtml: string, widthMm?: number) {
   if (bridge) { bridge.printHtml(title, head + "</body></html>"); return; } // Android app: native print dialog / printer
   const w = window.open("", "_blank", "width=420,height=640");
   if (!w) return;
-  w.document.write(head + `<script>window.onload = () => { window.print(); }<\/script></body></html>`);
+  // No inline script in the popup (the Content-Security-Policy blocks it): print from here once it has rendered
+  w.document.write(head + "</body></html>");
   w.document.close();
+  const go = () => { w.focus(); w.print(); };
+  if (w.document.readyState === "complete") setTimeout(go, 250); else w.addEventListener("load", go, { once: true });
 }
 
-export const esc = (s: unknown) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+export const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);

@@ -61,7 +61,7 @@ android {
                 storeFile = file(storePath)
                 storePassword = config("ANDROID_KEYSTORE_PASSWORD")
                 keyAlias = config("ANDROID_KEY_ALIAS", "swadsangam")
-                keyPassword = config("ANDROID_KEY_PASSWORD")
+                keyPassword = config("ANDROID_KEY_PASSWORD", config("ANDROID_KEYSTORE_PASSWORD"))
             }
         }
     }

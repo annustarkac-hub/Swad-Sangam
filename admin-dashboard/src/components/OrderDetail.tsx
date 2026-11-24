@@ -2,9 +2,13 @@ import { useState } from "react";
 import { can, useAuth } from "../auth";
 import { dateTime, rupees, toPaise } from "../lib/format";
 import { friendlyError, supabase } from "../lib/supabase";
-import { ORDER_TYPE_LABEL, PAYMENT_LABEL, STATUS_LABEL, type Order, type PaymentStatus } from "../lib/types";
+import { canTakePayment } from "../lib/orderFlow";
+import { mapsLink, ORDER_TYPE_LABEL, PAYMENT_LABEL, STATUS_LABEL, type Order, type PaymentStatus } from "../lib/types";
 import Modal from "./Modal";
-import { FoodDot } from "./OrderCard";
+import { FoodDot, PaymentPill } from "./OrderCard";
+
+type Tender = "CASH" | "UPI" | "CARD" | "BANK";
+const TENDERS: { t: Tender; label: string }[] = [{ t: "CASH", label: "Cash" }, { t: "UPI", label: "UPI" }, { t: "CARD", label: "Card" }, { t: "BANK", label: "Bank" }];
 
 const PAYMENT_NEXT: Record<PaymentStatus, PaymentStatus[]> = {
   PENDING: ["PAID", "FAILED"],
@@ -18,21 +22,31 @@ export default function OrderDetail({ order, onClose, onChanged }: { order: Orde
   const { role } = useAuth();
   const [err, setErr] = useState<string | null>(null);
   const [ref, setRef] = useState("");
-  const [adjType, setAdjType] = useState<"REFUND" | "CORRECTION">("REFUND");
+  const [adjType, setAdjType] = useState<"REFUND" | "CHARGE" | "REDUCE">("REFUND");
+  const [tender, setTender] = useState<Tender>(order.paymentMethod === "UPI_AT_RESTAURANT" ? "UPI" : "CASH");
+  const [refundTender, setRefundTender] = useState<Tender>("CASH");
+  const payer = canTakePayment(role);
   const [adjAmount, setAdjAmount] = useState("");
   const [adjReason, setAdjReason] = useState("");
 
   async function setPayment(s: PaymentStatus) {
-    const { error } = await supabase.rpc("update_payment_status", { p_order_id: order.id, p_status: s, p_reference: ref || null });
+    const { error } = await supabase.rpc("update_payment_status", {
+      p_order_id: order.id, p_status: s, p_reference: ref || null, p_tender: s === "PAID" ? tender : null,
+    });
     if (error) setErr(friendlyError(error.message));
     else onChanged();
   }
 
   async function addAdjustment() {
     const p = toPaise(adjAmount);
-    if (!p || adjReason.trim().length < 3) return setErr("Enter an amount and a reason.");
+    if (!p || p <= 0 || adjReason.trim().length < 3) return setErr("Enter an amount above ₹0 and a reason.");
+    if (adjType === "REFUND" && p > (order.paidPaise ?? order.totalPaise)) return setErr(`A refund cannot be more than the amount paid (${rupees(order.paidPaise ?? order.totalPaise)}).`);
     const { error } = await supabase.rpc("record_order_adjustment", {
-      p_order_id: order.id, p_type: adjType, p_amount_paise: adjType === "REFUND" ? p : p, p_reason: adjReason,
+      p_order_id: order.id,
+      p_type: adjType === "REFUND" ? "REFUND" : "CORRECTION",
+      p_amount_paise: adjType === "REDUCE" ? -p : p, // reduce = negative correction
+      p_reason: adjReason.trim(),
+      p_tender: refundTender,
     });
     if (error) setErr(friendlyError(error.message));
     else { setAdjAmount(""); setAdjReason(""); onChanged(); }
@@ -46,7 +60,9 @@ export default function OrderDetail({ order, onClose, onChanged }: { order: Orde
       </p>
       <p>
         <b>{order.customerName}</b> {order.customerPhone && <a href={`tel:${order.customerPhone}`}>{order.customerPhone}</a>}
-        {order.deliveryAddress && <><br />Address: {order.deliveryAddress} {order.deliveryLandmark}</>}
+        {order.deliveryAddress && <><br />Address: {order.deliveryAddress} {order.deliveryLandmark}{" "}
+          <a href={mapsLink(order.deliveryAddress, order.deliveryLandmark)} target="_blank" rel="noreferrer">Directions ↗</a></>}
+        {order.assignedStaffName && <><br />Rider: <b>{order.assignedStaffName}</b></>}
       </p>
       {(order.notes || order.pickupInstructions) && <p><b>Notes:</b> {order.notes} {order.pickupInstructions}</p>}
       {order.rejectionReason && <p className="error">Rejected: {order.rejectionReason}</p>}
@@ -69,10 +85,15 @@ export default function OrderDetail({ order, onClose, onChanged }: { order: Orde
         </tbody>
       </table>
 
-      <h3 style={{ marginTop: 16 }}>Payment — {PAYMENT_LABEL[order.paymentMethod]}: {PAYMENT_LABEL[order.paymentStatus]}</h3>
+      <h3 style={{ marginTop: 16 }}>Payment — {PAYMENT_LABEL[order.paymentMethod]} <PaymentPill order={order} /></h3>
       {order.paymentReference && <p className="small">Reference: {order.paymentReference}</p>}
-      {PAYMENT_NEXT[order.paymentStatus].length > 0 && (
+      {payer && PAYMENT_NEXT[order.paymentStatus].length > 0 && (
         <div className="row">
+          {PAYMENT_NEXT[order.paymentStatus].includes("PAID") && (
+            <select style={{ maxWidth: 130 }} aria-label="Received by" value={tender} onChange={(e) => setTender(e.target.value as Tender)}>
+              {TENDERS.map((x) => <option key={x.t} value={x.t}>Received: {x.label}</option>)}
+            </select>
+          )}
           <input style={{ maxWidth: 220 }} placeholder="UPI ref / note (optional)" value={ref} onChange={(e) => setRef(e.target.value)} />
           {PAYMENT_NEXT[order.paymentStatus].map((s) => (
             <button key={s} className="small" onClick={() => void setPayment(s)}>Mark {PAYMENT_LABEL[s].toLowerCase()}</button>
@@ -85,11 +106,17 @@ export default function OrderDetail({ order, onClose, onChanged }: { order: Orde
           <h3 style={{ marginTop: 16 }}>Refund / correction (audited)</h3>
           <p className="small muted">Order amounts are never edited. Record a refund or correction here; it appears in reports.</p>
           <div className="row">
-            <select style={{ maxWidth: 150 }} value={adjType} onChange={(e) => setAdjType(e.target.value as "REFUND" | "CORRECTION")}>
-              <option value="REFUND">Refund</option>
-              <option value="CORRECTION">Correction</option>
+            <select style={{ maxWidth: 190 }} aria-label="Type" value={adjType} onChange={(e) => setAdjType(e.target.value as "REFUND" | "CHARGE" | "REDUCE")}>
+              <option value="REFUND">Refund to customer</option>
+              <option value="REDUCE">Correction: reduce bill</option>
+              <option value="CHARGE">Correction: add charge</option>
             </select>
-            <input style={{ maxWidth: 120 }} placeholder="₹ amount" value={adjAmount} onChange={(e) => setAdjAmount(e.target.value)} />
+            {adjType === "REFUND" && (
+              <select style={{ maxWidth: 140 }} aria-label="Refunded by" value={refundTender} onChange={(e) => setRefundTender(e.target.value as Tender)}>
+                {TENDERS.map((x) => <option key={x.t} value={x.t}>Paid back: {x.label}</option>)}
+              </select>
+            )}
+            <input style={{ maxWidth: 120 }} inputMode="decimal" placeholder="₹ amount" value={adjAmount} onChange={(e) => setAdjAmount(e.target.value)} />
             <input style={{ maxWidth: 260 }} placeholder="Reason" value={adjReason} onChange={(e) => setAdjReason(e.target.value)} />
             <button className="small" onClick={() => void addAdjustment()}>Record</button>
           </div>

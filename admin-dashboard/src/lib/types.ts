@@ -1,4 +1,4 @@
-export type Role = "OWNER" | "MANAGER" | "STAFF" | "KITCHEN" | "CASHIER" | "WAITER" | "ACCOUNTANT";
+export type Role = "OWNER" | "MANAGER" | "STAFF" | "KITCHEN" | "CASHIER" | "WAITER" | "ACCOUNTANT" | "DELIVERY";
 export type OrderStatus = "PLACED" | "ACCEPTED" | "PREPARING" | "READY" | "OUT_FOR_DELIVERY" | "COMPLETED" | "REJECTED" | "CANCELLED";
 export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUND_PENDING" | "REFUNDED";
 
@@ -95,7 +95,24 @@ export interface Order {
   completedAt: string | null;
   items: OrderLine[];
   history: { status: OrderStatus; at: string }[];
+  /** Staff view only */
+  customerId?: number | null;
+  source?: "APP" | "POS";
+  paidPaise?: number;
+  assignedStaffId?: string | null;
+  assignedStaffName?: string | null;
+  assignedAt?: string | null;
+  /** Only owner/manager (staff view) and the customer ever receive this */
+  deliveryOtp?: string | null;
 }
+
+/** Amount still to collect for an order (staff view). */
+export const duePaise = (o: Pick<Order, "totalPaise" | "paidPaise" | "paymentStatus">) =>
+  o.paymentStatus === "PAID" || o.paymentStatus === "REFUNDED" || o.paymentStatus === "REFUND_PENDING" ? 0 : Math.max(0, o.totalPaise - (o.paidPaise ?? 0));
+
+/** Google Maps search link for a delivery address (free, no API key). */
+export const mapsLink = (address: string, landmark?: string | null) =>
+  "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent([address, landmark, "Srinagar Garhwal"].filter(Boolean).join(", "));
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
   PLACED: "New",

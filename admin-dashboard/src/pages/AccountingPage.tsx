@@ -7,6 +7,7 @@ import { downloadCsv } from "../lib/csv";
 import { rpc, selectAll, useRpc } from "../lib/erp";
 import { rupees, todayIST, toPaise } from "../lib/format";
 import { supabase } from "../lib/supabase";
+import { askText } from "../components/Dialogs";
 
 interface Account { id: number; code: string; name: string; type: string; is_system: boolean; is_active: boolean }
 interface Row { code: string; name: string; amountPaise: number }
@@ -241,7 +242,7 @@ function Journal({ from, to }: { from: string; to: string }) {
             <td>{e.status === "REVERSED" ? <span className="badge CANCELLED">Reversed</span> : "Posted"}</td>
             <td>{can(role, "OWNER", "ACCOUNTANT") && e.status === "POSTED" && e.source !== "REVERSAL" &&
               <button className="link" onClick={async () => {
-                const reason = prompt("Reason for reversal?");
+                const reason = await askText("Reason for reversal?", { ok: "Reverse entry", placeholder: "e.g. wrong amount entered" });
                 if (!reason) return;
                 try { await rpc("reverse_journal", { p_entry_id: e.id, p_reason: reason }); void load(); } catch (x) { setErr((x as Error).message); }
               }}>Reverse</button>}</td></tr>

@@ -15,91 +15,80 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Design language (FoodGenz-style, licensed by the owner): vivid orange on warm cream, near-black partner surfaces,
-// Plus Jakarta Sans. Buttons use the deeper orange so white text passes WCAG AA (4.6:1); the vivid one is the accent.
-val BrandOrange = Color(0xFFD63B06)
-val BrandOrangeBright = Color(0xFFFD4E11)
-val Navy = Color(0xFF131217)
-val Saffron = Color(0xFFFFB020)
-val Cream = Color(0xFFFFF8F4)
-val TextInk = Color(0xFF1B1A1F)
-val SuccessGreen = Color(0xFF1F8A4C)
-val ErrorRed = Color(0xFFC8392F)
-val NonVegBrown = Color(0xFF8B3A1A)
+// Swad Sangam's own palette (same tokens as the website and the admin app): tandoor crimson + saffron on warm
+// porcelain, logo green as secondary. Replaces the earlier orange, which customers said looked like another food app.
+private val Crimson = Color(0xFFB83227)        // 5.9:1 with white, 5.5:1 on porcelain
+private val Saffron = Color(0xFFC27C0E)        // 3.4:1 on white (icons/stars)
+private val Porcelain = Color(0xFFF8F6F3)
+private val TextInk = Color(0xFF1A1716)
+private val ErrorRed = Color(0xFFC8332B)
 
 private val Light = lightColorScheme(
-    primary = BrandOrange,
+    primary = Crimson,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFFFE1D3),
-    onPrimaryContainer = Color(0xFF4A1300),
-    secondary = Navy,
+    primaryContainer = Color(0xFFFDF0EE),
+    onPrimaryContainer = Color(0xFF5C1610),
+    secondary = Color(0xFF1F5F2C),   // logo green
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFFFF0E8),
-    onSecondaryContainer = Color(0xFF4A1300),
+    secondaryContainer = Color(0xFFFEF3E0),
+    onSecondaryContainer = Color(0xFF4A2A00),
     tertiary = Saffron,
-    onTertiary = TextInk,
-    background = Cream,
+    onTertiary = Color.White,
+    background = Porcelain,
     onBackground = TextInk,
     surface = Color.White,
     onSurface = TextInk,
-    surfaceVariant = Color(0xFFFBF1EA),
-    onSurfaceVariant = Color(0xFF6F6A72),
+    surfaceVariant = Color(0xFFF2EFEA),
+    onSurfaceVariant = Color(0xFF6B635E),
     surfaceContainerLowest = Color.White,
-    surfaceContainerLow = Color(0xFFFFFBF8),
-    surfaceContainer = Color(0xFFFFF4EE),
-    surfaceContainerHigh = Color(0xFFFBEDE5),
-    surfaceContainerHighest = Color(0xFFF5E6DD),
-    outline = Color(0xFFD9CCC4),
-    outlineVariant = Color(0xFFF0E6DF),
+    surfaceContainerLow = Color(0xFFFCFBF9),
+    surfaceContainer = Color(0xFFF6F3EF),
+    surfaceContainerHigh = Color(0xFFF2EFEA),
+    surfaceContainerHighest = Color(0xFFEAE5DF),
+    outline = Color(0xFF8F837B),        // 3.5:1 — checkbox, radio, field borders must be visible (WCAG 1.4.11)
+    outlineVariant = Color(0xFFEAE5DF),
     error = ErrorRed,
     onError = Color.White,
     errorContainer = Color(0xFFFDECEA),
     onErrorContainer = Color(0xFF5C1210),
+    inverseSurface = Color(0xFF2A2527),
+    inverseOnSurface = Color(0xFFF4F1F0),
+    inversePrimary = Color(0xFFFF7A6B),
 )
 
 // Every role is set so no Material default (purple) leaks into dark mode.
 private val Dark = darkColorScheme(
-    primary = Color(0xFFFF7A45),
-    onPrimary = Color(0xFF131217),
-    primaryContainer = Color(0xFF5A2410),
-    onPrimaryContainer = Color(0xFFFFDBC9),
-    secondary = Color(0xFFC9C5CC),
-    onSecondary = Color(0xFF131217),
-    secondaryContainer = Color(0xFF2A1A14),
-    onSecondaryContainer = Color(0xFFFFDBC9),
-    tertiary = Saffron,
+    primary = Color(0xFFFF7A6B),
+    onPrimary = Color(0xFF141214),
+    primaryContainer = Color(0xFF4A2421),
+    onPrimaryContainer = Color(0xFFFFDAD5),
+    secondary = Color(0xFF8FD19E),   // logo green, lightened for dark mode
+    onSecondary = Color(0xFF0B2416),
+    secondaryContainer = Color(0xFF3A2B12),
+    onSecondaryContainer = Color(0xFFFFE2B8),
+    tertiary = Color(0xFFF5B742),
     onTertiary = Color(0xFF2B1C00),
-    background = Color(0xFF131217),
-    onBackground = Color(0xFFF4F1F3),
+    background = Color(0xFF121115),
+    onBackground = Color(0xFFF4F1F0),
     surface = Color(0xFF1C1B21),
-    onSurface = Color(0xFFF4F1F3),
-    surfaceVariant = Color(0xFF25232B),
-    onSurfaceVariant = Color(0xFFA7A2AB),
+    onSurface = Color(0xFFF4F1F0),
+    surfaceVariant = Color(0xFF26242D),
+    onSurfaceVariant = Color(0xFFA59FA6),
     surfaceContainerLowest = Color(0xFF0D0C10),
     surfaceContainerLow = Color(0xFF18171C),
     surfaceContainer = Color(0xFF1C1B21),
-    surfaceContainerHigh = Color(0xFF25232B),
-    surfaceContainerHighest = Color(0xFF2E2C34),
+    surfaceContainerHigh = Color(0xFF26242D),
+    surfaceContainerHighest = Color(0xFF2F2D36),
     outline = Color(0xFF8A858F),
-    outlineVariant = Color(0xFF2E2C34),
+    outlineVariant = Color(0xFF2F2D36),
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF5C1E1A),
     onErrorContainer = Color(0xFFFFDAD6),
+    inverseSurface = Color(0xFFF4F1F0),
+    inverseOnSurface = Color(0xFF1C1B21),
+    inversePrimary = Crimson,
 )
-
-/** Spacing, radius and size tokens — use these instead of ad-hoc numbers. */
-object Dimens {
-    val gutter = 16.dp
-    val gap = 12.dp
-    val gapS = 8.dp
-    val radiusS = 8.dp
-    val radiusM = 14.dp
-    val radiusL = 20.dp
-    /** Minimum touch target (Material / WCAG). */
-    val touch = 48.dp
-    val buttonTall = 52.dp
-}
 
 // Plus Jakarta Sans (bundled, SIL OFL) — headings bold/extra-bold, prices bold
 val JakartaSans = FontFamily(
@@ -110,33 +99,43 @@ val JakartaSans = FontFamily(
     Font(R.font.plus_jakarta_sans_extrabold, FontWeight.ExtraBold),
 )
 private val base = Typography()
+/** Complete type scale on Plus Jakarta Sans. Display/headline for page titles, title for cards and sections,
+ *  body for content (16 sp base), label for buttons, chips and captions. */
+private fun TextStyle.jakarta(weight: FontWeight, spacing: Float? = null) =
+    copy(fontFamily = JakartaSans, fontWeight = weight, letterSpacing = spacing?.sp ?: letterSpacing)
 val AppTypography = Typography(
-    displaySmall = base.displaySmall.copy(fontFamily = JakartaSans, fontWeight = FontWeight.ExtraBold),
-    headlineMedium = base.headlineMedium.copy(fontFamily = JakartaSans, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp),
-    headlineSmall = base.headlineSmall.copy(fontFamily = JakartaSans, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.2).sp),
-    titleLarge = base.titleLarge.copy(fontFamily = JakartaSans, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp),
-    titleMedium = base.titleMedium.copy(fontFamily = JakartaSans, fontWeight = FontWeight.Bold),
-    titleSmall = base.titleSmall.copy(fontFamily = JakartaSans, fontWeight = FontWeight.SemiBold),
-    bodyLarge = base.bodyLarge.copy(fontFamily = JakartaSans),
-    bodyMedium = base.bodyMedium.copy(fontFamily = JakartaSans),
-    bodySmall = base.bodySmall.copy(fontFamily = JakartaSans),
-    labelLarge = base.labelLarge.copy(fontFamily = JakartaSans, fontWeight = FontWeight.Bold),
-    labelMedium = base.labelMedium.copy(fontFamily = JakartaSans, fontWeight = FontWeight.SemiBold),
-    labelSmall = base.labelSmall.copy(fontFamily = JakartaSans, fontWeight = FontWeight.SemiBold),
+    displayLarge = base.displayLarge.jakarta(FontWeight.ExtraBold, -0.5f),
+    displayMedium = base.displayMedium.jakarta(FontWeight.ExtraBold, -0.4f),
+    displaySmall = base.displaySmall.jakarta(FontWeight.ExtraBold, -0.3f),
+    headlineLarge = base.headlineLarge.jakarta(FontWeight.ExtraBold, -0.3f),
+    headlineMedium = base.headlineMedium.jakarta(FontWeight.ExtraBold, -0.3f),
+    headlineSmall = base.headlineSmall.jakarta(FontWeight.Bold, -0.2f),
+    titleLarge = base.titleLarge.jakarta(FontWeight.Bold, -0.2f),
+    titleMedium = base.titleMedium.jakarta(FontWeight.Bold, 0f),
+    titleSmall = base.titleSmall.jakarta(FontWeight.SemiBold, 0f),
+    bodyLarge = base.bodyLarge.jakarta(FontWeight.Normal, 0f),
+    bodyMedium = base.bodyMedium.jakarta(FontWeight.Normal, 0f),
+    bodySmall = base.bodySmall.jakarta(FontWeight.Normal, 0f),
+    labelLarge = base.labelLarge.jakarta(FontWeight.Bold, 0f),
+    labelMedium = base.labelMedium.jakarta(FontWeight.SemiBold, 0f),
+    labelSmall = base.labelSmall.jakarta(FontWeight.SemiBold, 0.2f),
 )
 
-/** Softer, rounder shapes (cards 18 dp, sheets 24 dp) */
+/** Shapes: chips 10, cards 20, sheets/dialogs 28 (see [Radius]). */
 val AppShapes = androidx.compose.material3.Shapes(
-    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-    small = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-    medium = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
-    large = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(Radius.xs),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(Radius.s),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(Radius.l),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(Radius.xl),
+    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(Radius.xl),
 )
 
-val PriceStyle = TextStyle(fontFamily = JakartaSans, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+/** Prices and quantities use tabular figures so numbers never jump when they change. */
+val PriceStyle = TextStyle(fontFamily = JakartaSans, fontWeight = FontWeight.Bold, fontSize = 16.sp, fontFeatureSettings = "tnum")
 
 @Composable
 fun SwadSangamTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = if (dark) Dark else Light, typography = AppTypography, shapes = AppShapes, content = content)
+    androidx.compose.runtime.CompositionLocalProvider(LocalAppColors provides if (dark) DarkAppColors else LightAppColors) {
+        MaterialTheme(colorScheme = if (dark) Dark else Light, typography = AppTypography, shapes = AppShapes, content = content)
+    }
 }

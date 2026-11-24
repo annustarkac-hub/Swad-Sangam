@@ -6,6 +6,7 @@ import { AccountView, FeedbackCard, ReviewsCard, useCustomer } from "./Account";
 import { db as supabase, store, type Customer } from "./common";
 import type { Category, MenuItem, Order } from "../lib/types";
 import { t, type Key, type Lang } from "./i18n";
+import { askConfirm, askText } from "../components/Dialogs";
 
 const APK_URL = "https://github.com/annustarkac-hub/Swad-Sangam/releases/latest/download/swad-sangam.apk";
 
@@ -593,12 +594,26 @@ function OrderView({ L, lang, token, settings }: { L: L; lang: Lang; token: stri
         {err && <div className="banner-s warn inline">{err}</div>}
       </div>
 
+      {o.orderType === "DELIVERY" && o.deliveryOtp && ["ACCEPTED", "PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(o.orderStatus) && (
+        <div className="card-s2 otp-card" role="status">
+          <div className="otp-label">{lang === "hi" ? "डिलीवरी कोड" : "Delivery code"}</div>
+          <div className="otp-code num" aria-label={o.deliveryOtp.split("").join(" ")}>{o.deliveryOtp}</div>
+          <p className="small">{lang === "hi" ? "खाना मिलने पर ही यह कोड राइडर को बताएँ।" : "Tell this code to the rider only when you receive your food."}</p>
+        </div>
+      )}
       {canPay && (
         <div className="card-s2 pay-card">
           <h3>{L("payNow")} · {rupees(o.totalPaise)}</h3>
           {qr && <img src={qr} alt="UPI QR" />}
           <a className="primary-s wide" href={link!}>{L("openUpi")}</a>
           <p className="muted-s small">{L("scanToPay")}</p>
+        </div>
+      )}
+      {o.paymentStatus !== "PAID" && !failed && o.paymentMethod === "CASH" && (
+        <div className="card-s2 cod-card">
+          {o.orderType === "DELIVERY"
+            ? (lang === "hi" ? <>कैश ऑन डिलीवरी — राइडर को <b>{rupees(o.totalPaise)}</b> दें</> : <>Cash on delivery — pay <b>{rupees(o.totalPaise)}</b> to the rider</>)
+            : (lang === "hi" ? <>काउंटर पर <b>{rupees(o.totalPaise)}</b> का भुगतान करें</> : <>Pay <b>{rupees(o.totalPaise)}</b> at the counter</>)}
         </div>
       )}
       {o.paymentStatus === "PAID" && <div className="card-s2 paid">{L("paid")}</div>}
@@ -617,7 +632,7 @@ function OrderView({ L, lang, token, settings }: { L: L; lang: Lang; token: stri
       </div>
       {o.orderStatus === "COMPLETED" && <FeedbackCard lang={lang} token={token} />}
       {o.canCancel && <button className="ghost-s" onClick={async () => {
-        if (!confirm(L("cancelOrder") + "?")) return;
+        if (!(await askConfirm(L("cancelOrder") + "?", { ok: L("cancelOrder"), cancel: lang === "hi" ? "नहीं" : "No", danger: true }))) return;
         await supabase.rpc("cancel_order_by_customer", { p_token: token, p_reason: "Cancelled by customer" }); void load();
       }}>{L("cancelOrder")}</button>}
     </div>
@@ -702,7 +717,7 @@ function TableBar({ table, L, lang }: { table: string; L: L; lang: Lang }) {
     let code = store.get("ss_table_code", "");
     let r = (await supabase.rpc("request_service", { p_table: table, p_type: type, p_code: code || null })).data as { ok: boolean; error?: string; message?: string } | null;
     if (r && !r.ok && r.error === "TABLE_CODE_REQUIRED") {
-      code = prompt(L("tableCode")) ?? "";
+      code = (await askText(L("tableCode"), { ok: "OK", cancel: lang === "hi" ? "रद्द करें" : "Cancel", placeholder: "0000" })) ?? "";
       store.set("ss_table_code", code);
       r = (await supabase.rpc("request_service", { p_table: table, p_type: type, p_code: code })).data;
     }

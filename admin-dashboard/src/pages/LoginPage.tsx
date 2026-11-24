@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { supabase } from "../lib/supabase";
+import PasswordInput from "../components/PasswordInput";
 
 export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "signup" | "reset">("login");
@@ -43,7 +44,7 @@ export default function LoginPage() {
     <div className="center-page">
       <form className="card narrow" onSubmit={submit}>
         <div className="row" style={{ marginBottom: 12 }}>
-          <img src="./favicon.svg" alt="" width={40} height={40} />
+          <img src={`${import.meta.env.BASE_URL}logo-mark.png`} alt="" width={44} height={44} style={{ borderRadius: 10 }} />
           <div>
             <h1 style={{ margin: 0 }}>Swad Sangam</h1>
             <div className="muted small">Restaurant admin</div>
@@ -55,7 +56,7 @@ export default function LoginPage() {
         <label>Email<input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
         {mode !== "reset" && (
           <label>Password
-            <input type="password" autoComplete={mode === "login" ? "current-password" : "new-password"}
+            <PasswordInput autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={mode === "signup" ? 8 : undefined}
               value={password} onChange={(e) => setPassword(e.target.value)} required />
           </label>
         )}

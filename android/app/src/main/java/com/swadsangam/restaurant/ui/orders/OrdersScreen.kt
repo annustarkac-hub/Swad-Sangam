@@ -1,6 +1,20 @@
 package com.swadsangam.restaurant.ui.orders
 
-import androidx.compose.foundation.clickable
+import com.swadsangam.restaurant.ui.components.Tone
+import com.swadsangam.restaurant.ui.cart.orderTypeLabel
+import com.swadsangam.restaurant.ui.order.paymentStatusLabel
+import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.Icons
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Arrangement
+import com.swadsangam.restaurant.ui.theme.secondaryText
+import com.swadsangam.restaurant.ui.order.statusTone
+import com.swadsangam.restaurant.ui.components.StatusChip
+import com.swadsangam.restaurant.ui.components.ButtonVariant
+import com.swadsangam.restaurant.ui.components.AppCard
+import com.swadsangam.restaurant.ui.components.AppButton
+import com.swadsangam.restaurant.ui.theme.Spacing
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,11 +23,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,7 +36,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -35,7 +46,6 @@ import com.swadsangam.restaurant.data.repo.MenuRepository
 import com.swadsangam.restaurant.data.repo.OrderRepository
 import com.swadsangam.restaurant.domain.Order
 import com.swadsangam.restaurant.ui.components.EmptyState
-import com.swadsangam.restaurant.ui.components.Tag
 import com.swadsangam.restaurant.ui.order.statusLabel
 import com.swadsangam.restaurant.util.TimeFmt
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -60,19 +70,21 @@ class OrdersViewModel @Inject constructor(
     }
 
     /** Reorder previous purchases (repeat business). Unavailable dishes are skipped. */
-    fun reorder(o: Order, onDone: (added: Int) -> Unit) = viewModelScope.launch {
+    fun reorder(o: Order, onDone: (added: Int, skipped: Int) -> Unit) = viewModelScope.launch {
         val items = menu.itemsNow().associateBy { it.id }
         val max = menu.restaurantNow().maxItemQuantity
         var added = 0
+        var skipped = 0
         o.items.forEach { l ->
-            val item = items[l.itemId] ?: return@forEach
-            if (!item.isAvailable) return@forEach
-            val optIds = item.options.filter { it.name in l.options }.map { it.id }
+            val item = items[l.itemId]
+            if (item == null || !item.isAvailable) { skipped++; return@forEach }
+            // only options that still exist AND are available
+            val optIds = item.options.filter { it.name in l.options && it.isAvailable }.map { it.id }
             cart.add(item.id, optIds, l.quantity, max)
             added++
         }
         cart.count.first()
-        onDone(added)
+        onDone(added, skipped)
     }
 }
 
@@ -90,28 +102,55 @@ fun OrdersScreen(onOpen: (String) -> Unit, onCart: () -> Unit, onBrowse: () -> U
         EmptyState(stringResource(R.string.no_orders), stringResource(R.string.no_orders_body), stringResource(R.string.browse_menu), onBrowse)
         return
     }
+    val active = l.filter { it.status.isActive }
+    val past = l.filter { !it.status.isActive }
+    val context = androidx.compose.ui.platform.LocalContext.current
     PullToRefreshBox(refreshing, { scope.launch { refreshing = true; vm.refresh(); refreshing = false } }, Modifier.fillMaxSize()) {
-        LazyColumn(contentPadding = PaddingValues(16.dp)) {
+        LazyColumn(contentPadding = PaddingValues(horizontal = Spacing.gutter, vertical = Spacing.l), verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
             item {
-                Text(stringResource(R.string.orders_on_device), style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
+                Text(stringResource(R.string.orders_on_device), style = MaterialTheme.typography.bodySmall, color = secondaryText)
             }
-            items(l, key = { it.accessToken }) { o ->
-                Card(Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { onOpen(o.accessToken) }) {
-                    Column(Modifier.padding(16.dp)) {
-                        Row {
-                            Text(o.orderNumber, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                            Tag(statusLabel(o.status))
+            if (active.isNotEmpty()) {
+                item(key = "h-active") { Text(stringResource(R.string.active_orders), style = MaterialTheme.typography.titleLarge) }
+                items(active, key = { it.accessToken }) { o -> OrderRow(o, highlighted = true, onOpen = { onOpen(o.accessToken) }, onReorder = null) }
+            }
+            if (past.isNotEmpty()) {
+                item(key = "h-past") { Text(stringResource(R.string.past_orders), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = Spacing.s)) }
+                items(past, key = { it.accessToken }) { o ->
+                    OrderRow(o, highlighted = false, onOpen = { onOpen(o.accessToken) }, onReorder = {
+                        vm.reorder(o) { _, skipped ->
+                            if (skipped > 0) android.widget.Toast.makeText(context,
+                                context.getString(R.string.reorder_skipped, skipped), android.widget.Toast.LENGTH_LONG).show()
+                            onCart()
                         }
-                        Text(TimeFmt.dateTime(o.createdAt), style = MaterialTheme.typography.bodySmall)
-                        Text(o.items.joinToString { "${it.quantity}× ${it.name}" }, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
-                        Row {
-                            Text(Money.format(o.totalPaise), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f).padding(top = 12.dp))
-                            if (!o.status.isActive) TextButton({ vm.reorder(o) { onCart() } }) { Text(stringResource(R.string.reorder)) }
-                        }
-                    }
+                    })
                 }
             }
+        }
+    }
+}
+
+/** One order: number, time, status, type + payment badges, items, total. Active orders get a brand outline. */
+@Composable
+private fun OrderRow(o: Order, highlighted: Boolean, onOpen: () -> Unit, onReorder: (() -> Unit)?) {
+    AppCard(onClick = onOpen, container = if (highlighted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(o.orderNumber, style = MaterialTheme.typography.titleMedium)
+                Text(TimeFmt.dateTime(o.createdAt), style = MaterialTheme.typography.bodySmall, color = secondaryText)
+            }
+            StatusChip(statusLabel(o.status), tone = statusTone(o.status))
+        }
+        Row(Modifier.padding(top = Spacing.s), horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            StatusChip(orderTypeLabel(o.orderType))
+            StatusChip(paymentStatusLabel(o.paymentStatus, o.orderType, o.paymentMethod),
+                tone = if (o.paymentStatus == "PAID") Tone.Success else if (o.status.isActive) Tone.Warning else Tone.Neutral)
+        }
+        Text(o.items.joinToString { "${it.quantity}× ${it.name}" }, style = MaterialTheme.typography.bodyMedium, maxLines = 2,
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = Spacing.s))
+        Row(Modifier.padding(top = Spacing.s), verticalAlignment = Alignment.CenterVertically) {
+            Text(Money.format(o.totalPaise), style = com.swadsangam.restaurant.ui.theme.PriceStyle, modifier = Modifier.weight(1f))
+            if (onReorder != null) AppButton(stringResource(R.string.reorder), onReorder, variant = ButtonVariant.Tonal, icon = Icons.Default.Replay)
         }
     }
 }

@@ -3,12 +3,20 @@ import Modal from "../components/Modal";
 import { dateTime, fromPaise, rupees, toPaise } from "../lib/format";
 import { toWebp } from "../lib/image";
 import { friendlyError, supabase } from "../lib/supabase";
+import { askConfirm } from "../components/Dialogs";
 
 interface Offer { id?: number; title: string; description: string | null; image_url: string | null; coupon_code: string | null; is_active: boolean; starts_at: string | null; ends_at: string | null; sort_order: number }
 interface Coupon { code: string; description: string | null; discount_type: "PERCENT" | "FLAT"; value: number; max_discount_paise: number | null; min_order_paise: number; max_uses: number | null; used_count: number; is_active: boolean; starts_at: string | null; ends_at: string | null }
 
-const toLocal = (iso: string | null) => (iso ? new Date(iso).toISOString().slice(0, 16) : "");
-const fromLocal = (v: string) => (v ? new Date(v).toISOString() : null);
+/** ISO → "YYYY-MM-DDTHH:mm" in India time for <input type="datetime-local"> (was UTC → shifted 5 h 30 m on every save). */
+const toLocal = (iso: string | null) => {
+  if (!iso) return "";
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+};
+/** The typed time is India time (+05:30), whatever the device's own time zone is. */
+const fromLocal = (v: string) => (v ? new Date(v + ":00+05:30").toISOString() : null);
 
 export default function OffersPage() {
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -93,7 +101,7 @@ function OfferEditor({ offer, onClose, onSaved }: { offer: Offer; onClose: () =>
     if (error) setErr(friendlyError(error.message)); else onSaved();
   }
   async function remove() {
-    if (!o.id || !confirm("Delete this offer?")) return;
+    if (!o.id || !(await askConfirm("Delete this offer?", { ok: "Delete", danger: true }))) return;
     const { error } = await supabase.from("offers").delete().eq("id", o.id);
     if (error) setErr(friendlyError(error.message)); else onSaved();
   }

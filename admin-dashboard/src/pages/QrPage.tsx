@@ -18,7 +18,7 @@ export default function QrPage() {
       { label: "Menu & ordering — scan to open", url: store },
       ...Array.from({ length: tables }, (_, i) => ({ label: `Table ${i + 1} — scan to order`, url: `${base}?table=${i + 1}` })),
     ];
-    Promise.all(list.map(async (x) => ({ ...x, img: await QRCode.toDataURL(x.url, { margin: 1, width: 360, color: { dark: "#34241F" } }) })))
+    Promise.all(list.map(async (x) => ({ ...x, img: await QRCode.toDataURL(x.url, { margin: 1, width: 360, color: { dark: "#1A1716" } }) })))
       .then(setCodes);
   }, [store, tables, base]);
 

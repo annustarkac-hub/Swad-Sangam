@@ -1,5 +1,21 @@
 package com.swadsangam.restaurant.ui.feedback
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Arrangement
+import com.swadsangam.restaurant.ui.theme.secondaryText
+import com.swadsangam.restaurant.ui.theme.Size
+import com.swadsangam.restaurant.ui.theme.IconSize
+import com.swadsangam.restaurant.ui.theme.AppTheme
+import com.swadsangam.restaurant.ui.components.Tone
+import com.swadsangam.restaurant.ui.components.StatusBanner
+import com.swadsangam.restaurant.ui.components.BottomActionBar
+import com.swadsangam.restaurant.ui.components.AppTextField
+import com.swadsangam.restaurant.ui.components.AppCard
+import com.swadsangam.restaurant.ui.components.AppButton
+import com.swadsangam.restaurant.ui.theme.Spacing
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -67,24 +83,28 @@ fun FeedbackScreen(onDone: () -> Unit, vm: FeedbackViewModel = androidx.hilt.nav
         EmptyState(stringResource(R.string.feedback_thanks), stringResource(R.string.feedback_thanks_body), stringResource(R.string.ok), onDone)
         return
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        Text(stringResource(R.string.feedback_intro), style = MaterialTheme.typography.bodyMedium)
-        Stars(stringResource(R.string.fb_overall), overall) { overall = it }
-        Stars(stringResource(R.string.fb_food), food) { food = it }
-        Stars(stringResource(R.string.fb_accuracy), accuracy) { accuracy = it }
-        Stars(stringResource(R.string.fb_packaging), packaging) { packaging = it }
-        Stars(stringResource(R.string.fb_staff), staff) { staff = it }
-        OutlinedTextField(comments, { comments = it.take(1000) }, Modifier.fillMaxWidth(), minLines = 3,
-            label = { Text(stringResource(R.string.fb_comments)) })
-        Row(Modifier.fillMaxWidth().clickable { consent = !consent }, verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(consent, { consent = it })
-            Text(stringResource(R.string.fb_consent), style = MaterialTheme.typography.bodySmall)
+    Column(Modifier.fillMaxSize()) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = Spacing.gutter, vertical = Spacing.l),
+            verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+            Text(stringResource(R.string.feedback_intro), style = MaterialTheme.typography.bodyLarge, color = secondaryText)
+            AppCard {
+                Stars(stringResource(R.string.fb_overall), overall, big = true) { overall = it }
+            }
+            AppCard {
+                Stars(stringResource(R.string.fb_food), food) { food = it }
+                Stars(stringResource(R.string.fb_accuracy), accuracy) { accuracy = it }
+                Stars(stringResource(R.string.fb_packaging), packaging) { packaging = it }
+                Stars(stringResource(R.string.fb_staff), staff) { staff = it }
+            }
+            AppTextField(comments, { comments = it.take(1000) }, stringResource(R.string.fb_comments), singleLine = false, minLines = 3)
+            Row(Modifier.fillMaxWidth().heightIn(min = Size.touch).clickable { consent = !consent }, verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(consent, { consent = it })
+                Text(stringResource(R.string.fb_consent), style = MaterialTheme.typography.bodyMedium)
+            }
+            error?.let { StatusBanner(it, tone = Tone.Error) }
         }
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Spacer(Modifier.height(8.dp))
-        Button(
-            enabled = overall > 0 && !sending, modifier = Modifier.fillMaxWidth(),
-            onClick = {
+        BottomActionBar {
+            AppButton(stringResource(R.string.send_feedback), {
                 sending = true
                 scope.launch {
                     vm.submit(FeedbackRequest(overall = overall, foodQuality = food.takeIf { it > 0 }, orderAccuracy = accuracy.takeIf { it > 0 },
@@ -93,19 +113,23 @@ fun FeedbackScreen(onDone: () -> Unit, vm: FeedbackViewModel = androidx.hilt.nav
                         .onSuccess { done = true }.onFailure { error = it.message }
                     sending = false
                 }
-            },
-        ) { Text(stringResource(R.string.send_feedback)) }
+            }, Modifier.fillMaxWidth(), large = true, enabled = overall > 0, loading = sending)
+        }
     }
 }
 
+/** 1–5 star picker. Each star is a 48 dp target and announces its value and selection. */
 @Composable
-private fun Stars(label: String, value: Int, onChange: (Int) -> Unit) {
-    Text(label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 12.dp))
+private fun Stars(label: String, value: Int, big: Boolean = false, onChange: (Int) -> Unit) {
+    Text(label, style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
+        modifier = Modifier.padding(top = Spacing.s))
     Row {
         (1..5).forEach { i ->
-            IconButton({ onChange(i) }) {
+            IconButton({ onChange(i) }, Modifier.size(Size.touch).semantics { selected = i <= value }) {
                 Icon(if (i <= value) Icons.Default.Star else Icons.Default.StarBorder,
-                    contentDescription = stringResource(R.string.stars_n, i), tint = Color(0xFFE8A13B))
+                    contentDescription = stringResource(R.string.stars_n, i),
+                    tint = if (i <= value) AppTheme.colors.rating else MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.size(if (big) IconSize.l + Spacing.s else IconSize.l))
             }
         }
     }

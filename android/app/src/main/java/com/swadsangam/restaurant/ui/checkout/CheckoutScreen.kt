@@ -1,5 +1,18 @@
 package com.swadsangam.restaurant.ui.checkout
 
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.PaddingValues
+import com.swadsangam.restaurant.ui.theme.secondaryText
+import com.swadsangam.restaurant.ui.theme.Size
+import com.swadsangam.restaurant.ui.components.Tone
+import com.swadsangam.restaurant.ui.components.StatusBanner
+import com.swadsangam.restaurant.ui.components.KeyValueRow
+import com.swadsangam.restaurant.ui.components.ButtonVariant
+import com.swadsangam.restaurant.ui.components.BottomActionBar
+import com.swadsangam.restaurant.ui.components.AppTextField
+import com.swadsangam.restaurant.ui.components.AppCard
+import com.swadsangam.restaurant.ui.components.AppButton
+import com.swadsangam.restaurant.ui.theme.Spacing
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
@@ -57,10 +70,13 @@ fun CheckoutScreen(
     onBackToCart: () -> Unit,
     vm: CheckoutViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
+    var editDetails by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<Boolean?>(null) }
     val u by vm.ui.collectAsStateWithLifecycle()
     val info by vm.info.collectAsStateWithLifecycle()
     val lines by vm.lines.collectAsStateWithLifecycle()
     val quote by vm.quote.collectAsStateWithLifecycle()
+    val quoteVerified by vm.quoteVerified.collectAsStateWithLifecycle()
+    val couponCode by vm.couponCode.collectAsStateWithLifecycle()
     val placed by vm.placed.collectAsStateWithLifecycle()
     val account by vm.addresses.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -72,108 +88,129 @@ fun CheckoutScreen(
     val err = u.showErrors
 
     Column(Modifier.fillMaxSize()) {
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(stringResource(R.string.your_details), style = MaterialTheme.typography.titleMedium)
-            Text(stringResource(R.string.no_account_needed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            OutlinedTextField(u.name, { v -> vm.edit { it.copy(name = v.take(60)) } }, Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.name)) }, singleLine = true,
-                isError = err && vm.nameError(u), supportingText = if (err && vm.nameError(u)) { { Text(stringResource(R.string.name_error)) } } else null,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words))
-            OutlinedTextField(u.phone, { v -> vm.edit { it.copy(phone = v.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(16)) } },
-                Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.mobile_number)) }, singleLine = true,
-                prefix = { Text("+91 ") },
-                isError = err && vm.phoneError(u), supportingText = if (err && vm.phoneError(u)) { { Text(stringResource(R.string.phone_error)) } } else null,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
-
-            Text(stringResource(R.string.order_type), style = MaterialTheme.typography.titleMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                i.enabledOrderTypes.forEach { t ->
-                    FilterChip(u.orderType == t, { vm.edit { it.copy(orderType = t) } }, label = { Text(orderTypeLabel(t)) })
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = Spacing.gutter, vertical = Spacing.l),
+            verticalArrangement = Arrangement.spacedBy(Spacing.l)) {
+            // 1. Your details
+            AppCard {
+                Text(stringResource(R.string.your_details), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.no_account_needed), style = MaterialTheme.typography.bodySmall, color = secondaryText)
+                // Returning customer with saved, valid details: one summary line + Edit (repeat checkout in two taps)
+                val detailsValid = !vm.nameError(u) && !vm.phoneError(u)
+                LaunchedEffect(u.name.isNotBlank()) { if (editDetails == null && u.name.isNotBlank()) editDetails = !detailsValid }
+                if (detailsValid && editDetails == false) {
+                    Spacer(Modifier.height(Spacing.s))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(u.name, style = MaterialTheme.typography.titleSmall)
+                            Text("+91 " + u.phone.filter(Char::isDigit).takeLast(10), style = MaterialTheme.typography.bodyMedium, color = secondaryText)
+                        }
+                        AppButton(stringResource(R.string.acc_edit), { editDetails = true }, variant = ButtonVariant.Text)
+                    }
+                } else {
+                Spacer(Modifier.height(Spacing.m))
+                    AppTextField(u.name, { v -> vm.edit { it.copy(name = v.take(60)) } }, stringResource(R.string.name),
+                        error = if (err && vm.nameError(u)) stringResource(R.string.name_error) else null,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words))
+                    Spacer(Modifier.height(Spacing.s))
+                    AppTextField(u.phone, { v -> vm.edit { it.copy(phone = v.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(16)) } },
+                        stringResource(R.string.mobile_number), prefix = "+91 ",
+                        error = if (err && vm.phoneError(u)) stringResource(R.string.phone_error) else null,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
                 }
             }
-            when (u.orderType) {
-                OrderType.PICKUP -> {
-                    Text(stringResource(R.string.pickup_from, i.address), style = MaterialTheme.typography.bodySmall)
-                    OutlinedTextField(u.instructions, { v -> vm.edit { it.copy(instructions = v.take(300)) } }, Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(R.string.pickup_instructions)) })
-                }
-                OrderType.DINE_IN -> {
-                    i.dineInInfo?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-                    OutlinedTextField(u.tableNumber, { v -> vm.edit { it.copy(tableNumber = v.take(10)) } }, Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(R.string.table_number)) }, singleLine = true, isError = err && vm.tableError(u))
-                    if (i.requireTableCode) {
-                        OutlinedTextField(u.tableCode, { v -> vm.edit { it.copy(tableCode = v.filter(Char::isDigit).take(4)) } }, Modifier.fillMaxWidth(),
-                            label = { Text(stringResource(R.string.table_code)) }, singleLine = true,
-                            isError = err && vm.tableCodeError(u, i.requireTableCode),
-                            supportingText = if (err && vm.tableCodeError(u, i.requireTableCode)) { { Text(stringResource(R.string.table_code_error)) } } else null,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword))
+
+            // 2. Pickup, table or delivery
+            AppCard {
+                Text(stringResource(R.string.order_type), style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(Spacing.s))
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                    i.enabledOrderTypes.forEach { t ->
+                        FilterChip(u.orderType == t, { vm.edit { it.copy(orderType = t) } }, label = { Text(orderTypeLabel(t)) },
+                            modifier = Modifier.heightIn(min = Size.touch))
                     }
                 }
-                OrderType.DELIVERY -> {
-                    (i.deliveryAreaNote ?: i.deliveryRadiusKm?.let { stringResource(R.string.delivery_radius, it.toString()) })?.let {
-                        Text(it, style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(Spacing.s))
+                when (u.orderType) {
+                    OrderType.PICKUP -> {
+                        Text(stringResource(R.string.pickup_from, i.address), style = MaterialTheme.typography.bodyMedium, color = secondaryText)
+                        Spacer(Modifier.height(Spacing.s))
+                        AppTextField(u.instructions, { v -> vm.edit { it.copy(instructions = v.take(300)) } }, stringResource(R.string.pickup_instructions), singleLine = false)
                     }
-                    account?.addresses?.takeIf { it.isNotEmpty() }?.let { saved ->
-                        Text(stringResource(R.string.saved_address), style = MaterialTheme.typography.labelLarge)
-                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            saved.forEach { a ->
-                                FilterChip(u.address == a.address, { vm.edit { it.copy(address = a.address, landmark = a.landmark.orEmpty()) } },
-                                    label = { Text(a.label) })
-                            }
-                            FilterChip(saved.none { it.address == u.address }, { vm.edit { it.copy(address = "", landmark = "") } },
-                                label = { Text(stringResource(R.string.new_address)) })
+                    OrderType.DINE_IN -> {
+                        i.dineInInfo?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = secondaryText); Spacer(Modifier.height(Spacing.s)) }
+                        AppTextField(u.tableNumber, { v -> vm.edit { it.copy(tableNumber = v.take(10)) } }, stringResource(R.string.table_number),
+                            error = if (err && vm.tableError(u)) stringResource(R.string.table_number) else null)
+                        if (i.requireTableCode) {
+                            Spacer(Modifier.height(Spacing.s))
+                            AppTextField(u.tableCode, { v -> vm.edit { it.copy(tableCode = v.filter(Char::isDigit).take(4)) } }, stringResource(R.string.table_code),
+                                error = if (err && vm.tableCodeError(u, i.requireTableCode)) stringResource(R.string.table_code_error) else null,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword))
                         }
                     }
-                    OutlinedTextField(u.address, { v -> vm.edit { it.copy(address = v.take(300)) } }, Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(R.string.delivery_address)) }, minLines = 2,
-                        isError = err && vm.addressError(u),
-                        supportingText = if (err && vm.addressError(u)) { { Text(stringResource(R.string.address_error)) } } else null)
-                    OutlinedTextField(u.landmark, { v -> vm.edit { it.copy(landmark = v.take(120)) } }, Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(R.string.landmark)) }, singleLine = true)
+                    OrderType.DELIVERY -> {
+                        (i.deliveryAreaNote ?: i.deliveryRadiusKm?.let { stringResource(R.string.delivery_radius, it.toString()) })?.let {
+                            Text(it, style = MaterialTheme.typography.bodyMedium, color = secondaryText); Spacer(Modifier.height(Spacing.s))
+                        }
+                        account?.addresses?.takeIf { it.isNotEmpty() }?.let { saved ->
+                            Text(stringResource(R.string.saved_address), style = MaterialTheme.typography.labelLarge)
+                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                                saved.forEach { a ->
+                                    FilterChip(u.address == a.address, { vm.edit { it.copy(address = a.address, landmark = a.landmark.orEmpty()) } },
+                                        label = { Text(a.label) }, modifier = Modifier.heightIn(min = Size.touch))
+                                }
+                                FilterChip(saved.none { it.address == u.address }, { vm.edit { it.copy(address = "", landmark = "") } },
+                                    label = { Text(stringResource(R.string.new_address)) }, modifier = Modifier.heightIn(min = Size.touch))
+                            }
+                            Spacer(Modifier.height(Spacing.s))
+                        }
+                        AppTextField(u.address, { v -> vm.edit { it.copy(address = v.take(300)) } }, stringResource(R.string.delivery_address),
+                            singleLine = false, minLines = 2, error = if (err && vm.addressError(u)) stringResource(R.string.address_error) else null)
+                        Spacer(Modifier.height(Spacing.s))
+                        AppTextField(u.landmark, { v -> vm.edit { it.copy(landmark = v.take(120)) } }, stringResource(R.string.landmark))
+                    }
+                }
+                Spacer(Modifier.height(Spacing.s))
+                AppTextField(u.notes, { v -> vm.edit { it.copy(notes = v.take(300)) } }, stringResource(R.string.order_notes), singleLine = false)
+            }
+
+            // 3. Payment
+            AppCard(padding = PaddingValues(top = Spacing.l, bottom = Spacing.s)) {
+                Text(stringResource(R.string.payment_method), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = Spacing.l))
+                i.enabledPaymentMethods.forEach { m ->
+                    Row(Modifier.fillMaxWidth().heightIn(min = Size.touch)
+                        .selectable(selected = u.payment == m, role = Role.RadioButton) { vm.edit { it.copy(payment = m) } }
+                        .padding(horizontal = Spacing.s),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(u.payment == m, null, Modifier.padding(Spacing.s))
+                        Text(paymentLabel(m, u.orderType), style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+                Text(stringResource(R.string.online_payment_later), style = MaterialTheme.typography.bodySmall, color = secondaryText,
+                    modifier = Modifier.padding(horizontal = Spacing.l, vertical = Spacing.xs))
+            }
+
+            // 4. Summary + bill
+            AppCard {
+                Text(stringResource(R.string.order_summary), style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(Spacing.s))
+                lines.filter { it.isOrderable }.forEach { l ->
+                    KeyValueRow("${l.quantity} × ${l.item?.displayName(hindi)}" +
+                        (if (l.selectedOptions.isNotEmpty()) " (${l.selectedOptions.joinToString { it.name }})" else ""), Money.format(l.lineTotalPaise))
                 }
             }
-            OutlinedTextField(u.notes, { v -> vm.edit { it.copy(notes = v.take(300)) } }, Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.order_notes)) })
-
-            Text(stringResource(R.string.payment_method), style = MaterialTheme.typography.titleMedium)
-            i.enabledPaymentMethods.forEach { m ->
-                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .selectable(selected = u.payment == m, role = Role.RadioButton) { vm.edit { it.copy(payment = m) } },
-                    verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(u.payment == m, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(paymentLabel(m, u.orderType))
-                }
-            }
-            Text(stringResource(R.string.online_payment_later), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-            HorizontalDivider(Modifier.padding(vertical = 4.dp))
-            Text(stringResource(R.string.order_summary), style = MaterialTheme.typography.titleMedium)
-            lines.filter { it.isOrderable }.forEach { l ->
-                Text("${l.quantity} × ${l.item?.displayName(hindi)}" +
-                    (if (l.selectedOptions.isNotEmpty()) " (${l.selectedOptions.joinToString { it.name }})" else "") +
-                    " — ${Money.format(l.lineTotalPaise)}", style = MaterialTheme.typography.bodyMedium)
-            }
-            quote?.let { PriceSummary(it, null, verified = true) }
-
-            Row(Modifier.fillMaxWidth().clickable { vm.edit { it.copy(termsAccepted = !it.termsAccepted) } }, verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(u.termsAccepted, { c -> vm.edit { it.copy(termsAccepted = c) } })
-                Text(stringResource(R.string.terms_checkbox), style = MaterialTheme.typography.bodySmall,
-                    color = if (err && !u.termsAccepted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
-            }
-            i.termsUrl?.let { url -> TextButton({ Intents.openUrl(context, url) }) { Text(stringResource(R.string.read_terms)) } }
-            if (u.error is CheckoutError.Network) {
-                InfoBanner(stringResource(R.string.network_error_retry), isError = true)
-            }
+            quote?.let { PriceSummary(it, couponCode.ifBlank { null }, verified = quoteVerified) }
         }
-        HorizontalDivider()
-        Button(
-            onClick = { vm.submit() }, enabled = !u.submitting && lines.any { it.isOrderable },
-            modifier = Modifier.fillMaxWidth().padding(16.dp).height(52.dp),
-        ) {
-            if (u.submitting) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-            else Text(stringResource(R.string.place_order, Money.format(quote?.totalPaise ?: 0)))
+        BottomActionBar {
+            Row(Modifier.fillMaxWidth().heightIn(min = Size.touch).clickable { vm.edit { it.copy(termsAccepted = !it.termsAccepted) } },
+                verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(u.termsAccepted, { c -> vm.edit { it.copy(termsAccepted = c) } })
+                Text(stringResource(R.string.terms_checkbox), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f),
+                    color = if (err && !u.termsAccepted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+                i.termsUrl?.let { url -> AppButton(stringResource(R.string.read_terms), { Intents.openUrl(context, url) }, variant = ButtonVariant.Text) }
+            }
+            if (u.error is CheckoutError.Network) StatusBanner(stringResource(R.string.network_error_retry), tone = Tone.Error)
+            AppButton(stringResource(R.string.place_order, Money.format(quote?.totalPaise ?: 0)), { vm.submit() }, Modifier.fillMaxWidth(),
+                large = true, loading = u.submitting, enabled = lines.any { it.isOrderable })
         }
     }
 
@@ -190,7 +227,7 @@ fun CheckoutScreen(
             text = { Text(e.message) },
             confirmButton = {
                 if (e.code in setOf("ITEM_UNAVAILABLE", "BELOW_MINIMUM_ORDER", "INVALID_COUPON", "COUPON_MIN_ORDER")) {
-                    TextButton({ vm.dismissError(); onBackToCart() }) { Text(stringResource(R.string.back_to_cart)) }
+                    AppButton(stringResource(R.string.back_to_cart), { vm.dismissError(); onBackToCart() }, variant = ButtonVariant.Text)
                 } else TextButton(vm::dismissError) { Text(stringResource(R.string.ok)) }
             },
             dismissButton = {
