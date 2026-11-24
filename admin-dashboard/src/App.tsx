@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { Link, Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { useLiveOrders } from "./components/useOrders";
-import { unlockAudio } from "./lib/alert";
+import { playAlert, unlockAudio } from "./lib/alert";
 import DeliveryPage from "./pages/DeliveryPage";
 import { can, useAuth } from "./auth";
 import { isConfigured } from "./lib/supabase";
@@ -198,10 +198,18 @@ function NewOrderStrip({ onOrdersPage }: { onOrdersPage: boolean }) {
     window.addEventListener("pointerdown", unlock, { once: true });
     return () => window.removeEventListener("pointerdown", unlock);
   }, []);
+  // Escalation: while any new order has waited 2+ minutes, beep again every minute (on every page)
+  const overdue = orders.filter((o) => Date.now() - new Date(o.createdAt).getTime() > 120000).length;
+  useEffect(() => {
+    if (!overdue) return;
+    const t = setInterval(() => playAlert(), 60000);
+    return () => clearInterval(t);
+  }, [overdue]);
   if (orders.length === 0 || onOrdersPage) return null;
   return (
     <Link to="/orders" className="alert-strip" role="status">
-      <Bell size={18} aria-hidden /> <b>{orders.length} new online order{orders.length > 1 ? "s" : ""} waiting</b> — open Orders
+      <Bell size={18} aria-hidden /> <b>{orders.length} new online order{orders.length > 1 ? "s" : ""} waiting</b>
+      {overdue > 0 ? ` — ${overdue} waiting over 2 min!` : ""} — open Orders
     </Link>
   );
 }

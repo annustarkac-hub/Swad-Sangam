@@ -20,12 +20,12 @@ Phone/WhatsApp +91 96757 50485. Everything must stay **free** (no paid APIs or s
 Owner login (OWNER role): the owner's own email (ask them; do not store it in code).
 
 ## 2. Repository map
-- `supabase/migrations/2026112*_*.sql` — 16 migrations, all applied to the live DB and recorded in
-  `supabase_migrations.schema_migrations` (latest `20261123000016_customer_accounts`).
+- `supabase/migrations/2026112*_*.sql` — 18 migrations. 0001–0016 are applied live; **0017 (DELIVERY role) and 0018
+  (delivery code, COD handover, payment integrity) are applied when PR #31 is merged** (dry-run on live passed).
   Key ones: `0001_schema`, `0002_security_and_logic` (place_order, statuses, feedback, RLS), `0006_roles`,
   `0007_accounting_core` (double-entry journal), `0008_inventory_purchases_expenses`, `0009_pos_payments`, `0010_payroll`,
   `0012_kds_bills_loyalty_qr`, `0013_public_tables`, `0014_menu_media`, `0015_menu_variants`, `0016_customer_accounts`.
-- `supabase/tests/` — `run_local.sh` runs `backend_tests`, `erp_tests`, `pos_upgrade_tests`, `customer_tests` twice
+- `supabase/tests/` — `run_local.sh` runs `backend_tests`, `erp_tests`, `pos_upgrade_tests`, `customer_tests`, `delivery_tests` twice
   (default + strict privileges) against a scratch Postgres with `supabase_stub.sql`.
 - `supabase/menu/swad_sangam_menu.py` → `swad_sangam_menu.sql`: the real menu (22 categories, 199 dishes) from the owner's menu card.
 - `supabase/seed_*.sql` — dish-photo links (all already applied live).
@@ -37,7 +37,7 @@ Owner login (OWNER role): the owner's own email (ask them; do not store it in co
 - `.github/workflows/` — `admin-dashboard.yml` (build + Pages deploy), `backend-tests.yml`, `android.yml` (CI builds),
   `release-apk.yml` (signed release of all 3 APKs), `create-signing-key.yml`, `keepalive.yml`, `backup.yml`, `deploy-backend.yml`.
 - `docs/` — `SETUP_GUIDE.md`, `OWNER_GUIDE_HINDI.md` (daily use), `OWNER_TODO_HINDI.md` (owner's remaining tasks),
-  `FREE_FEATURES.md`, `UI_UX_AUDIT.md`, `ANDROID_UI_AUDIT.md` (Android design tokens + components), `PRD_TRACEABILITY.md`, `ARCHITECTURE_DECISIONS.md`, `LAUNCH_CHECKLIST.md`.
+  `FIX_SPEC_STATUS.md` (latest audit spec, item by item), `FREE_FEATURES.md`, `UI_UX_AUDIT.md`, `ANDROID_UI_AUDIT.md` (Android design tokens + components), `PRD_TRACEABILITY.md`, `ARCHITECTURE_DECISIONS.md`, `LAUNCH_CHECKLIST.md`.
 
 ## 3. Rules that must not be broken
 - **Do not invent** menu items, prices, restaurant details, ratings or reviews. Unknown → leave blank / mark for owner verification.
@@ -90,8 +90,16 @@ loyalty, KOT/bill print), kitchen display with stations, tables + QR + table cod
 reports (daily/monthly, item-wise, CSV), double-entry accounting (P&L, balance sheet, ledger, GST summary), inventory/recipes/
 purchases/wastage, suppliers, customer khata, expenses with approval, payroll/attendance, staff roles, audit log, feedback, settings.
 Customer Android: same ordering flow natively, Pure Veg, variants, table code, accounts, design system in `ui/theme/Tokens.kt` +
-`ui/components/DesignSystem.kt` (use these, never raw dp/hex), Plus Jakarta Sans, orange #D03905 /
+`ui/components/DesignSystem.kt` (use these, never raw dp/hex), Plus Jakarta Sans, brand **tandoor crimson #B83227** + saffron on porcelain #F8F6F3 (same on web/admin) /
 accent #FD4E11, cream/near-black #131217). Admin/Staff Android: WebView shell with native print, CSV save, file upload, outside links.
+
+## 6b. Delivery & payment rules (Nov 2026)
+- App delivery orders: code generated on accept → customer sees it (app/website) → staff assign a rider (role DELIVERY,
+  sees only own orders, never the code) → rider Start delivery → Deliver: types the code + confirms Cash/UPI →
+  `complete_order_with_payment` (payment + PAID + COMPLETED in one transaction).
+- No order can be COMPLETED unpaid via `update_order_status`; owner/manager may pass a reason (audited).
+- Waiters: no payments, no cash register. Riders: no POS.
+- Notifications work without Firebase (20 s in-app check, ~1 min background job). Staff app: `SwadSangamApp.notify()`.
 
 ## 7. Open items (most important first)
 1. Owner: real opening hours (replace 24×7), FSSAI number, verify dishes, decide on delivery.
