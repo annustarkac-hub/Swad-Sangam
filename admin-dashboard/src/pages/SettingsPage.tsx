@@ -17,8 +17,8 @@ const TEXT: [string, string][] = [
   ["upi_id", "UPI ID shown for pay-at-restaurant"], ["fssai_number", "FSSAI licence/registration no. (14 digits)"],
   ["gstin", "GSTIN (if registered)"], ["legal_business_name", "Legal business name"], ["parking_info", "Parking information"],
   ["dine_in_info", "Dine-in information"], ["delivery_area_note", "Delivery area description"], ["delivery_radius_km", "Delivery radius (km)"],
-  ["tax_label", "Tax label (e.g. GST)"], ["gst_scheme", "GST scheme: REGULAR or COMPOSITION"], ["sac_code", "SAC code on invoices"],
-  ["place_of_supply", "Place of supply (state)"], ["invoice_footer", "Bill footer text"], ["receipt_width_mm", "Receipt printer width (58 or 80)"], ["rating", "Public rating (e.g. 4.5)"], ["review_count", "Public review count"],
+  ["tax_label", "Tax label (e.g. GST)"], ["sac_code", "SAC code on invoices"],
+  ["place_of_supply", "Place of supply (state)"], ["invoice_footer", "Bill footer text"], ["rating", "Public rating (e.g. 4.5)"], ["review_count", "Public review count"],
   ["reviews_url", "Link to public reviews (Google)"], ["hero_image_url", "Website banner photo URL (real restaurant photo)"], ["privacy_policy_url", "Privacy policy URL"], ["terms_url", "Order terms URL"],
 ];
 const MONEY: [string, string][] = [
@@ -49,11 +49,14 @@ export default function SettingsPage() {
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [pw, setPw] = useState("");
+  /** Money fields as typed (string) — never silently turned into ₹0 */
+  const [money, setMoney] = useState<Record<string, string>>({});
+  const badMoney = MONEY.filter(([k]) => money[k] !== undefined && toPaise(money[k] || "0") == null).map(([, l]) => l);
 
   async function load() {
     const { data, error } = await supabase.from("restaurant_settings").select("*").single();
     if (error) setMsg({ ok: false, t: friendlyError(error.message) });
-    else { setS(data as Settings); setOrig(data as Settings); }
+    else { setS(data as Settings); setOrig(data as Settings); setMoney({}); }
   }
   useEffect(() => { void load(); }, []);
   if (!s) return <p>Loading…</p>;
@@ -67,6 +70,7 @@ export default function SettingsPage() {
   };
 
   async function save() {
+    if (badMoney.length) { setConfirming(false); setMsg({ ok: false, t: "Fix the amounts first: " + badMoney.join(", ") }); return; }
     if (!(await reauthenticate(pw))) { setMsg({ ok: false, t: "Password incorrect." }); return; }
     setConfirming(false);
     setPw("");
@@ -85,7 +89,7 @@ export default function SettingsPage() {
     <div>
       <div className="spread">
         <h1>Restaurant settings</h1>
-        <button onClick={() => setConfirming(true)}>Save changes</button>
+        <button disabled={badMoney.length > 0} onClick={() => setConfirming(true)}>Save changes</button>
       </div>
       {msg && <div className={"banner " + (msg.ok ? "ok" : "danger")}>{msg.t}</div>}
       <div className="banner warn small">
@@ -127,11 +131,32 @@ export default function SettingsPage() {
       <h2>Charges</h2>
       <div className="form-grid">
         {MONEY.map(([k, l]) => (
-          <label key={k + String(orig?.updated_at)}>{l}<input inputMode="decimal" defaultValue={fromPaise(s[k] as number)} onBlur={(e) => set(k, toPaise(e.target.value || "0") ?? 0)} /></label>
+          <label key={k}>{l}
+            <input inputMode="decimal" value={money[k] ?? fromPaise(s[k] as number)} aria-invalid={money[k] !== undefined && toPaise(money[k] || "0") == null}
+              onChange={(e) => {
+                const v = e.target.value;
+                setMoney({ ...money, [k]: v });
+                const p = toPaise(v || "0");
+                if (p != null) set(k, p);
+              }} />
+            {money[k] !== undefined && toPaise(money[k] || "0") == null && <span className="error small">Enter a valid amount, e.g. 20 or 20.50</span>}
+          </label>
         ))}
         {NUM.map(([k, l]) => (
           <label key={k}>{l}<input type="number" value={String(s[k] ?? "")} onChange={(e) => set(k, Number(e.target.value))} /></label>
         ))}
+      </div>
+      <div className="form-grid">
+        <label>GST scheme
+          <select value={String(s.gst_scheme ?? "REGULAR")} onChange={(e) => set("gst_scheme", e.target.value)}>
+            <option value="REGULAR">Regular</option><option value="COMPOSITION">Composition</option>
+          </select>
+        </label>
+        <label>Receipt printer width
+          <select value={String(s.receipt_width_mm ?? 80)} onChange={(e) => set("receipt_width_mm", Number(e.target.value))}>
+            <option value="58">58 mm</option><option value="80">80 mm</option>
+          </select>
+        </label>
       </div>
       <p className="small muted">Confirm tax treatment and invoicing with your accountant before setting a tax rate (PRD §10.4, §12.4).</p>
 
@@ -159,10 +184,13 @@ function Stations() {
   const [rows, setRows] = useState<{ id: number; name: string; is_active: boolean }[]>([]);
   const [cats, setCats] = useState<{ id: string; name: string; station_id: number | null }[]>([]);
   const [name, setName] = useState("");
+  const [err, setErr] = useState<string | null>(null);
   const load = async () => {
     const [a, b] = await Promise.all([supabase.from("kitchen_stations").select("*").order("sort_order"), supabase.from("categories").select("id,name,station_id").order("sort_order")]);
+    setErr(a.error ? friendlyError(a.error.message) : b.error ? friendlyError(b.error.message) : null);
     setRows(a.data ?? []); setCats(b.data ?? []);
   };
+  const run = async (q: PromiseLike<{ error: { message: string } | null }>) => { const { error } = await q; if (error) setErr(friendlyError(error.message)); else void load(); };
   useEffect(() => { void load(); }, []);
   return (
     <>
@@ -171,7 +199,7 @@ function Stations() {
       <div className="grid tight">
         {cats.map((c) => (
           <label key={c.id}>{c.name}
-            <select value={c.station_id ?? ""} onChange={async (e) => { await supabase.from("categories").update({ station_id: e.target.value ? Number(e.target.value) : null }).eq("id", c.id); void load(); }}>
+            <select value={c.station_id ?? ""} onChange={(e) => void run(supabase.from("categories").update({ station_id: e.target.value ? Number(e.target.value) : null }).eq("id", c.id))}>
               <option value="">—</option>{rows.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </label>
@@ -179,8 +207,9 @@ function Stations() {
       </div>
       <div className="row">
         <input style={{ maxWidth: 220 }} placeholder="New station (e.g. Tandoor)" value={name} onChange={(e) => setName(e.target.value)} />
-        <button className="small" disabled={!name.trim()} onClick={async () => { await supabase.from("kitchen_stations").insert({ name: name.trim(), sort_order: rows.length + 1 }); setName(""); void load(); }}>Add station</button>
+        <button className="small" disabled={!name.trim()} onClick={() => { void run(supabase.from("kitchen_stations").insert({ name: name.trim(), sort_order: rows.length + 1 })); setName(""); }}>Add station</button>
       </div>
+      {err && <p className="error small" role="alert">{err}</p>}
     </>
   );
 }

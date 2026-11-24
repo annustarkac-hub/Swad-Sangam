@@ -32,8 +32,10 @@ export default function OrdersPage() {
 }
 
 function LiveBoard() {
-  const { orders, error, connected, reload } = useLiveOrders(ACTIVE_STATUSES, { alertOnNew: true });
+  // New-order sound + notification come from the app shell (works on every page, incl. POS)
+  const { orders, error, connected, reload } = useLiveOrders(ACTIVE_STATUSES);
   const [open, setOpen] = useState<Order | null>(null);
+  const [col, setCol] = useState(0);
   useEffect(() => { unlockAudio(); void requestNotifyPermission(); }, []);
   const current = open ? orders.find((o) => o.id === open.id) ?? open : null;
 
@@ -43,13 +45,22 @@ function LiveBoard() {
         {connected ? "● Live" : "○ Reconnecting… (refreshes every 30 s)"} · Keep this page open to hear new-order alerts.
       </p>
       {error && <p className="error">{error}</p>}
+      {/* Phones: one column at a time with counts, instead of scrolling past empty columns */}
+      <div className="seg board-tabs" role="tablist" aria-label="Order status">
+        {COLUMNS.map((c, i) => (
+          <button key={c.title} role="tab" aria-selected={col === i} className={col === i ? "on" : ""} onClick={() => setCol(i)}>
+            {c.title === "Ready / out" ? "Ready" : c.title} · {orders.filter((o) => c.statuses.includes(o.orderStatus)).length}
+          </button>
+        ))}
+      </div>
       <div className="board">
-        {COLUMNS.map((c) => {
+        {COLUMNS.map((c, i) => {
           const list = orders.filter((o) => c.statuses.includes(o.orderStatus)).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
           return (
-            <section key={c.title} className="column">
+            <section key={c.title} className={"column" + (col === i ? " current" : "")}>
               <h3>{c.title} ({list.length})</h3>
               {list.map((o) => <OrderCard key={o.id} order={o} onChanged={reload} onOpen={() => setOpen(o)} />)}
+              {list.length === 0 && <p className="small muted empty-col">Nothing here.</p>}
             </section>
           );
         })}

@@ -168,8 +168,13 @@ select pg_temp.check(not (public.kitchen_queue()->0 ? 'customerPhone'), 'kitchen
 select public.update_order_status((select (res->'order'->>'id')::uuid from r), 'PREPARING');
 select public.update_order_status((select (res->'order'->>'id')::uuid from r), 'READY');
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
-select public.update_order_status((select (res->'order'->>'id')::uuid from r), 'COMPLETED');
+do $$ begin
+  perform public.update_order_status((select (res->'order'->>'id')::uuid from r), 'COMPLETED');
+  raise exception 'completed while unpaid';
+exception when sqlstate '22023' then null; end $$;
+select pg_temp.check(true, 'cannot complete an unpaid order');
 select public.update_payment_status((select (res->'order'->>'id')::uuid from r), 'PAID');
+select public.update_order_status((select (res->'order'->>'id')::uuid from r), 'COMPLETED');
 select pg_temp.check((select order_status from public.orders where id = (select (res->'order'->>'id')::uuid from r)) = 'COMPLETED', 'full lifecycle completed');
 select pg_temp.check((select count(*) from public.order_status_history where order_id = (select (res->'order'->>'id')::uuid from r)) = 5, 'status history recorded');
 

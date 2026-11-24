@@ -12,6 +12,7 @@ const ROLES: { r: Role; d: string }[] = [
   { r: "CASHIER", d: "POS billing, payments, cash register, orders" },
   { r: "WAITER", d: "Take table orders on POS (no payments)" },
   { r: "KITCHEN", d: "Preparation queue, stock wastage" },
+  { r: "DELIVERY", d: "Rider: only own assigned deliveries, collects COD with the customer's code" },
   { r: "ACCOUNTANT", d: "Accounts, expenses, suppliers, khata, payroll, reports" },
 ];
 

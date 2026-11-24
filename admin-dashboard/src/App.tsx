@@ -1,11 +1,14 @@
 import {
   Armchair, BarChart3, CalendarCheck, ChefHat, Landmark, LayoutDashboard, LogOut, Menu, MessageSquare, Moon, Package, QrCode,
-  Receipt, ScrollText, Settings, ShoppingBag, Sun, TicketPercent, TrendingUp, Truck, UserCog, Users, UtensilsCrossed, Wallet,
+  Bell, Bike, Receipt, ScrollText, Settings, ShoppingBag, Sun, TicketPercent, TrendingUp, Truck, UserCog, Users, UtensilsCrossed, Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { Link, Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { useLiveOrders } from "./components/useOrders";
+import { unlockAudio } from "./lib/alert";
+import DeliveryPage from "./pages/DeliveryPage";
 import { can, useAuth } from "./auth";
 import { isConfigured } from "./lib/supabase";
 import AuditPage from "./pages/AuditPage";
@@ -33,6 +36,8 @@ import type { Role } from "./lib/types";
 const FOH: Role[] = ["OWNER", "MANAGER", "STAFF", "CASHIER", "WAITER"];
 const MGMT: Role[] = ["OWNER", "MANAGER"];
 const FIN: Role[] = ["OWNER", "MANAGER", "ACCOUNTANT"];
+/** Roles that see new online orders (alert strip + sound on every page) */
+const ALERT_ROLES: Role[] = ["OWNER", "MANAGER", "STAFF", "CASHIER"];
 
 type NavItem = { to: string; label: string; short?: string; roles: Role[]; group: string; icon: LucideIcon; bottom?: boolean };
 const GROUPS = ["Operations", "Menu & stock", "Customers", "Finance", "Team", "System"];
@@ -40,6 +45,7 @@ const NAV: NavItem[] = [
   { to: "/", label: "Dashboard", short: "Home", roles: [...FOH, "ACCOUNTANT"], group: "Operations", icon: LayoutDashboard, bottom: true },
   { to: "/pos", label: "POS / Billing", short: "POS", roles: FOH, group: "Operations", icon: Receipt, bottom: true },
   { to: "/orders", label: "Online orders", short: "Orders", roles: FOH, group: "Operations", icon: ShoppingBag, bottom: true },
+  { to: "/delivery", label: "My deliveries", short: "Deliveries", roles: ["DELIVERY"], group: "Operations", icon: Bike, bottom: true },
   { to: "/kitchen", label: "Kitchen display", short: "Kitchen", roles: [...FOH, "KITCHEN"], group: "Operations", icon: ChefHat, bottom: true },
   { to: "/tables", label: "Tables & bookings", short: "Tables", roles: FOH, group: "Operations", icon: Armchair, bottom: true },
   { to: "/menu", label: "Menu", roles: [...FOH, "KITCHEN"], group: "Menu & stock", icon: UtensilsCrossed },
@@ -49,7 +55,7 @@ const NAV: NavItem[] = [
   { to: "/feedback", label: "Feedback", roles: MGMT, group: "Customers", icon: MessageSquare },
   { to: "/qr", label: "QR codes", roles: MGMT, group: "Customers", icon: QrCode },
   { to: "/accounting", label: "Accounts", roles: FIN, group: "Finance", icon: Landmark },
-  { to: "/expenses", label: "Expenses", roles: [...FIN, "STAFF", "CASHIER"], group: "Finance", icon: Wallet },
+  { to: "/expenses", label: "Expenses", roles: [...FIN, "CASHIER"], group: "Finance", icon: Wallet },
   { to: "/suppliers", label: "Suppliers", roles: FIN, group: "Finance", icon: Truck },
   { to: "/reports", label: "Sales reports", roles: FIN, group: "Finance", icon: BarChart3 },
   { to: "/insights", label: "Profit insights", roles: FIN, group: "Finance", icon: TrendingUp },
@@ -101,7 +107,8 @@ export default function App() {
     );
   }
 
-  const home = role === "KITCHEN" ? "/kitchen" : role === "ACCOUNTANT" ? "/accounting" : "/";
+  const home = role === "KITCHEN" ? "/kitchen" : role === "ACCOUNTANT" ? "/accounting" : role === "DELIVERY" ? "/delivery" : "/";
+  const alerts = ALERT_ROLES.includes(role);
 
   return (
     <div className="shell">
@@ -131,22 +138,24 @@ export default function App() {
           <div className="user-chip"><span className="badge">{role}</span><span className="email">{profile?.email}</span></div>
           <button className="ghost icon" aria-label="Sign out" title="Sign out" onClick={() => void signOut()}><LogOut /></button>
         </header>
+        {alerts && <NewOrderStrip onOrdersPage={location.pathname.startsWith("/orders")} />}
         <main className="content">
         <ErrorBoundary resetKey={location.pathname}>
         <Routes>
-          <Route path="/" element={role === "KITCHEN" ? <Navigate to="/kitchen" /> : role === "ACCOUNTANT" ? <Navigate to="/accounting" /> : <DashboardPage />} />
+          <Route path="/" element={role === "KITCHEN" ? <Navigate to="/kitchen" /> : role === "ACCOUNTANT" ? <Navigate to="/accounting" /> : role === "DELIVERY" ? <Navigate to="/delivery" /> : <DashboardPage />} />
+          <Route path="/delivery" element={<Guard roles={["DELIVERY"]}><DeliveryPage /></Guard>} />
           <Route path="/pos" element={<Guard roles={FOH}><PosPage /></Guard>} />
           <Route path="/tables" element={<Guard roles={FOH}><TablesPage /></Guard>} />
           <Route path="/inventory" element={<Guard roles={[...FIN, "KITCHEN"]}><InventoryPage /></Guard>} />
           <Route path="/accounting" element={<Guard roles={FIN}><AccountingPage /></Guard>} />
-          <Route path="/expenses" element={<Guard roles={[...FIN, "STAFF", "CASHIER"]}><ExpensesPage /></Guard>} />
+          <Route path="/expenses" element={<Guard roles={[...FIN, "CASHIER"]}><ExpensesPage /></Guard>} />
           <Route path="/khata" element={<Guard roles={FIN}><PartiesPage kind="CUSTOMER" /></Guard>} />
           <Route path="/suppliers" element={<Guard roles={FIN}><PartiesPage kind="SUPPLIER" /></Guard>} />
           <Route path="/payroll" element={<Guard roles={FIN}><PayrollPage /></Guard>} />
           <Route path="/insights" element={<Guard roles={FIN}><InsightsPage /></Guard>} />
           <Route path="/orders" element={<Guard roles={FOH}><OrdersPage /></Guard>} />
-          <Route path="/kitchen" element={<KitchenPage />} />
-          <Route path="/menu" element={<MenuPage />} />
+          <Route path="/kitchen" element={<Guard roles={[...FOH, "KITCHEN"]}><KitchenPage /></Guard>} />
+          <Route path="/menu" element={<Guard roles={[...FOH, "KITCHEN"]}><MenuPage /></Guard>} />
           <Route path="/offers" element={<Guard roles={["OWNER", "MANAGER"]}><OffersPage /></Guard>} />
           <Route path="/reports" element={<Guard roles={FIN}><ReportsPage /></Guard>} />
           <Route path="/feedback" element={<Guard roles={["OWNER", "MANAGER"]}><FeedbackPage /></Guard>} />
@@ -172,4 +181,23 @@ export default function App() {
 function Guard({ roles, children }: { roles: Role[]; children: JSX.Element }) {
   const { role } = useAuth();
   return can(role, ...roles) ? children : <p>You do not have access to this page.</p>;
+}
+
+/**
+ * New online orders on EVERY page (POS, tables, dashboard…): sound + native notification + a strip that links to Orders.
+ * Before this, alerts only worked while the Orders page was open.
+ */
+function NewOrderStrip({ onOrdersPage }: { onOrdersPage: boolean }) {
+  const { orders } = useLiveOrders(["PLACED"], { alertOnNew: true });
+  useEffect(() => {
+    const unlock = () => unlockAudio();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    return () => window.removeEventListener("pointerdown", unlock);
+  }, []);
+  if (orders.length === 0 || onOrdersPage) return null;
+  return (
+    <Link to="/orders" className="alert-strip" role="status">
+      <Bell size={18} aria-hidden /> <b>{orders.length} new online order{orders.length > 1 ? "s" : ""} waiting</b> — open Orders
+    </Link>
+  );
 }

@@ -4,6 +4,7 @@ import { playAlert } from "../lib/alert";
 import { can, useAuth } from "../auth";
 import Modal from "../components/Modal";
 import { FoodDot } from "../components/OrderCard";
+import { canTakePayment } from "../lib/orderFlow";
 import { printReceipt } from "../components/Receipt";
 import { rpc, selectAll, TENDER_LABEL, upiLink, uuid, type Tender } from "../lib/erp";
 import { fromPaise, rupees, time, toPaise } from "../lib/format";
@@ -19,6 +20,9 @@ interface CashStatus { open: boolean; id?: number; openedAt?: string; openingPai
 export default function PosPage() {
   const { role } = useAuth();
   const manager = can(role, "OWNER", "MANAGER");
+  const payer = canTakePayment(role); // waiters take orders but never money
+  // One key per bill attempt: a retry after a network timeout re-sends the SAME key, so no duplicate bill/KOT
+  const [billKey, setBillKey] = useState(uuid);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -40,12 +44,14 @@ export default function PosPage() {
   const [busy, setBusy] = useState(false);
   const [mobileTab, setMobileTab] = useState<"bills" | "menu" | "cart">("menu");
 
+  const payerRef = useRef(payer);
+  payerRef.current = payer;
   const loadBills = useCallback(async () => {
     try {
       const list = await rpc<Order[]>("admin_list_orders", { p_statuses: ["ACCEPTED", "PREPARING", "READY", "OUT_FOR_DELIVERY"], p_limit: 100 });
       setOpenBills(list);
       setSelected((s) => (s ? list.find((o) => o.id === s.id) ?? null : null));
-      setCash(await rpc<CashStatus>("cash_session_status"));
+      if (payerRef.current) setCash(await rpc<CashStatus>("cash_session_status"));
     } catch (e) { setErr((e as Error).message); }
   }, []);
 
@@ -61,11 +67,21 @@ export default function PosPage() {
       } catch (e) { setErr((e as Error).message); }
       void loadBills();
     })();
+    // Live: debounced reload on any order change (keeps the 20 s poll as a fallback for weak connections)
+    let pending: ReturnType<typeof setTimeout> | null = null;
+    const channel = supabase.channel("pos-bills-" + Math.random().toString(36).slice(2))
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
+        if (pending) clearTimeout(pending);
+        pending = setTimeout(() => void loadBills(), 700);
+      })
+      .subscribe();
     const t = setInterval(() => void loadBills(), 20000);
-    return () => clearInterval(t);
+    return () => { clearInterval(t); if (pending) clearTimeout(pending); void supabase.removeChannel(channel); };
   }, [loadBills]);
 
-  const shown = useMemo(() => items.filter((i) => (!cat || i.category_id === cat) && (!q || i.name.toLowerCase().includes(q.toLowerCase()))), [items, cat, q]);
+  // A search looks through ALL categories (the selected category only applies when the search box is empty)
+  const shown = useMemo(() => items.filter((i) => (q.trim() ? i.name.toLowerCase().includes(q.trim().toLowerCase()) : !cat || i.category_id === cat)), [items, cat, q]);
+  const inCart = useMemo(() => { const m = new Map<string, number>(); cart.forEach((l) => m.set(l.item.id, (m.get(l.item.id) ?? 0) + l.qty)); return m; }, [cart]);
   const cartTotal = cart.reduce((s, l) => s + (l.complimentary ? 0 : (l.item.price_paise + l.item.options.filter((o) => l.optionIds.includes(o.id)).reduce((a, o) => a + o.pricePaise, 0)) * l.qty), 0);
 
   function add(item: MenuItem, optionIds: string[] = []) {
@@ -82,11 +98,11 @@ export default function PosPage() {
     setBusy(true); setErr(null);
     try {
       const o = await rpc<Order>("pos_create_order", { p: {
-        idempotencyKey: uuid(), orderType: type, tableNumber: type === "DINE_IN" ? table || null : null,
+        idempotencyKey: billKey, orderType: type, tableNumber: type === "DINE_IN" ? table || null : null,
         customerName: custName || "Walk-in", customerPhone: custPhone, items: payload(),
         discountPaise: discount ? toPaise(discount) : undefined,
       } });
-      setCart([]); setDiscount(""); setCustName(""); setCustPhone("");
+      setCart([]); setDiscount(""); setCustName(""); setCustPhone(""); setBillKey(uuid());
       await loadBills(); setSelected(o);
       void printReceipt(o.id, true); // KOT for the kitchen
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
@@ -108,8 +124,8 @@ export default function PosPage() {
 
   return (
     <div>
-      <CashBar cash={cash} onChange={loadBills} />
-      {err && <div className="banner danger">{err} <button className="link" onClick={() => setErr(null)}>✕</button></div>}
+      {payer && <CashBar cash={cash} onChange={loadBills} />}
+      {err && <div className="banner danger" role="alert">{err} <button className="link" onClick={() => setErr(null)}>✕</button></div>}
       <ServiceRequests />
       <div className="tabs pos-tabs">
         {(["bills", "menu", "cart"] as const).map((t) => (
@@ -124,7 +140,7 @@ export default function PosPage() {
           <div className="spread"><h3>Open bills ({openBills.length})</h3><button className="small" onClick={() => setSelected(null)}>+ New</button></div>
           {openBills.map((o) => (
             <div key={o.id} className="order-card" style={{ cursor: "pointer", borderColor: selected?.id === o.id ? "var(--red)" : undefined }} onClick={() => { setSelected(o); setMobileTab("cart"); }}>
-              <div className="spread"><b>{o.tableNumber ? `Table ${o.tableNumber}` : o.orderNumber}</b><span className={"badge " + o.orderStatus}>{STATUS_LABEL[o.orderStatus]}</span></div>
+              <div className="spread"><b>{o.tableNumber ? `Table ${o.tableNumber}` : o.orderNumber} <span className={"src-badge " + (o.source === "APP" ? "app" : "pos")}>{o.source === "APP" ? "APP" : "POS"}</span></b><span className={"badge " + o.orderStatus}>{STATUS_LABEL[o.orderStatus]}</span></div>
               <div className="small muted">{ORDER_TYPE_LABEL[o.orderType]} · {time(o.createdAt)} · {o.customerName}</div>
               <div className="small"><b>{rupees(o.totalPaise)}</b> · {o.paymentStatus === "PAID" ? "Paid" : "Unpaid"}</div>
             </div>
@@ -155,7 +171,8 @@ export default function PosPage() {
           <div className="grid tight">
             {shown.map((i) => (
               <button key={i.id} className="menu-tile" disabled={!i.is_available}
-                onClick={() => add(i)}>
+                onClick={() => add(i)} aria-label={`${i.name}${inCart.get(i.id) ? `, ${inCart.get(i.id)} in cart` : ""}`}>
+                {inCart.get(i.id) ? <span className="tile-qty" aria-hidden>{inCart.get(i.id)}</span> : null}
                 <span><FoodDot type={i.food_type} /> {i.name}</span><b>{rupees(i.price_paise)}{i.options.some((o) => o.group === "size") ? <span className="small muted"> · {i.options.filter((o) => o.group === "size").map((o) => `${o.name} ${rupees(i.price_paise + o.pricePaise)}`).join(" ")}</span> : null}</b>
                 {!i.is_available && <span className="small"> · unavailable</span>}
               </button>
@@ -166,7 +183,7 @@ export default function PosPage() {
         {/* Cart / bill */}
         <section className={"card sticky-panel" + (mobileTab === "cart" ? " show" : "")}>
           {selected ? (
-            <BillPanel bill={selected} manager={manager} openBills={openBills} tables={tables} customers={customers}
+            <BillPanel bill={selected} manager={manager} payer={payer} openBills={openBills} tables={tables} customers={customers}
               onPay={() => setPayOpen(true)} onSettle={() => void settle(selected)}
               onChanged={async (o) => { setSelected(o); await loadBills(); }} />
           ) : (
@@ -210,6 +227,18 @@ export default function PosPage() {
                     </select>
                   );
                 })}
+                {/* Add-ons (no group): any number can be ticked */}
+                {l.item.options.filter((o) => !o.group && o.isAvailable !== false).map((o) => (
+                  <label key={o.id} className="addon-chip">
+                    <input type="checkbox" checked={l.optionIds.includes(o.id)}
+                      onChange={(e) => setCart((c) => c.map((x) => {
+                        if (x !== l) return x;
+                        const ids = (e.target.checked ? [...x.optionIds, o.id] : x.optionIds.filter((id) => id !== o.id)).sort();
+                        return { ...x, optionIds: ids, key: x.item.id + "|" + ids.join(",") };
+                      }))} />
+                    {o.name} +{rupees(o.pricePaise)}
+                  </label>
+                ))}
               </div>
               <div className="row">
                 <button className="secondary small" onClick={() => setCart((c) => c.flatMap((x) => (x === l ? (x.qty > 1 ? [{ ...x, qty: x.qty - 1 }] : []) : [x])))}>−</button>
@@ -227,12 +256,17 @@ export default function PosPage() {
                 {selected
                   ? <button disabled={busy} onClick={() => void addToBill()}>Add to {selected.tableNumber ? "table " + selected.tableNumber : selected.orderNumber} + KOT</button>
                   : <button disabled={busy} onClick={() => void createBill()}>Create bill + print KOT</button>}
-                <button className="secondary" onClick={() => setCart([])}>Clear</button>
+                <button className="secondary" onClick={() => { setCart([]); setBillKey(uuid()); }}>Clear</button>
               </div>
             </>
           )}
         </section>
       </div>
+      {mobileTab === "menu" && cart.length > 0 && (
+        <button className="pos-cart-bar" onClick={() => setMobileTab("cart")}>
+          <span>{cart.reduce((s, l) => s + l.qty, 0)} items · <b className="num">{rupees(cartTotal)}</b></span><span>View {selected ? "bill" : "cart"} →</span>
+        </button>
+      )}
       {payOpen && selected && (
         <PaymentModal bill={selected} customers={customers} upiId={upiId} onClose={() => setPayOpen(false)}
           onPaid={async () => { setPayOpen(false); await loadBills(); }} />
@@ -241,8 +275,8 @@ export default function PosPage() {
   );
 }
 
-function BillPanel({ bill, manager, openBills, tables, customers, onPay, onSettle, onChanged }: {
-  bill: Order; manager: boolean; openBills: Order[]; tables: Table[]; customers: Customer[];
+function BillPanel({ bill, manager, payer, openBills, tables, customers, onPay, onSettle, onChanged }: {
+  bill: Order; manager: boolean; payer: boolean; openBills: Order[]; tables: Table[]; customers: Customer[];
   onPay: () => void; onSettle: () => void; onChanged: (o: Order) => void;
 }) {
   const [disc, setDisc] = useState(fromPaise(bill.discountPaise));
@@ -254,7 +288,9 @@ function BillPanel({ bill, manager, openBills, tables, customers, onPay, onSettl
   const [points, setPoints] = useState("");
   const paid = bill.paymentStatus === "PAID";
   const editable = !paid && bill.paymentStatus === "PENDING";
-  const cust = customers.find((c) => c.name === bill.customerName);
+  // Match by id, never by name (two "Rahul"s must not share loyalty points)
+  const cust = bill.customerId != null ? customers.find((c) => c.id === bill.customerId) : undefined;
+  const appDelivery = bill.source === "APP" && bill.orderType === "DELIVERY";
   const run = async (fn: () => Promise<Order>) => { try { setErr(null); onChanged(await fn()); setTool(""); } catch (e) { setErr((e as Error).message); } };
 
   useEffect(() => {
@@ -276,8 +312,10 @@ function BillPanel({ bill, manager, openBills, tables, customers, onPay, onSettl
       </tbody></table>
 
       <div className="row" style={{ marginTop: 10 }}>
-        {!paid && <button className="ok" onClick={onPay}>Take payment</button>}
-        {paid && <button className="ok" onClick={onSettle}>Close bill ✓</button>}
+        {payer && !paid && !appDelivery && <button className="ok" onClick={onPay}>Take payment</button>}
+        {payer && paid && !appDelivery && <button className="ok" onClick={onSettle}>Close bill ✓</button>}
+        {appDelivery && <span className="small muted">App delivery — rider collects payment with the customer's code (Orders page).</span>}
+        {!payer && <span className="small muted">Payment is taken by the cashier.</span>}
         <button className="secondary small" onClick={() => void printReceipt(bill.id)}>Print bill</button>
         <button className="secondary small" onClick={() => void printReceipt(bill.id, true)}>KOT</button>
       </div>
@@ -404,12 +442,13 @@ function PaymentModal({ bill, customers, upiId, onClose, onPaid }: { bill: Order
   const cashRow = rows.find((r) => r.tender === "CASH");
   const change = cashRow && tendered ? (toPaise(tendered) ?? 0) - (toPaise(cashRow.amount || "0") ?? 0) : 0;
   const upiRow = rows.find((r) => r.tender === "UPI");
+  // QR for the total of ALL UPI rows (a split can have more than one)
+  const upiTotal = rows.filter((r) => r.tender === "UPI").reduce((s, r) => s + (toPaise(r.amount || "0") ?? 0), 0);
 
   useEffect(() => {
-    const amt = upiRow ? toPaise(upiRow.amount || "0") ?? 0 : 0;
-    if (upiId && amt > 0) void QRCode.toDataURL(upiLink(upiId, "Swad Sangam", amt, bill.orderNumber), { width: 220, margin: 1 }).then(setQr);
+    if (upiId && upiTotal > 0) void QRCode.toDataURL(upiLink(upiId, "Swad Sangam", upiTotal, bill.orderNumber), { width: 220, margin: 1 }).then(setQr);
     else setQr(null);
-  }, [upiRow?.amount, upiId, bill.orderNumber, upiRow]);
+  }, [upiTotal, upiId, bill.orderNumber]);
 
   async function submit() {
     setBusy(true); setErr(null);

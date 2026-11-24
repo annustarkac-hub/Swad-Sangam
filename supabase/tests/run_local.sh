@@ -20,7 +20,7 @@ for mode in default strict; do
     "${PSQL[@]}" -d "$DB" -f "$f" 2>"$TMPDIR/$DB.err" || { cat "$TMPDIR/$DB.err"; exit 1; }
   done
   rm -f "$TMPDIR/$DB.err"
-  for t in backend_tests erp_tests pos_upgrade_tests customer_tests; do
+  for t in backend_tests erp_tests pos_upgrade_tests customer_tests delivery_tests; do
     "${PSQL[@]}" -d "$DB" -f "tests/$t.sql" > "$TMPDIR/$DB.out" 2>&1 || { grep -E "ERROR|FAILED|CONTEXT" "$TMPDIR/$DB.out"; exit 1; }
     grep -E "PASSED" "$TMPDIR/$DB.out"
   done

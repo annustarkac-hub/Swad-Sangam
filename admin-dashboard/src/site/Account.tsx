@@ -2,6 +2,8 @@ import { ReceiptText, Star } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { cleanPhone, db, store, validPhone, type Address, type Customer } from "./common";
 import type { Lang } from "./i18n";
+import { askConfirm } from "../components/Dialogs";
+import PasswordInput from "../components/PasswordInput";
 
 /** Signed-in customer (Supabase email + password). Null when signed out; undefined while loading. */
 export function useCustomer(): [Customer | null | undefined, () => Promise<void>, boolean] {
@@ -32,7 +34,10 @@ export function useCustomer(): [Customer | null | undefined, () => Promise<void>
       if (evt === "SIGNED_IN" && session) {
         // attach orders this phone placed before logging in
         const tokens = store.get<string[]>("ss_tokens", []);
-        if (tokens.length) void db.rpc("claim_my_orders", { p_tokens: tokens });
+        if (tokens.length) void db.rpc("claim_my_orders", { p_tokens: tokens }).then(({ error }) => {
+          // Not fatal: the orders stay on this phone and can be claimed at the next login
+          if (error) console.warn("Could not link this phone's earlier orders:", error.message);
+        });
       }
       if (evt === "SIGNED_IN" || evt === "SIGNED_OUT" || evt === "USER_UPDATED") setTimeout(() => void load(), 0);
     });
@@ -46,15 +51,16 @@ const tx = (lang: Lang, en: string, hi: string) => (lang === "hi" ? hi : en);
 function authError(lang: Lang, m: string): string {
   if (/invalid login/i.test(m)) return tx(lang, "Wrong email or password.", "ईमेल या पासवर्ड गलत है।");
   if (/already registered|already exists/i.test(m)) return tx(lang, "This email already has an account. Please log in.", "इस ईमेल का खाता पहले से है। लॉगिन करें।");
-  if (/at least 6|password/i.test(m)) return tx(lang, "Password must be at least 6 characters.", "पासवर्ड कम से कम 6 अक्षर का हो।");
+  if (/at least \d|password/i.test(m)) return tx(lang, "Password must be at least 8 characters.", "पासवर्ड कम से कम 8 अक्षर का हो।");
   if (/rate limit|too many/i.test(m)) return tx(lang, "Too many tries. Please wait a few minutes.", "बहुत बार कोशिश हुई। कुछ मिनट रुकें।");
   if (/email not confirmed/i.test(m)) return tx(lang, "Please confirm your email first (check your inbox).", "पहले ईमेल की पुष्टि करें (इनबॉक्स देखें)।");
   return m;
 }
 
 export function AccountView({ lang, customer, reload, recovery }: { lang: Lang; customer: Customer | null | undefined; reload: () => Promise<void>; recovery: boolean }) {
-  if (customer === undefined) return <p className="empty-s">…</p>;
-  if (recovery && customer) return <NewPassword lang={lang} />;
+  const [pwDone, setPwDone] = useState(false);
+  if (customer === undefined) return <div className="skeleton-s" aria-label={tx(lang, "Loading", "लोड हो रहा है")} />;
+  if (recovery && customer && !pwDone) return <NewPassword lang={lang} onDone={() => setPwDone(true)} />;
   if (!customer) return <AuthForm lang={lang} />;
   return <Profile lang={lang} c={customer} reload={reload} />;
 }
@@ -80,7 +86,7 @@ function AuthForm({ lang }: { lang: Lang }) {
         if (error) throw error;
       } else {
         if (f.name.trim().length < 2 || !validPhone(f.phone)) { setMsg({ ok: false, text: tx(lang, "Please enter your name and a valid 10-digit mobile number.", "नाम और सही 10 अंकों का मोबाइल नंबर लिखें।") }); return; }
-        if (f.password.length < 6) { setMsg({ ok: false, text: authError(lang, "at least 6") }); return; }
+        if (f.password.length < 8) { setMsg({ ok: false, text: authError(lang, "at least 8") }); return; }
         const { data, error } = await db.auth.signUp({ email, password: f.password, options: { data: { account_type: "customer", full_name: f.name.trim(), phone: cleanPhone(f.phone) } } });
         if (error) throw error;
         if (data.session && data.user) {
@@ -107,8 +113,10 @@ function AuthForm({ lang }: { lang: Lang }) {
             <label>{tx(lang, "Mobile number", "मोबाइल नंबर")}<input value={f.phone} inputMode="tel" autoComplete="tel" onChange={(e) => setF({ ...f, phone: e.target.value })} /></label>
           </>}
           <label>Email<input type="email" value={f.email} autoComplete="email" onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
-          {mode !== "forgot" && <label>{tx(lang, "Password", "पासवर्ड")}<input type="password" value={f.password} minLength={6}
-            autoComplete={mode === "signup" ? "new-password" : "current-password"} onChange={(e) => setF({ ...f, password: e.target.value })} /></label>}
+          {mode !== "forgot" && <label>{tx(lang, "Password", "पासवर्ड")}<PasswordInput value={f.password} minLength={mode === "signup" ? 8 : undefined}
+            showLabel={tx(lang, "Show password", "पासवर्ड दिखाएँ")} hideLabel={tx(lang, "Hide password", "पासवर्ड छिपाएँ")}
+            autoComplete={mode === "signup" ? "new-password" : "current-password"} onChange={(e) => setF({ ...f, password: e.target.value })} />
+            {mode === "signup" && <small className="muted-s">{tx(lang, "At least 8 characters", "कम से कम 8 अक्षर")}</small>}</label>}
           {msg && <p className={msg.ok ? "ok-s" : "bad-s"}>{msg.text}</p>}
           <button className="primary-s wide" disabled={busy}>{busy ? "…" : mode === "login" ? tx(lang, "Log in", "लॉगिन") : mode === "signup" ? tx(lang, "Create account", "खाता बनाएँ") : tx(lang, "Send reset link", "रीसेट लिंक भेजें")}</button>
         </form>
@@ -123,18 +131,19 @@ function AuthForm({ lang }: { lang: Lang }) {
   );
 }
 
-function NewPassword({ lang }: { lang: Lang }) {
+function NewPassword({ lang, onDone }: { lang: Lang; onDone?: () => void }) {
   const [p, setP] = useState(""); const [msg, setMsg] = useState<string | null>(null);
   return (
     <div className="card-s2 form-s">
       <h2 className="sec" style={{ marginTop: 0 }}>{tx(lang, "Set a new password", "नया पासवर्ड बनाएँ")}</h2>
-      <label>{tx(lang, "New password", "नया पासवर्ड")}<input type="password" minLength={6} value={p} autoComplete="new-password" onChange={(e) => setP(e.target.value)} /></label>
+      <label>{tx(lang, "New password", "नया पासवर्ड")}<PasswordInput minLength={8} value={p} autoComplete="new-password" onChange={(e) => setP(e.target.value)} /></label>
       {msg && <p className="small">{msg}</p>}
       <button className="primary-s wide" onClick={async () => {
-        if (p.length < 6) return setMsg(authError(lang, "at least 6"));
+        if (p.length < 8) return setMsg(authError(lang, "at least 8"));
         const { error } = await db.auth.updateUser({ password: p });
         setMsg(error ? authError(lang, error.message) : tx(lang, "Password changed ✓", "पासवर्ड बदल गया ✓"));
-        if (!error) setTimeout(() => location.reload(), 1200);
+        // Clean URL (drop the recovery token from the address bar) and go to the account page — no full reload
+        if (!error) setTimeout(() => { history.replaceState(null, "", location.pathname + "#/account"); window.dispatchEvent(new HashChangeEvent("hashchange")); onDone?.(); }, 1200);
       }}>{tx(lang, "Save password", "पासवर्ड सेव करें")}</button>
     </div>
   );
@@ -187,7 +196,7 @@ function Profile({ lang, c, reload }: { lang: Lang; c: Customer; reload: () => P
             <div className="row-s">
               {!a.is_default && <button className="link-s" onClick={async () => { await db.from("customer_addresses").update({ is_default: true }).eq("id", a.id); void reload(); }}>{tx(lang, "Make default", "डिफ़ॉल्ट बनाएँ")}</button>}
               <button className="link-s" onClick={() => setEdit(a)}>{tx(lang, "Edit", "बदलें")}</button>
-              <button className="link-s bad-s" onClick={async () => { if (!confirm(tx(lang, "Delete this address?", "यह पता हटाएँ?"))) return; await db.from("customer_addresses").delete().eq("id", a.id); void reload(); }}>{tx(lang, "Delete", "हटाएँ")}</button>
+              <button className="link-s bad-s" onClick={async () => { if (!(await askConfirm(tx(lang, "Delete this address?", "यह पता हटाएँ?"), { ok: tx(lang, "Delete", "हटाएँ"), cancel: tx(lang, "Cancel", "रद्द करें"), danger: true }))) return; await db.from("customer_addresses").delete().eq("id", a.id); void reload(); }}>{tx(lang, "Delete", "हटाएँ")}</button>
             </div>
           </div>
         ))}
