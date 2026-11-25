@@ -71,6 +71,21 @@ export default function App() {
   const [drawer, setDrawer] = useState(false);
   const [theme, setTheme] = useState<string>(() => { try { return localStorage.getItem("ss_theme") ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); } catch { return "light"; } });
   const location = useLocation();
+  // Mark horizontally scrolling tab rows so only those show the "more →" fade
+  useEffect(() => {
+    const mark = () => document.querySelectorAll<HTMLElement>(".tabs").forEach((el) => {
+      el.classList.toggle("scrolls", el.scrollWidth > el.clientWidth + 2);
+      el.classList.toggle("at-end", el.scrollLeft + el.clientWidth >= el.scrollWidth - 2);
+    });
+    let raf = 0;
+    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(mark); };
+    const mo = new MutationObserver(schedule);
+    mo.observe(document.body, { childList: true, subtree: true });
+    document.addEventListener("scroll", schedule, true);
+    window.addEventListener("resize", schedule);
+    schedule();
+    return () => { mo.disconnect(); document.removeEventListener("scroll", schedule, true); window.removeEventListener("resize", schedule); cancelAnimationFrame(raf); };
+  }, []);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     try { localStorage.setItem("ss_theme", theme); } catch { /* ignore */ }
@@ -218,8 +233,9 @@ function NewOrderStrip({ onOrdersPage }: { onOrdersPage: boolean }) {
   if (orders.length === 0 || onOrdersPage) return null;
   return (
     <Link to="/orders" className="alert-strip" role="status">
-      <Bell size={18} aria-hidden /> <b>{orders.length} new online order{orders.length > 1 ? "s" : ""} waiting</b>
-      {overdue > 0 ? ` — ${overdue} waiting over 2 min!` : ""} — open Orders
+      <Bell size={18} aria-hidden />
+      <span className="alert-text"><b>{orders.length} new order{orders.length > 1 ? "s" : ""}</b>{overdue > 0 ? ` · ${overdue} waiting 2+ min` : ""}</span>
+      <span className="alert-cta">Open</span>
     </Link>
   );
 }

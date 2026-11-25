@@ -1,3 +1,4 @@
+import { appBridge } from "../lib/native";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { can, useAuth } from "../auth";
@@ -48,9 +49,12 @@ export default function DashboardPage() {
     <div>
       <div className="spread">
         <h1>Today</h1>
-        <button className="secondary small" onClick={() => { unlockAudio(); void requestNotifyPermission(); }}>
-          Enable sound &amp; notifications
-        </button>
+        {/* In the Android app notifications are native; the browser permission button would do nothing there */}
+        {!appBridge() && (
+          <button className="secondary small" onClick={() => { unlockAudio(); void requestNotifyPermission(); }}>
+            Enable sound &amp; notifications
+          </button>
+        )}
       </div>
       {st && (
         <div className={"banner " + (st.acceptingOrders ? "ok" : "warn")}>

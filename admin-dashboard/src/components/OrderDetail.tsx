@@ -90,13 +90,13 @@ export default function OrderDetail({ order, onClose, onChanged }: { order: Orde
       {payer && PAYMENT_NEXT[order.paymentStatus].length > 0 && (
         <div className="row">
           {PAYMENT_NEXT[order.paymentStatus].includes("PAID") && (
-            <select style={{ maxWidth: 130 }} aria-label="Received by" value={tender} onChange={(e) => setTender(e.target.value as Tender)}>
-              {TENDERS.map((x) => <option key={x.t} value={x.t}>Received: {x.label}</option>)}
-            </select>
+            <label className="small field-inline">Received by <select aria-label="Received by" value={tender} onChange={(e) => setTender(e.target.value as Tender)}>
+              {TENDERS.map((x) => <option key={x.t} value={x.t}>{x.label}</option>)}
+            </select></label>
           )}
           <input style={{ maxWidth: 220 }} placeholder="UPI ref / note (optional)" value={ref} onChange={(e) => setRef(e.target.value)} />
           {PAYMENT_NEXT[order.paymentStatus].map((s) => (
-            <button key={s} className="small" onClick={() => void setPayment(s)}>Mark {PAYMENT_LABEL[s].toLowerCase()}</button>
+            <button key={s} className={s === "PAID" ? "small" : "secondary small"} onClick={() => void setPayment(s)}>Mark {PAYMENT_LABEL[s].toLowerCase()}</button>
           ))}
         </div>
       )}
@@ -112,9 +112,9 @@ export default function OrderDetail({ order, onClose, onChanged }: { order: Orde
               <option value="CHARGE">Correction: add charge</option>
             </select>
             {adjType === "REFUND" && (
-              <select style={{ maxWidth: 140 }} aria-label="Refunded by" value={refundTender} onChange={(e) => setRefundTender(e.target.value as Tender)}>
-                {TENDERS.map((x) => <option key={x.t} value={x.t}>Paid back: {x.label}</option>)}
-              </select>
+              <label className="small field-inline">Paid back by <select aria-label="Refunded by" value={refundTender} onChange={(e) => setRefundTender(e.target.value as Tender)}>
+                {TENDERS.map((x) => <option key={x.t} value={x.t}>{x.label}</option>)}
+              </select></label>
             )}
             <input style={{ maxWidth: 120 }} inputMode="decimal" placeholder="₹ amount" value={adjAmount} onChange={(e) => setAdjAmount(e.target.value)} />
             <input style={{ maxWidth: 260 }} placeholder="Reason" value={adjReason} onChange={(e) => setAdjReason(e.target.value)} />
