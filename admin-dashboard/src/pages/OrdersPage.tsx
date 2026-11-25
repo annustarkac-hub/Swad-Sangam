@@ -42,7 +42,7 @@ function LiveBoard() {
   return (
     <>
       <p className="small muted">
-        {connected ? "● Live" : "○ Reconnecting… (refreshes every 30 s)"} · Keep this page open to hear new-order alerts.
+        {connected ? "● Live" : "○ Reconnecting… (refreshes every 30 s)"} · New orders ring on every page of the app.
       </p>
       {error && <p className="error">{error}</p>}
       {/* Phones: one column at a time with counts, instead of scrolling past empty columns */}

@@ -114,11 +114,11 @@ class MainActivity : AppCompatActivity() {
 
         offline = offlineView()
         loading = loadingView()
-        val root = FrameLayout(this)
-        root.addView(web, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        root.addView(loading, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        root.addView(offline, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        setContentView(root)
+        val content = FrameLayout(this)
+        content.addView(web, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        content.addView(loading, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        content.addView(offline, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        setContentView(edgeToEdgeShell(content))
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -238,6 +238,10 @@ class MainActivity : AppCompatActivity() {
         fun openExternal(url: String) = main.post { openOutside(Uri.parse(url)) }
 
         /** New online order / new delivery: a top-bar notification with sound (a WebView has no Notification API). */
+        /** The web app reports its theme so the system-bar strips match its header and bottom bar. */
+        @JavascriptInterface
+        fun setChrome(theme: String) = main.post { applyChrome(dark = theme != "light") }
+
         @JavascriptInterface
         fun notify(title: String, body: String) = main.post { showAlert(title.take(80), body.take(400)) }
     }
@@ -302,6 +306,51 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object { private const val ALERT_CHANNEL = "staff_alerts" }
+
+    // ---------------------------------------------------------------------------------------------
+    // System bars. targetSdk 35+ draws every app edge-to-edge on Android 15+, so without this the web
+    // header slid under the clock and status icons. The page sits between two native strips sized by the
+    // real insets (status bar / cutout on top, navigation bar or keyboard at the bottom), painted in the
+    // web theme's colours so the bars look like part of the app.
+    // ---------------------------------------------------------------------------------------------
+    private lateinit var statusStrip: View
+    private lateinit var navStrip: View
+    private var darkChrome = true
+
+    private fun edgeToEdgeShell(content: View): View {
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        statusStrip = View(this)
+        navStrip = View(this)
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(statusStrip, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0))
+            addView(content, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            addView(navStrip, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0))
+        }
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars() or androidx.core.view.WindowInsetsCompat.Type.displayCutout())
+            val ime = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime())
+            statusStrip.layoutParams = statusStrip.layoutParams.apply { height = bars.top }
+            // keyboard open: the page shrinks above it, so focused inputs are never hidden
+            navStrip.layoutParams = navStrip.layoutParams.apply { height = maxOf(bars.bottom, ime.bottom) }
+            v.setPadding(bars.left, 0, bars.right, 0)
+            statusStrip.requestLayout(); navStrip.requestLayout()
+            androidx.core.view.WindowInsetsCompat.CONSUMED
+        }
+        applyChrome(dark = true)
+        return root
+    }
+
+    /** Status/navigation strip colours + icon contrast; called with the web app's theme (light/dark). */
+    private fun applyChrome(dark: Boolean) {
+        darkChrome = dark
+        statusStrip.setBackgroundColor(getColor(if (dark) R.color.chrome_dark_top else R.color.chrome_light_top))
+        navStrip.setBackgroundColor(getColor(if (dark) R.color.chrome_dark_bottom else R.color.chrome_light_bottom))
+        androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = !dark
+            isAppearanceLightNavigationBars = !dark
+        }
+    }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
