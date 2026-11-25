@@ -80,7 +80,9 @@ fun CartScreen(
         return
     }
     val info = s.info
-    val orderingOpen = info != null && info.acceptingOrders && info.anyOrderTypeEnabled
+    val serverCanOrder by vm.serverCanOrder.collectAsStateWithLifecycle()
+    // Server decides (it also knows opening hours / temporary closure); the local check is the offline fallback
+    val orderingOpen = serverCanOrder ?: (info != null && info.acceptingOrders && info.anyOrderTypeEnabled)
 
     Column(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = Spacing.s)) {

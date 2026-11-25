@@ -123,6 +123,16 @@ export default function OrderCard({ order, onChanged, onOpen, kitchen }: {
         </label>
       )}
       {!canAssign && isDelivery && order.assignedStaffName && !kitchen && <div className="small">Rider: <b>{order.assignedStaffName}</b></div>}
+      {isDelivery && order.otpLocked && can(role, "OWNER", "MANAGER") && order.orderStatus === "OUT_FOR_DELIVERY" && (
+        <div className="small error">Delivery code locked after 5 wrong tries.{" "}
+          <button className="link small" disabled={busy} onClick={async () => {
+            setBusy(true); setErr(null);
+            const { error } = await supabase.rpc("unlock_delivery_code", { p_order_id: order.id });
+            setBusy(false);
+            if (error) setErr(friendlyError(error.message)); else onChanged();
+          }}>Unlock code</button>
+        </div>
+      )}
       {isDelivery && order.deliveryOtp && !kitchen && ["ACCEPTED", "PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(order.orderStatus) && (
         <div className="small muted">Customer's delivery code: <b className="num">{order.deliveryOtp}</b> (owner/manager only — don't tell the rider)</div>
       )}

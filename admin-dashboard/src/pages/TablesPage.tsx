@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { rpc, selectAll } from "../lib/erp";
 import { dateTime, todayIST } from "../lib/format";
 import { supabase } from "../lib/supabase";
+import { RESERVATION_NEXT, TABLE_NEXT } from "../lib/types";
 
 interface Table { id: number; name: string; seats: number; status: string; sort_order: number; session_code: string | null }
 interface Reservation { id: number; customer_name: string; phone: string | null; party_size: number; reserved_for: string; table_id: number | null; status: string; notes: string | null }
@@ -34,7 +35,9 @@ export default function TablesPage() {
         {tables.map((x) => (
           <div key={x.id} className={"card table-st st-" + x.status}>
             <b>{x.name}</b> <span className="small">({x.seats} seats)</span><div className="small">{x.status}</div>
-            <select className="small" value={x.status} onChange={(e) => void setStatus(x.id, e.target.value)}>{["FREE", "OCCUPIED", "CLEANING", "RESERVED"].map((s) => <option key={s}>{s}</option>)}</select>
+            <select className="small" aria-label={`Status of ${x.name}`} value={x.status} onChange={(e) => void setStatus(x.id, e.target.value)}>
+              {[x.status, ...(TABLE_NEXT[x.status] ?? [])].map((s) => <option key={s}>{s}</option>)}
+            </select>
             <div className="row" style={{ marginTop: 6 }}>
               {x.session_code
                 ? <><span className="small">QR code: <b style={{ fontSize: "1.2rem", letterSpacing: 2 }}>{x.session_code}</b></span>
@@ -74,7 +77,7 @@ export default function TablesPage() {
       <table style={{ marginTop: 8 }}><tbody>{resv.map((x) => (
         <tr key={x.id}><td>{dateTime(x.reserved_for)}</td><td>{x.customer_name} {x.phone && <a href={`tel:${x.phone}`}>{x.phone}</a>}</td><td>{x.party_size} ppl</td>
           <td>{tables.find((tb) => tb.id === x.table_id)?.name ?? "—"}</td><td className="small">{x.notes}</td><td><span className="badge">{x.status}</span></td>
-          <td className="row">{["SEATED", "COMPLETED", "NO_SHOW", "CANCELLED"].map((s) => <button key={s} className="link small" onClick={() => void setStatus(x.id, s, "reservations")}>{s.toLowerCase().replace("_", "-")}</button>)}</td></tr>
+          <td className="row">{(RESERVATION_NEXT[x.status] ?? []).map((s) => <button key={s} className="link small" onClick={() => void setStatus(x.id, s, "reservations")}>{s.toLowerCase().replace("_", "-")}</button>)}</td></tr>
       ))}</tbody></table>
     </div>
   );

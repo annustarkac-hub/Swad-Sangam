@@ -102,6 +102,8 @@ data class StatusDto(
     val acceptingOrders: Boolean = false,
     val temporarilyClosed: Boolean = false,
     val closureMessage: String? = null,
+    /** Server's single answer to "can a customer order now?" (null on an older backend) */
+    val canOrder: Boolean? = null,
 )
 
 @Serializable

@@ -22,6 +22,7 @@ class UserPrefs @Inject constructor(@ApplicationContext private val context: Con
     private val NAME = stringPreferencesKey("name")
     private val PHONE = stringPreferencesKey("phone")
     private val PENDING_KEY = stringPreferencesKey("pending_idempotency_key")
+    private val PENDING_FP = stringPreferencesKey("pending_idempotency_fingerprint")
     private val ASKED_NOTIF = booleanPreferencesKey("asked_notification_permission")
     private val FCM = stringPreferencesKey("fcm_token")
     private val PURE_VEG = booleanPreferencesKey("pure_veg")
@@ -38,10 +39,21 @@ class UserPrefs @Inject constructor(@ApplicationContext private val context: Con
         context.dataStore.edit { it[NAME] = name; it[PHONE] = phone }
     }
 
-    /** One idempotency key per checkout attempt; reused on retry so duplicates are impossible. */
-    suspend fun pendingIdempotencyKey(): String? = context.dataStore.data.first()[PENDING_KEY]
-    suspend fun setPendingIdempotencyKey(key: String?) {
-        context.dataStore.edit { if (key == null) it.remove(PENDING_KEY) else it[PENDING_KEY] = key }
+    /**
+     * One idempotency key per checkout ATTEMPT of one exact order. It is reused only when the retry sends the
+     * same order (same fingerprint); if the cart, type, address or coupon changed, a new key is made — otherwise
+     * the server would answer with the earlier order as if it were the new one.
+     */
+    suspend fun idempotencyKeyFor(fingerprint: String): String {
+        val p = context.dataStore.data.first()
+        val existing = p[PENDING_KEY]
+        if (existing != null && p[PENDING_FP] == fingerprint) return existing
+        val fresh = java.util.UUID.randomUUID().toString()
+        context.dataStore.edit { it[PENDING_KEY] = fresh; it[PENDING_FP] = fingerprint }
+        return fresh
+    }
+    suspend fun clearIdempotencyKey() {
+        context.dataStore.edit { it.remove(PENDING_KEY); it.remove(PENDING_FP) }
     }
 
     suspend fun askedNotificationPermission(): Boolean = context.dataStore.data.first()[ASKED_NOTIF] ?: false

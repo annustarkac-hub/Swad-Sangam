@@ -50,7 +50,13 @@ export default function PosPage() {
     try {
       const list = await rpc<Order[]>("admin_list_orders", { p_statuses: ["ACCEPTED", "PREPARING", "READY", "OUT_FOR_DELIVERY"], p_limit: 100 });
       setOpenBills(list);
-      setSelected((s) => (s ? list.find((o) => o.id === s.id) ?? null : null));
+      setSelected((s) => {
+        if (!s) return s;
+        const still = list.find((o) => o.id === s.id);
+        // Closed or paid on another device: say so instead of silently turning the cart into a new bill
+        if (!still) setErr(`${s.tableNumber ? "Table " + s.tableNumber : s.orderNumber} was closed on another device. Items still in the cart will start a NEW bill.`);
+        return still ?? null;
+      });
       if (payerRef.current) setCash(await rpc<CashStatus>("cash_session_status"));
     } catch (e) { setErr((e as Error).message); }
   }, []);
