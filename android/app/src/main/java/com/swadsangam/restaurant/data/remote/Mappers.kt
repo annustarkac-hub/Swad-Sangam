@@ -31,7 +31,7 @@ fun SettingsDto.toDomain() = RestaurantInfo(
     privacyPolicyUrl = privacyPolicyUrl, termsUrl = termsUrl,
 )
 
-fun StatusDto.toDomain() = RestaurantStatus(isOpenNow, acceptingOrders, temporarilyClosed, closureMessage)
+fun StatusDto.toDomain() = RestaurantStatus(isOpenNow, acceptingOrders, temporarilyClosed, closureMessage, canOrder)
 
 fun QuoteDto.toDomain() = Quote(
     subtotalPaise, discountPaise, taxPaise, taxLabel, taxRateBps, pricesIncludeTax,

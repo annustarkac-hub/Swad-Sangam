@@ -13,7 +13,13 @@ export interface NextAction {
 export const canTakePayment = (role: Role | null) => role != null && !["WAITER", "KITCHEN", "DELIVERY", "ACCOUNTANT"].includes(role);
 
 /** Mirrors private.valid_transition() + the payment/handover rules in the database. The server is the source of truth. */
-export function nextActions(order: Pick<Order, "orderStatus" | "orderType"> & Partial<Pick<Order, "source">>, role: Role): NextAction[] {
+export function nextActions(order: Pick<Order, "orderStatus" | "orderType"> & Partial<Pick<Order, "source" | "nextStatuses">>, role: Role): NextAction[] {
+  const all = localActions(order, role);
+  // The database says what is allowed for this role right now; the local table only supplies labels.
+  return order.nextStatuses ? all.filter((a) => order.nextStatuses!.includes(a.to)) : all;
+}
+
+function localActions(order: Pick<Order, "orderStatus" | "orderType"> & Partial<Pick<Order, "source">>, role: Role): NextAction[] {
   const a: NextAction[] = [];
   const s = order.orderStatus;
   const kitchen = role === "KITCHEN";

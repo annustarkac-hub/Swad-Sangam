@@ -113,6 +113,7 @@ export default function SiteApp() {
     return () => window.removeEventListener("beforeinstallprompt", f);
   }, []);
 
+  const [serverCanOrder, setServerCanOrder] = useState<boolean | null>(null);
   const loadMenu = useCallback(async () => {
     try {
       const [s, c, i] = await Promise.all([
@@ -125,6 +126,9 @@ export default function SiteApp() {
       setCats(c.data as Category[]); store.set("ss_cats", c.data);
       setItems(i.data as MenuItem[]); store.set("ss_items", i.data);
       setOffline(false);
+      // The server's answer to "can a customer order now?" (same test place_order uses)
+      const st = await supabase.rpc("restaurant_status");
+      setServerCanOrder(st.error ? null : Boolean((st.data as { canOrder?: boolean } | null)?.canOrder));
     } catch { setOffline(true); }
   }, []);
   useEffect(() => { void loadMenu(); const id = setInterval(() => void loadMenu(), 120000); return () => clearInterval(id); }, [loadMenu]);
@@ -143,7 +147,8 @@ export default function SiteApp() {
     const q = Math.min(max, ex.qty + delta);
     return q <= 0 ? c.filter((l) => l !== ex) : c.map((l) => (l === ex ? { ...l, qty: q } : l));
   });
-  const ordering = !!settings && settings.accepting_orders && (settings.pickup_enabled || settings.dine_in_enabled || settings.delivery_enabled) && isOpen(settings);
+  // Server decides; the local check is only the offline fallback
+  const ordering = serverCanOrder ?? (!!settings && settings.accepting_orders && (settings.pickup_enabled || settings.dine_in_enabled || settings.delivery_enabled) && isOpen(settings));
   const open = settings ? isOpen(settings) : false;
 
   return (

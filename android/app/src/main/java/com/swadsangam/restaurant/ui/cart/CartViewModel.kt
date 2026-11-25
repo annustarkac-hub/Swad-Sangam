@@ -1,5 +1,6 @@
 package com.swadsangam.restaurant.ui.cart
 
+import kotlinx.coroutines.flow.map
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.swadsangam.restaurant.data.repo.Analytics
@@ -57,6 +58,8 @@ class CartViewModel @Inject constructor(
 ) : ViewModel() {
     private val serverQuote = MutableStateFlow<Quote?>(null)
     private val couponInput = MutableStateFlow(draft.couponCode.value)
+    /** Server answer to "can a customer order now?" — includes opening hours and "temporarily closed". */
+    val serverCanOrder: StateFlow<Boolean?> = menu.status.map { it?.canOrder }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val state: StateFlow<CartState> = combine(cart.lines, menu.restaurant, draft.orderType, serverQuote,
         combine(couponInput, draft.couponCode) { a, b -> a to b }) { lines, info, type, sq, (input, applied) ->

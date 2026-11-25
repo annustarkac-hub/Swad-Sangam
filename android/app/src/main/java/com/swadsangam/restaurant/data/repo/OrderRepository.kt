@@ -1,5 +1,6 @@
 package com.swadsangam.restaurant.data.repo
 
+import kotlinx.coroutines.sync.withLock
 import com.swadsangam.restaurant.data.local.MyOrderEntity
 import com.swadsangam.restaurant.data.local.OrderDao
 import com.swadsangam.restaurant.data.prefs.UserPrefs
@@ -51,6 +52,14 @@ data class CheckoutForm(
     val termsAccepted: Boolean,
 )
 
+/** Everything that makes two submissions "the same order" (decides whether a retry may reuse the idempotency key). */
+internal fun orderFingerprint(form: CheckoutForm, lines: List<CartLine>): String =
+    listOf(
+        form.orderType.name, form.paymentMethod.name, form.couponCode.orEmpty().trim().uppercase(),
+        form.tableNumber.orEmpty().trim(), form.deliveryAddress.orEmpty().trim(),
+        lines.map { "${it.itemId}:${it.optionIds.sorted().joinToString("+")}x${it.quantity}" }.sorted().joinToString(","),
+    ).joinToString("|").hashCode().toString(16)
+
 sealed interface PlaceResult {
     data class Success(val order: Order) : PlaceResult
     /** Business rule rejection from the server (e.g. PRICE_CHANGED, ITEM_UNAVAILABLE, ORDERS_CLOSED). */
@@ -85,7 +94,7 @@ class OrderRepository @Inject constructor(
     }
 
     suspend fun place(form: CheckoutForm, lines: List<CartLine>, expectedTotalPaise: Int?): PlaceResult {
-        val key = prefs.pendingIdempotencyKey() ?: UUID.randomUUID().toString().also { prefs.setPendingIdempotencyKey(it) }
+        val key = prefs.idempotencyKeyFor(orderFingerprint(form, lines))
         val request = OrderRequest(
             idempotencyKey = key,
             customerName = form.name.trim(),
@@ -108,14 +117,14 @@ class OrderRepository @Inject constructor(
         return try {
             val res = api.placeOrder(PlaceOrderBody(request))
             if (res.ok && res.order != null) {
-                prefs.setPendingIdempotencyKey(null)
+                prefs.clearIdempotencyKey()
                 prefs.saveCustomer(form.name.trim(), form.phone)
                 val token = res.order.accessToken ?: return PlaceResult.Failed("Missing order token")
                 save(res.order, token, notified = res.order.orderStatus)
                 PlaceResult.Success(res.order.toDomain(token))
             } else {
                 // Business rejection: a fresh key is fine for the next attempt.
-                prefs.setPendingIdempotencyKey(null)
+                prefs.clearIdempotencyKey()
                 val unavailable = runCatching {
                     (res.details as? JsonObject)?.get("items")?.jsonArray?.map { it.jsonObject["itemId"]!!.jsonPrimitive.content }
                 }.getOrNull().orEmpty()
@@ -171,7 +180,22 @@ class OrderRepository @Inject constructor(
      * Refreshes all orders on this device and returns status changes that have not
      * been notified yet (used by the background worker when push is unavailable).
      */
-    suspend fun refreshAllAndCollectChanges(): List<StatusChange> {
+    /**
+     * Notification state per order = the last status the customer was told about (notifiedStatus).
+     * Three senders (in-app check, background job, push) may run at the same moment; this lock makes
+     * "compare + mark as notified" one step, so each change is announced exactly once.
+     */
+    private val notifyLock = kotlinx.coroutines.sync.Mutex()
+
+    /** For push: true only for the first caller that announces this status for this order. */
+    suspend fun claimNotification(token: String, status: OrderStatus): Boolean = notifyLock.withLock {
+        val e = dao.byTokenNow(token) ?: return@withLock true
+        if (e.notifiedStatus == status.name) false else { dao.upsert(e.copy(notifiedStatus = status.name)); true }
+    }
+
+    suspend fun refreshAllAndCollectChanges(): List<StatusChange> = notifyLock.withLock { collectChangesLocked() }
+
+    private suspend fun collectChangesLocked(): List<StatusChange> {
         val local = dao.allNow()
         if (local.isEmpty()) return emptyList()
         val remote = try {

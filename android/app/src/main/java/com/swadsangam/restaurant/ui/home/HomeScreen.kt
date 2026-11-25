@@ -288,7 +288,7 @@ fun HomeScreen(
                                     variant = ButtonVariant.Secondary, icon = Icons.Default.Directions)
                             }
                             Spacer(Modifier.height(Spacing.s))
-                            AppButton(stringResource(if (info.acceptingOrders && info.anyOrderTypeEnabled) R.string.order_now else R.string.view_menu),
+                            AppButton(stringResource(if (s.status?.canOrder ?: (info.acceptingOrders && info.anyOrderTypeEnabled)) R.string.order_now else R.string.view_menu),
                                 { onOpenMenu(null, false) }, Modifier.fillMaxWidth(), large = true)
                             AppButton(stringResource(R.string.my_orders), onOpenOrders, Modifier.fillMaxWidth(), variant = ButtonVariant.Text)
                         }

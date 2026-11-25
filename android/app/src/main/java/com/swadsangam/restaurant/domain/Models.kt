@@ -150,6 +150,7 @@ data class RestaurantStatus(
     val acceptingOrders: Boolean,
     val temporarilyClosed: Boolean,
     val closureMessage: String?,
+    val canOrder: Boolean? = null,
 )
 
 /** Server-calculated price breakdown (the server is the source of truth). */

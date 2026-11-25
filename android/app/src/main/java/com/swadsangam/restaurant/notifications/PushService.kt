@@ -30,11 +30,11 @@ class PushService : FirebaseMessagingService() {
         val reason = message.data["reason"]?.takeIf { it.isNotBlank() }
         scope.launch {
             val token = message.data["token"]?.takeIf { it.isNotBlank() } ?: orders.myOrdersTokenFor(number)
-            if (token != null) {
-                orders.refresh(token)
-                orders.markNotified(token, status)
+            if (token != null) orders.refresh(token)
+            // Skip if the in-app check or background job already announced this status
+            if (token == null || orders.claimNotification(token, status)) {
+                Notifier.showOrderStatus(applicationContext, token, number, status, reason, type)
             }
-            Notifier.showOrderStatus(applicationContext, token, number, status, reason, type)
         }
     }
 }

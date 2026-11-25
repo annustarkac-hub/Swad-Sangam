@@ -104,7 +104,20 @@ export interface Order {
   assignedAt?: string | null;
   /** Only owner/manager (staff view) and the customer ever receive this */
   deliveryOtp?: string | null;
+  otpLocked?: boolean;
+  /** Statuses this staff member may move the order to now — computed by the database (private.allowed_next) */
+  nextStatuses?: OrderStatus[];
 }
+
+/** Mirrors private.table_transition_ok — the database enforces it; the screen only offers these moves. */
+export const TABLE_NEXT: Record<string, string[]> = {
+  FREE: ["OCCUPIED", "RESERVED"], RESERVED: ["OCCUPIED", "FREE"], OCCUPIED: ["CLEANING", "FREE"], CLEANING: ["FREE", "OCCUPIED", "RESERVED"],
+};
+/** Mirrors private.reservation_transition_ok */
+export const RESERVATION_NEXT: Record<string, string[]> = {
+  BOOKED: ["WAITING", "SEATED", "CANCELLED", "NO_SHOW"], WAITING: ["SEATED", "CANCELLED", "NO_SHOW"], SEATED: ["COMPLETED"],
+  COMPLETED: [], CANCELLED: [], NO_SHOW: [],
+};
 
 /** Amount still to collect for an order (staff view). */
 export const duePaise = (o: Pick<Order, "totalPaise" | "paidPaise" | "paymentStatus">) =>
