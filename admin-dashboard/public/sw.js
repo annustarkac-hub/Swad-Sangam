@@ -2,7 +2,7 @@
 // Pages: NETWORK-FIRST (always get the latest version when online; cached copy only when offline).
 // Hashed assets/images: cache-first. Public menu API reads: network-first with offline fallback.
 // Orders (POST) always go to the network. Bump VERSION to force every phone to refresh.
-const VERSION = "v4";
+const VERSION = "v5";
 const SHELL = "ss-shell-" + VERSION;
 const DATA = "ss-data-" + VERSION;
 
