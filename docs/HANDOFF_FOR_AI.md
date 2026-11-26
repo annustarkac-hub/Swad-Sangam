@@ -116,3 +116,8 @@ Step-by-step owner instructions in Hindi: `docs/OWNER_TODO_HINDI.md`.
 ## Uptime health check (added 26 Nov 2026)
 - Edge Function `health` (`supabase/functions/health`, verify_jwt=false, deployed live): calls public `restaurant_status()` with the anon key and returns `SWAD-OK` (200) or `SWAD-DOWN …` (503). No data in the response. Used by the owner's UptimeRobot keyword monitor; also deployed by `deploy-backend.yml`.
 - Brevo SMTP for Supabase Auth is an owner step (OWNER_TODO_HINDI.md section G); no code involved.
+
+## Delivery pin + distance fee (migration 20261126000020, applied live)
+- `private.delivery_calc(settings, p_order)` computes pin, distance (haversine × `delivery_road_factor`) and fee (`delivery_fee_paise + delivery_per_km_paise × ceil(km − delivery_base_km)`), refuses beyond `delivery_radius_km` and, if `delivery_require_pin`, a missing pin. The flat-fee line inside `place_order_core` and `quote_order` was replaced in place (asserted to occur once); `public.quote_order`/`place_order` wrappers return the errors and store `orders.delivery_lat/lng/distance_km`. Tests: `supabase/tests/delivery_location_tests.sql`.
+- Website: `src/site/MapPicker.tsx` (Leaflet + OSM tiles, lazy chunk) in cart, account addresses and admin Settings (restaurant pin). Android customer app: one-shot platform LocationManager (`core/CurrentLocation.kt`), no Play services. Staff/admin WebView grants geolocation to the own site only.
+- Live: restaurant latitude/longitude are still empty; the owner sets them in Settings (OWNER_TODO_HINDI.md section I).

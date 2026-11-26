@@ -10,6 +10,8 @@ No source code from other restaurant POS projects (including the AGPL-3.0 NodeDR
 | @supabase/supabase-js, Supabase CLI | MIT |
 | qrcode (node-qrcode) | MIT |
 | lucide-react (icons) | ISC |
+| Leaflet (map on the website) | BSD-2-Clause |
+| OpenStreetMap map tiles (tile.openstreetmap.org, loaded at runtime; attribution shown on the map) | Data © OpenStreetMap contributors, ODbL |
 | Kotlin, kotlinx.coroutines, kotlinx.serialization | Apache-2.0 |
 | AndroidX (Compose, Material 3, Navigation, Room, DataStore, WorkManager, AppCompat, Browser, SplashScreen) | Apache-2.0 |
 | Dagger / Hilt | Apache-2.0 |

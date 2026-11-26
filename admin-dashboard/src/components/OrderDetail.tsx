@@ -60,8 +60,8 @@ export default function OrderDetail({ order, onClose, onChanged }: { order: Orde
       </p>
       <p>
         <b>{order.customerName}</b> {order.customerPhone && <a href={`tel:${order.customerPhone}`}>{order.customerPhone}</a>}
-        {order.deliveryAddress && <><br />Address: {order.deliveryAddress} {order.deliveryLandmark}{" "}
-          <a href={mapsLink(order.deliveryAddress, order.deliveryLandmark)} target="_blank" rel="noreferrer">Directions ↗</a></>}
+        {order.deliveryAddress && <><br />Address: {order.deliveryAddress} {order.deliveryLandmark}{order.deliveryDistanceKm != null ? ` · ~${order.deliveryDistanceKm} km` : ""}{" "}
+          <a href={mapsLink(order.deliveryAddress, order.deliveryLandmark, order.deliveryLat, order.deliveryLng)} target="_blank" rel="noreferrer">{order.deliveryLat != null ? "Map pin ↗" : "Directions ↗"}</a></>}
         {order.assignedStaffName && <><br />Rider: <b>{order.assignedStaffName}</b></>}
       </p>
       {(order.notes || order.pickupInstructions) && <p><b>Notes:</b> {order.notes} {order.pickupInstructions}</p>}

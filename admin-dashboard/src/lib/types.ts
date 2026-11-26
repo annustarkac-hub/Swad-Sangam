@@ -75,6 +75,10 @@ export interface Order {
   customerPhone?: string;
   deliveryAddress?: string | null;
   deliveryLandmark?: string | null;
+  /** Customer's map pin and the server-computed distance (km), when given. */
+  deliveryLat?: number | null;
+  deliveryLng?: number | null;
+  deliveryDistanceKm?: number | null;
   pickupInstructions?: string | null;
   notes?: string | null;
   paymentReference?: string | null;
@@ -123,9 +127,12 @@ export const RESERVATION_NEXT: Record<string, string[]> = {
 export const duePaise = (o: Pick<Order, "totalPaise" | "paidPaise" | "paymentStatus">) =>
   o.paymentStatus === "PAID" || o.paymentStatus === "REFUNDED" || o.paymentStatus === "REFUND_PENDING" ? 0 : Math.max(0, o.totalPaise - (o.paidPaise ?? 0));
 
-/** Google Maps search link for a delivery address (free, no API key). */
-export const mapsLink = (address: string, landmark?: string | null) =>
-  "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent([address, landmark, "Srinagar Garhwal"].filter(Boolean).join(", "));
+/** Google Maps link for a delivery (free, no API key): turn-by-turn to the customer's pin when there is one,
+    otherwise a search for the written address. */
+export const mapsLink = (address: string, landmark?: string | null, lat?: number | null, lng?: number | null) =>
+  lat != null && lng != null
+    ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+    : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent([address, landmark, "Srinagar Garhwal"].filter(Boolean).join(", "));
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
   PLACED: "New",

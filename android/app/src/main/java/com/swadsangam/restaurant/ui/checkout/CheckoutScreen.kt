@@ -1,6 +1,11 @@
 package com.swadsangam.restaurant.ui.checkout
 
 import androidx.compose.runtime.setValue
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.PaddingValues
 import com.swadsangam.restaurant.ui.theme.secondaryText
 import com.swadsangam.restaurant.ui.theme.Size
@@ -79,6 +84,7 @@ fun CheckoutScreen(
     val couponCode by vm.couponCode.collectAsStateWithLifecycle()
     val placed by vm.placed.collectAsStateWithLifecycle()
     val account by vm.addresses.collectAsStateWithLifecycle()
+    val deliveryNotice by vm.deliveryNotice.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(Unit) { vm.start(tableNumber) }
@@ -155,10 +161,10 @@ fun CheckoutScreen(
                             Text(stringResource(R.string.saved_address), style = MaterialTheme.typography.labelLarge)
                             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
                                 saved.forEach { a ->
-                                    FilterChip(u.address == a.address, { vm.edit { it.copy(address = a.address, landmark = a.landmark.orEmpty()) } },
+                                    FilterChip(u.address == a.address, { vm.chooseAddress(a) },
                                         label = { Text(a.label) }, modifier = Modifier.heightIn(min = Size.touch))
                                 }
-                                FilterChip(saved.none { it.address == u.address }, { vm.edit { it.copy(address = "", landmark = "") } },
+                                FilterChip(saved.none { it.address == u.address }, { vm.chooseAddress(null) },
                                     label = { Text(stringResource(R.string.new_address)) }, modifier = Modifier.heightIn(min = Size.touch))
                             }
                             Spacer(Modifier.height(Spacing.s))
@@ -167,6 +173,32 @@ fun CheckoutScreen(
                             singleLine = false, minLines = 2, error = if (err && vm.addressError(u)) stringResource(R.string.address_error) else null)
                         Spacer(Modifier.height(Spacing.s))
                         AppTextField(u.landmark, { v -> vm.edit { it.copy(landmark = v.take(120)) } }, stringResource(R.string.landmark))
+                        Spacer(Modifier.height(Spacing.s))
+                        val ctx = LocalContext.current
+                        val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
+                            if (r.values.any { it }) vm.locate(ctx) else vm.locationDenied()
+                        }
+                        AppButton(
+                            when {
+                                u.locating -> stringResource(R.string.locating)
+                                u.pinLat != null -> stringResource(R.string.location_added)
+                                else -> stringResource(R.string.use_my_location)
+                            },
+                            {
+                                val granted = listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                                    .any { ContextCompat.checkSelfPermission(ctx, it) == PackageManager.PERMISSION_GRANTED }
+                                if (granted) vm.locate(ctx)
+                                else askLocation.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                            },
+                            variant = ButtonVariant.Secondary, enabled = !u.locating, modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            stringResource(if (u.locationFailed) R.string.location_failed else R.string.location_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (u.locationFailed) MaterialTheme.colorScheme.error else secondaryText,
+                            modifier = Modifier.padding(top = Spacing.xs),
+                        )
+                        deliveryNotice?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = Spacing.xs)) }
                     }
                 }
                 Spacer(Modifier.height(Spacing.s))

@@ -311,4 +311,10 @@
     <string name="sign_in_benefit">Log in to see your orders on any phone</string>
     <string name="savings">You save %1$s on this order</string>
     <string name="view_full_menu">See the full menu (%1$d dishes)</string>
+    <string name="use_my_location">Use my current location</string>
+    <string name="locating">Finding your location…</string>
+    <string name="location_added">Location added ✓ (tap to update)</string>
+    <string name="location_hint">Helps the rider reach you. Use it while you are at the delivery address.</string>
+    <string name="location_failed">Could not get your location. Turn on location (GPS) and allow it, or just write the address.</string>
+    <string name="delivery_fee_km">Delivery fee (%1$s km)</string>
 </resources>

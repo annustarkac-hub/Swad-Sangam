@@ -1,9 +1,11 @@
-import { ReceiptText, Star } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { MapPin, ReceiptText, Star } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { cleanPhone, db, store, validPhone, type Address, type Customer } from "./common";
 import type { Lang } from "./i18n";
 import { askConfirm } from "../components/Dialogs";
 import PasswordInput from "../components/PasswordInput";
+
+const MapPicker = lazy(() => import("./MapPicker"));
 
 /** Signed-in customer (Supabase email + password). Null when signed out; undefined while loading. */
 export function useCustomer(): [Customer | null | undefined, () => Promise<void>, boolean] {
@@ -154,6 +156,7 @@ function Profile({ lang, c, reload }: { lang: Lang; c: Customer; reload: () => P
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [edit, setEdit] = useState<Partial<Address> | null>(null);
   const [addrMsg, setAddrMsg] = useState<string | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
 
   async function saveProfile() {
     setMsg(null);
@@ -168,7 +171,8 @@ function Profile({ lang, c, reload }: { lang: Lang; c: Customer; reload: () => P
     if (!edit) return;
     setAddrMsg(null);
     if ((edit.address ?? "").trim().length < 10) return setAddrMsg(tx(lang, "Please write the full address.", "पूरा पता लिखें।"));
-    const row = { label: (edit.label ?? "").trim() || "Home", address: edit.address!.trim(), landmark: edit.landmark?.trim() || null, is_default: !!edit.is_default || c.addresses.length === 0 };
+    const row = { label: (edit.label ?? "").trim() || "Home", address: edit.address!.trim(), landmark: edit.landmark?.trim() || null, is_default: !!edit.is_default || c.addresses.length === 0,
+      latitude: edit.latitude ?? null, longitude: edit.longitude ?? null };
     const { error } = edit.id ? await db.from("customer_addresses").update(row).eq("id", edit.id) : await db.from("customer_addresses").insert(row);
     if (error) return setAddrMsg(/TOO_MANY/.test(error.message) ? tx(lang, "You can save up to 10 addresses.", "अधिकतम 10 पते सेव हो सकते हैं।") : error.message);
     setEdit(null); void reload();
@@ -192,7 +196,7 @@ function Profile({ lang, c, reload }: { lang: Lang; c: Customer; reload: () => P
         {c.addresses.map((a) => (
           <div key={a.id} className="addr-row">
             <div className="grow"><b>{a.label}</b>{a.is_default && <span className="tag-s"> {tx(lang, "Default", "डिफ़ॉल्ट")}</span>}
-              <div className="small">{a.address}{a.landmark ? ` · ${a.landmark}` : ""}</div></div>
+              <div className="small">{a.address}{a.landmark ? ` · ${a.landmark}` : ""}{a.latitude != null && <span className="tag-s"> <MapPin size={12} /> {tx(lang, "pinned", "पिन")}</span>}</div></div>
             <div className="row-s">
               {!a.is_default && <button className="link-s" onClick={async () => { await db.from("customer_addresses").update({ is_default: true }).eq("id", a.id); void reload(); }}>{tx(lang, "Make default", "डिफ़ॉल्ट बनाएँ")}</button>}
               <button className="link-s" onClick={() => setEdit(a)}>{tx(lang, "Edit", "बदलें")}</button>
@@ -205,6 +209,12 @@ function Profile({ lang, c, reload }: { lang: Lang; c: Customer; reload: () => P
             <label>{tx(lang, "Label (Home, Hostel, Office…)", "नाम (घर, हॉस्टल, ऑफ़िस…)")}<input value={edit.label ?? ""} maxLength={30} onChange={(e) => setEdit({ ...edit, label: e.target.value })} /></label>
             <label>{tx(lang, "Full address", "पूरा पता")}<textarea value={edit.address ?? ""} maxLength={300} onChange={(e) => setEdit({ ...edit, address: e.target.value })} /></label>
             <label>{tx(lang, "Landmark (optional)", "लैंडमार्क (वैकल्पिक)")}<input value={edit.landmark ?? ""} maxLength={120} onChange={(e) => setEdit({ ...edit, landmark: e.target.value })} /></label>
+            <button type="button" className={"pin-btn" + (edit.latitude != null ? " set" : "")} onClick={() => setMapOpen(true)}>
+              <MapPin size={18} /> {edit.latitude != null ? tx(lang, "Location pinned on map ✓ (change)", "नक्शे पर जगह लगी है ✓ (बदलें)") : tx(lang, "Mark location on map", "नक्शे पर जगह चुनें")}</button>
+            {mapOpen && <Suspense fallback={null}>
+              <MapPicker lang={lang} initial={edit.latitude != null && edit.longitude != null ? { lat: edit.latitude, lng: edit.longitude } : null} restaurant={null}
+                onClose={() => setMapOpen(false)} onPick={(p) => { setMapOpen(false); setEdit({ ...edit, latitude: p.lat, longitude: p.lng }); }} />
+            </Suspense>}
             <label className="check-s"><input type="checkbox" checked={!!edit.is_default} onChange={(e) => setEdit({ ...edit, is_default: e.target.checked })} /><span>{tx(lang, "Use as default", "डिफ़ॉल्ट पता")}</span></label>
             {addrMsg && <p className="bad-s">{addrMsg}</p>}
             <div className="row-s"><button className="primary-s" onClick={() => void saveAddress()}>{tx(lang, "Save address", "पता सेव करें")}</button><button className="ghost-s" onClick={() => setEdit(null)}>{tx(lang, "Cancel", "रद्द")}</button></div>

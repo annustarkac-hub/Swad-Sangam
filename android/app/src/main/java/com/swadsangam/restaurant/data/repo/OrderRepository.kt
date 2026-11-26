@@ -50,13 +50,16 @@ data class CheckoutForm(
     val notes: String?,
     val couponCode: String?,
     val termsAccepted: Boolean,
+    /** Delivery pin; the server computes distance and fee from it. */
+    val deliveryLat: Double? = null,
+    val deliveryLng: Double? = null,
 )
 
 /** Everything that makes two submissions "the same order" (decides whether a retry may reuse the idempotency key). */
 internal fun orderFingerprint(form: CheckoutForm, lines: List<CartLine>): String =
     listOf(
         form.orderType.name, form.paymentMethod.name, form.couponCode.orEmpty().trim().uppercase(),
-        form.tableNumber.orEmpty().trim(), form.deliveryAddress.orEmpty().trim(),
+        form.tableNumber.orEmpty().trim(), form.deliveryAddress.orEmpty().trim(), "${form.deliveryLat},${form.deliveryLng}",
         lines.map { "${it.itemId}:${it.optionIds.sorted().joinToString("+")}x${it.quantity}" }.sorted().joinToString(","),
     ).joinToString("|").hashCode().toString(16)
 
@@ -87,8 +90,10 @@ class OrderRepository @Inject constructor(
     private fun lineRequests(lines: List<CartLine>) =
         lines.map { OrderLineRequest(it.itemId, it.quantity, it.optionIds) }
 
-    suspend fun quote(lines: List<CartLine>, type: OrderType, coupon: String?): Quote? = try {
-        api.quote(QuoteBody(QuoteRequest(type.name, lineRequests(lines), coupon?.takeIf { it.isNotBlank() }))).toDomain()
+    suspend fun quote(lines: List<CartLine>, type: OrderType, coupon: String?, lat: Double? = null, lng: Double? = null): Quote? = try {
+        val pin = type == OrderType.DELIVERY && lat != null && lng != null
+        api.quote(QuoteBody(QuoteRequest(type.name, lineRequests(lines), coupon?.takeIf { it.isNotBlank() },
+            deliveryLat = lat.takeIf { pin }, deliveryLng = lng.takeIf { pin }))).toDomain()
     } catch (e: Exception) {
         null
     }
@@ -107,6 +112,8 @@ class OrderRepository @Inject constructor(
             tableCode = form.tableCode?.takeIf { it.isNotBlank() && form.orderType == OrderType.DINE_IN },
             deliveryAddress = form.deliveryAddress?.takeIf { form.orderType == OrderType.DELIVERY },
             deliveryLandmark = form.deliveryLandmark?.takeIf { form.orderType == OrderType.DELIVERY },
+            deliveryLat = form.deliveryLat?.takeIf { form.orderType == OrderType.DELIVERY && form.deliveryLng != null },
+            deliveryLng = form.deliveryLng?.takeIf { form.orderType == OrderType.DELIVERY && form.deliveryLat != null },
             pickupInstructions = form.pickupInstructions,
             notes = form.notes,
             couponCode = form.couponCode?.takeIf { it.isNotBlank() },

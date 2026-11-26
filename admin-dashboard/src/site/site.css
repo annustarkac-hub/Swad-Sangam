@@ -540,3 +540,9 @@ svg { flex: none; }
 .ss-dialog-actions .ss-dialog-ok { background: var(--brand-600); border-color: transparent; color: #fff; }
 .ss-dialog-actions .ss-dialog-ok.danger { background: var(--red); }
 @media (prefers-color-scheme: dark) { .ss-dialog-actions .ss-dialog-ok { color: #141214; } }
+
+/* ---------- delivery location button ---------- */
+.pin-btn { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; padding: 10px 14px; margin-top: 4px;
+  border: 1.5px dashed var(--brand); border-radius: 14px; background: var(--brand-50); color: var(--brand); font: inherit; font-weight: 650; text-align: left; cursor: pointer; }
+.pin-btn small { color: var(--muted); font-weight: 500; }
+.pin-btn.set { border-style: solid; border-color: var(--green); background: var(--green-50); color: var(--green); }
