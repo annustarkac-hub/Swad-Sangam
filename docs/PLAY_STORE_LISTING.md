@@ -49,8 +49,8 @@ Remove the “Place pickup orders…” and “Reorder…” lines if ordering i
 
 | Asset | Size | Status |
 |---|---|---|
-| App icon | 512 × 512 PNG | Placeholder in `docs/store-assets/icon-512.png` — replace with the official logo |
-| Feature graphic | 1024 × 500 PNG | Placeholder in `docs/store-assets/feature-graphic.png` — use a real dish photo |
+| App icon | 512 × 512 PNG | `docs/store-assets/icon-512.png` (approved Sangam S; Admin/Staff versions in `docs/brand/playstore/`) |
+| Feature graphic | 1024 × 500 PNG | `docs/store-assets/feature-graphic.png` (Sangam S + menu photos) |
 | Phone screenshots | 2–8, 16:9 or 9:16 | Take on a real phone after the menu photos are uploaded (Home, Menu, Dish, Cart, Order status, Info) |
 
 ## Data safety form — suggested answers

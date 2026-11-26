@@ -111,7 +111,7 @@ fun HomeScreen(
                         Surface(shape = RoundedCornerShape(Radius.m), color = MaterialTheme.colorScheme.surface, modifier = Modifier.size(Size.avatar)) {
                             androidx.compose.foundation.Image(
                                 androidx.compose.ui.res.painterResource(R.drawable.logo_mark), contentDescription = stringResource(R.string.app_name),
-                                modifier = Modifier.padding(Spacing.xs),
+                                modifier = Modifier.fillMaxSize(),
                             )
                         }
                         Spacer(Modifier.width(Spacing.m))

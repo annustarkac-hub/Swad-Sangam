@@ -716,7 +716,7 @@ function InfoView({ L, lang, s }: { L: L; lang: Lang; s: Settings }) {
   return (
     <div className="stack">
       <div className="card-s2 info-head">
-        <img className="info-logo" src={`${import.meta.env.BASE_URL}logo-full.webp`} alt={`${s.restaurant_name} — ${s.tagline}`} width={800} height={807} loading="lazy" />
+        <img className="info-logo" src={`${import.meta.env.BASE_URL}logo-full.webp`} alt={`${s.restaurant_name} — ${s.tagline}`} width={800} height={800} loading="lazy" />
         <p>{s.address}</p>
         <div className="hero-row"><a className="pill-s" href={`tel:${s.phone}`}><Phone size={16} /> {s.phone}</a>
           {wa.length >= 10 && <a className="pill-s" href={`https://wa.me/${wa.length === 10 ? "91" + wa : wa}?text=${encodeURIComponent(lang === "hi" ? "नमस्ते, मुझे ऑर्डर करना है" : "Hello, I would like to place an order")}`} target="_blank" rel="noreferrer"><MessageCircle size={16} /> WhatsApp</a>}
