@@ -112,3 +112,7 @@ accent #FD4E11, cream/near-black #131217). Admin/Staff Android: WebView shell wi
 8. Optional later (paid): online payment gateway, SMS OTP, live rider tracking, distance-based delivery fee.
 
 Step-by-step owner instructions in Hindi: `docs/OWNER_TODO_HINDI.md`.
+
+## Uptime health check (added 26 Nov 2026)
+- Edge Function `health` (`supabase/functions/health`, verify_jwt=false, deployed live): calls public `restaurant_status()` with the anon key and returns `SWAD-OK` (200) or `SWAD-DOWN …` (503). No data in the response. Used by the owner's UptimeRobot keyword monitor; also deployed by `deploy-backend.yml`.
+- Brevo SMTP for Supabase Auth is an owner step (OWNER_TODO_HINDI.md section G); no code involved.
