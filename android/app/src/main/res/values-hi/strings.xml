@@ -311,4 +311,10 @@
     <string name="sign_in_benefit">लॉगिन करें — किसी भी फ़ोन पर अपने ऑर्डर देखें</string>
     <string name="savings">इस ऑर्डर पर आपकी बचत %1$s</string>
     <string name="view_full_menu">पूरा मेन्यू देखें (%1$d व्यंजन)</string>
+    <string name="use_my_location">मेरी अभी की लोकेशन लगाएँ</string>
+    <string name="locating">लोकेशन ढूँढ रहे हैं…</string>
+    <string name="location_added">लोकेशन लग गई ✓ (बदलने के लिए दबाएँ)</string>
+    <string name="location_hint">इससे डिलीवरी वाला सीधे आप तक पहुँचेगा। डिलीवरी वाली जगह पर रहते हुए दबाएँ।</string>
+    <string name="location_failed">लोकेशन नहीं मिली। लोकेशन (GPS) चालू करके अनुमति दें, या सिर्फ़ पता लिख दें।</string>
+    <string name="delivery_fee_km">डिलीवरी शुल्क (%1$s किमी)</string>
 </resources>

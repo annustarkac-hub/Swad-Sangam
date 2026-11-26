@@ -28,6 +28,12 @@ class OrderFingerprintTest {
         assertNotEquals(orderFingerprint(form, l), orderFingerprint(form.copy(couponCode = "STUDENT10"), l))
     }
 
+    @Test fun movedDeliveryPinGivesNewFingerprint() {
+        val l = listOf(line("a", 1))
+        val d = form.copy(orderType = OrderType.DELIVERY, deliveryAddress = "Hostel 3, NIT Srinagar")
+        assertNotEquals(orderFingerprint(d.copy(deliveryLat = 30.25, deliveryLng = 78.78), l), orderFingerprint(d.copy(deliveryLat = 30.32, deliveryLng = 78.78), l))
+    }
+
     @Test fun nameChangeDoesNotMatter() {
         val l = listOf(line("a", 1))
         assertEquals(orderFingerprint(form, l), orderFingerprint(form.copy(name = "Asha Rawat"), l))

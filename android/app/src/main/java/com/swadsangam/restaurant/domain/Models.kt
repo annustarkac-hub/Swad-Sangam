@@ -167,6 +167,9 @@ data class Quote(
     val couponError: String?,
     val unavailableItemIds: List<String>,
     val minOrderPaise: Int,
+    val deliveryDistanceKm: Double? = null,
+    /** Server message when delivery to the pinned location is not possible. */
+    val deliveryError: String? = null,
 )
 
 data class OrderLine(

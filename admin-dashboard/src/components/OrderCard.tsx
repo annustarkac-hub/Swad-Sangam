@@ -105,8 +105,8 @@ export default function OrderCard({ order, onChanged, onOpen, kitchen }: {
         <div className="small"><b>Note:</b> {[order.notes, order.pickupInstructions].filter(Boolean).join(" · ")}</div>
       )}
       {isDelivery && order.deliveryAddress && !kitchen && (
-        <div className="small"><b>Address:</b> {order.deliveryAddress} {order.deliveryLandmark ? `(${order.deliveryLandmark})` : ""}{" "}
-          <a href={mapsLink(order.deliveryAddress, order.deliveryLandmark)} target="_blank" rel="noreferrer">Directions ↗</a></div>
+        <div className="small"><b>Address:</b> {order.deliveryAddress} {order.deliveryLandmark ? `(${order.deliveryLandmark})` : ""}{order.deliveryDistanceKm != null ? ` · ~${order.deliveryDistanceKm} km` : ""}{" "}
+          <a href={mapsLink(order.deliveryAddress, order.deliveryLandmark, order.deliveryLat, order.deliveryLng)} target="_blank" rel="noreferrer">{order.deliveryLat != null ? "Map pin ↗" : "Directions ↗"}</a></div>
       )}
       {!kitchen && (
         <div className="pay-row">

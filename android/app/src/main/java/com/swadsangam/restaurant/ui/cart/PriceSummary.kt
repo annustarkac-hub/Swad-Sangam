@@ -31,7 +31,9 @@ fun PriceSummary(q: Quote, coupon: String?, verified: Boolean,
         if (q.discountPaise > 0) KeyValueRow(stringResource(R.string.discount_code, coupon ?: ""), "−" + Money.format(q.discountPaise), valueColor = AppTheme.colors.success)
         if (q.taxPaise > 0) KeyValueRow("${q.taxLabel} (${q.taxRateBps / 100.0}%)", Money.format(q.taxPaise))
         if (q.packagingFeePaise > 0) KeyValueRow(stringResource(R.string.packaging_fee), Money.format(q.packagingFeePaise))
-        if (q.deliveryFeePaise > 0) KeyValueRow(stringResource(R.string.delivery_fee), Money.format(q.deliveryFeePaise))
+        if (q.deliveryFeePaise > 0) KeyValueRow(
+            q.deliveryDistanceKm?.let { stringResource(R.string.delivery_fee_km, it.toString()) } ?: stringResource(R.string.delivery_fee),
+            Money.format(q.deliveryFeePaise))
         SectionDivider()
         KeyValueRow(stringResource(R.string.total_payable), Money.format(q.totalPaise), emphasize = true)
         if (q.discountPaise > 0) {

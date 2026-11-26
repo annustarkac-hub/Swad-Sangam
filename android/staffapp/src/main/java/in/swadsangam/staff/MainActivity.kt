@@ -84,6 +84,13 @@ class MainActivity : AppCompatActivity() {
 
     private val askNotify = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
+    /** Pending map "Use my current location" request from our own site, answered after the permission dialog. */
+    private var geoPending: Pair<String, android.webkit.GeolocationPermissions.Callback>? = null
+    private val askLocation = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
+        geoPending?.let { (origin, cb) -> cb.invoke(origin, r.values.any { it }, false) }
+        geoPending = null
+    }
+
     private val siteBase: Uri = Uri.parse(BuildConfig.SITE_BASE)
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -100,6 +107,7 @@ class MainActivity : AppCompatActivity() {
             setBackgroundColor(getColor(R.color.staff_bg))
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true          // login session + preferences
+            settings.setGeolocationEnabled(true)       // "Use my current location" on the map (own site only, see Chrome)
             settings.mediaPlaybackRequiresUserGesture = false // new-order alert sound
             settings.cacheMode = WebSettings.LOAD_DEFAULT
             settings.allowFileAccess = false
@@ -176,6 +184,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private inner class Chrome : WebChromeClient() {
+        /** Location only for our own site (restaurant / delivery pin on the map), never for other pages. */
+        override fun onGeolocationPermissionsShowPrompt(origin: String, callback: android.webkit.GeolocationPermissions.Callback) {
+            if (Uri.parse(origin).host != siteBase.host) { callback.invoke(origin, false, false); return }
+            val perms = arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION)
+            if (perms.any { ContextCompat.checkSelfPermission(this@MainActivity, it) == android.content.pm.PackageManager.PERMISSION_GRANTED }) {
+                callback.invoke(origin, true, false)
+            } else {
+                geoPending?.let { (o, cb) -> cb.invoke(o, false, false) }
+                geoPending = origin to callback
+                askLocation.launch(perms)
+            }
+        }
+
         override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
             fileCallback?.onReceiveValue(null)
             fileCallback = callback

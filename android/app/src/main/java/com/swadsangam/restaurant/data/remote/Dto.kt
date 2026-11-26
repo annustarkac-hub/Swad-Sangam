@@ -120,6 +120,12 @@ data class QuoteDto(
     val couponError: String? = null,
     val unavailableItemIds: List<String> = emptyList(),
     val minOrderPaise: Int = 0,
+    /** Server-computed distance to the customer's pin (km), when a pin was sent. */
+    val deliveryDistanceKm: Double? = null,
+    /** Set when the server refused the quote (e.g. DELIVERY_OUT_OF_RANGE). */
+    val ok: Boolean? = null,
+    val error: String? = null,
+    val message: String? = null,
 )
 
 @Serializable
@@ -199,6 +205,8 @@ data class OrderRequest(
     val tableCode: String? = null,
     val deliveryAddress: String? = null,
     val deliveryLandmark: String? = null,
+    val deliveryLat: Double? = null,
+    val deliveryLng: Double? = null,
     val pickupInstructions: String? = null,
     val notes: String? = null,
     val couponCode: String? = null,
@@ -208,7 +216,13 @@ data class OrderRequest(
 )
 
 @Serializable
-data class QuoteRequest(val orderType: String, val items: List<OrderLineRequest>, val couponCode: String? = null)
+data class QuoteRequest(
+    val orderType: String,
+    val items: List<OrderLineRequest>,
+    val couponCode: String? = null,
+    val deliveryLat: Double? = null,
+    val deliveryLng: Double? = null,
+)
 
 @Serializable data class PlaceOrderBody(@SerialName("p_order") val order: OrderRequest)
 @Serializable data class QuoteBody(@SerialName("p_order") val order: QuoteRequest)
@@ -270,6 +284,8 @@ data class AddressDto(
     val address: String,
     val landmark: String? = null,
     @SerialName("is_default") val isDefault: Boolean = false,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
 )
 
 @Serializable

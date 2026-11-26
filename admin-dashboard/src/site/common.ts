@@ -14,7 +14,7 @@ export const store = {
 };
 
 export interface Profile { user_id: string; full_name: string; phone: string }
-export interface Address { id: number; label: string; address: string; landmark: string | null; is_default: boolean }
+export interface Address { id: number; label: string; address: string; landmark: string | null; is_default: boolean; latitude?: number | null; longitude?: number | null }
 export interface Customer { userId: string; email: string; profile: Profile | null; addresses: Address[] }
 
 export const validPhone = (p: string) => /^[6-9]\d{9}$/.test(p.replace(/\D/g, "").slice(-10));

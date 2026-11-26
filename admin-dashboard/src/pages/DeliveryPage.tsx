@@ -9,6 +9,7 @@ import { mapsLink, STATUS_LABEL, type OrderStatus } from "../lib/types";
 interface RiderOrder {
   id: string; orderNumber: string; orderStatus: OrderStatus; customerName: string; customerPhone: string;
   deliveryAddress: string | null; deliveryLandmark: string | null; notes: string | null;
+  deliveryLat?: number | null; deliveryLng?: number | null; deliveryDistanceKm?: number | null;
   totalPaise: number; paidPaise: number; duePaise: number; paymentStatus: string; paymentMethod: string;
   assignedAt: string | null; readyAt: string | null; completedAt: string | null; otpLocked: boolean;
   items: { name: string; quantity: number }[];
@@ -79,10 +80,10 @@ export default function DeliveryPage() {
             ? <div className="cod-banner"><span>COD · COLLECT</span><b className="num">{rupees(o.duePaise)}</b></div>
             : <div className="paid-banner">✓ PAID — nothing to collect</div>}
           <div className="rider-cust"><b>{o.customerName}</b></div>
-          {o.deliveryAddress && <p className="rider-addr">{o.deliveryAddress}{o.deliveryLandmark ? ` · ${o.deliveryLandmark}` : ""}</p>}
+          {o.deliveryAddress && <p className="rider-addr">{o.deliveryAddress}{o.deliveryLandmark ? ` · ${o.deliveryLandmark}` : ""}{o.deliveryDistanceKm != null ? ` · ~${o.deliveryDistanceKm} km` : ""}</p>}
           <div className="rider-actions">
             <a className="btn secondary" href={`tel:${o.customerPhone}`}><Phone size={18} /> Call</a>
-            {o.deliveryAddress && <a className="btn secondary" href={mapsLink(o.deliveryAddress, o.deliveryLandmark)} target="_blank" rel="noreferrer"><MapPin size={18} /> Directions</a>}
+            {o.deliveryAddress && <a className="btn secondary" href={mapsLink(o.deliveryAddress, o.deliveryLandmark, o.deliveryLat, o.deliveryLng)} target="_blank" rel="noreferrer"><MapPin size={18} /> {o.deliveryLat != null ? "Directions (pin)" : "Directions"}</a>}
           </div>
           <ul className="small">{o.items.map((i, k) => <li key={k}><b>{i.quantity} ×</b> {i.name}</li>)}</ul>
           {o.notes && <p className="small"><b>Note:</b> {o.notes}</p>}

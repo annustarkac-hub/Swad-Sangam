@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- New-order / new-delivery alerts in the top bar (Android 13+ asks the user once) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Optional: "Use my current location" when setting the restaurant pin. Asked only when tapped. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
 
     <!-- Links the staff app opens outside itself: phone, WhatsApp, maps, UPI apps -->
     <queries>

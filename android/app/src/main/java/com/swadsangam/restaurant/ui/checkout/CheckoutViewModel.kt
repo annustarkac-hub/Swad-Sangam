@@ -38,6 +38,12 @@ data class CheckoutUi(
     val tableCode: String = "",
     val address: String = "",
     val landmark: String = "",
+    /** Delivery pin (from the phone's location or a saved address). */
+    val pinLat: Double? = null,
+    val pinLng: Double? = null,
+    val locating: Boolean = false,
+    /** Set when the location could not be read (off / denied / no fix). */
+    val locationFailed: Boolean = false,
     val instructions: String = "",
     val notes: String = "",
     val termsAccepted: Boolean = false,
@@ -72,6 +78,8 @@ class CheckoutViewModel @Inject constructor(
     val quote: StateFlow<Quote?> = _quote.asStateFlow()
     /** False while offline: the bill is a local estimate and the coupon is not yet checked by the server. */
     val quoteVerified = MutableStateFlow(false)
+    /** Server message when delivery to the chosen location is not possible (e.g. too far). */
+    val deliveryNotice = MutableStateFlow<String?>(null)
     val couponCode: StateFlow<String> get() = draft.couponCode
     private val _placed = MutableStateFlow<Order?>(null)
     val placed: StateFlow<Order?> = _placed.asStateFlow()
@@ -93,17 +101,28 @@ class CheckoutViewModel @Inject constructor(
             val def = acc.addresses.firstOrNull { it.isDefault } ?: acc.addresses.firstOrNull()
             _ui.update {
                 it.copy(name = it.name.ifBlank { acc.profile?.fullName.orEmpty() }, phone = it.phone.ifBlank { acc.profile?.phone.orEmpty() },
-                    address = it.address.ifBlank { def?.address.orEmpty() }, landmark = it.landmark.ifBlank { def?.landmark.orEmpty() })
+                    address = it.address.ifBlank { def?.address.orEmpty() }, landmark = it.landmark.ifBlank { def?.landmark.orEmpty() },
+                    pinLat = it.pinLat ?: def?.latitude, pinLng = it.pinLng ?: def?.longitude)
             }
+            if (_ui.value.pinLat != null) requote()
         }
     }
 
     private suspend fun requote() {
         val l = cart.lines.first()
         val i = menu.restaurantNow()
-        val server = orders.quote(l, _ui.value.orderType, draft.couponCode.value)
+        val u = _ui.value
+        val server = orders.quote(l, u.orderType, draft.couponCode.value, u.pinLat, u.pinLng)
+        if (server?.deliveryError != null) {
+            // Delivery not possible here: show why, keep a local bill estimate, place_order will refuse too.
+            deliveryNotice.value = server.deliveryError
+            quoteVerified.value = false
+            _quote.value = CartMath.localQuote(l, i, u.orderType)
+            return
+        }
+        deliveryNotice.value = null
         quoteVerified.value = server != null
-        _quote.value = server ?: CartMath.localQuote(l, i, _ui.value.orderType)
+        _quote.value = server ?: CartMath.localQuote(l, i, u.orderType)
     }
 
     fun edit(f: (CheckoutUi) -> CheckoutUi) {
@@ -114,6 +133,28 @@ class CheckoutViewModel @Inject constructor(
             viewModelScope.launch { requote() }
         }
     }
+
+    /** Saved address chosen (or "new address" with null): carry its pin, if it has one. */
+    fun chooseAddress(a: com.swadsangam.restaurant.data.remote.AddressDto?) {
+        _ui.update { it.copy(address = a?.address.orEmpty(), landmark = a?.landmark.orEmpty(), pinLat = a?.latitude, pinLng = a?.longitude,
+            locationFailed = false, error = null) }
+        viewModelScope.launch { requote() }
+    }
+
+    fun locate(context: android.content.Context) {
+        if (_ui.value.locating) return
+        _ui.update { it.copy(locating = true, locationFailed = false) }
+        viewModelScope.launch {
+            val loc = com.swadsangam.restaurant.core.CurrentLocation.get(context.applicationContext)
+            _ui.update {
+                if (loc == null) it.copy(locating = false, locationFailed = true)
+                else it.copy(locating = false, pinLat = Math.round(loc.latitude * 1e6) / 1e6, pinLng = Math.round(loc.longitude * 1e6) / 1e6)
+            }
+            if (loc != null) requote()
+        }
+    }
+
+    fun locationDenied() = _ui.update { it.copy(locating = false, locationFailed = true) }
 
     fun nameError(u: CheckoutUi) = u.name.trim().length !in 2..60
     fun phoneError(u: CheckoutUi) = PhoneValidator.normalize(u.phone) == null
@@ -135,7 +176,8 @@ class CheckoutViewModel @Inject constructor(
             val form = CheckoutForm(
                 name = u.name, phone = PhoneValidator.normalize(u.phone)!!, orderType = u.orderType,
                 paymentMethod = u.payment, tableNumber = u.tableNumber.trim(), tableCode = u.tableCode.trim(), deliveryAddress = u.address.trim(),
-                deliveryLandmark = u.landmark.trim().ifBlank { null }, pickupInstructions = u.instructions.trim().ifBlank { null },
+                deliveryLandmark = u.landmark.trim().ifBlank { null },
+                deliveryLat = u.pinLat, deliveryLng = u.pinLng, pickupInstructions = u.instructions.trim().ifBlank { null },
                 notes = u.notes.trim().ifBlank { null }, couponCode = draft.couponCode.value, termsAccepted = u.termsAccepted,
             )
             when (val r = orders.place(form, l, _quote.value?.totalPaise)) {

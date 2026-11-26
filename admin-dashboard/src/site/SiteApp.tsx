@@ -1,9 +1,12 @@
 import { BadgePercent, Banknote, BellRing, Bike, Camera, GlassWater, Hand, History, Leaf, MapPin, MessageCircle, Phone, ReceiptText, Search, SlidersHorizontal, Smartphone, Star, Store, UserRound, UtensilsCrossed, X } from "lucide-react";
 import QRCode from "qrcode";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { rupees, time } from "../lib/format";
 import { AccountView, FeedbackCard, ReviewsCard, useCustomer } from "./Account";
 import { db as supabase, store, type Customer } from "./common";
+import type { Pin } from "./MapPicker";
+
+const MapPicker = lazy(() => import("./MapPicker"));
 import type { Category, MenuItem, Order } from "../lib/types";
 import { t, type Key, type Lang } from "./i18n";
 import { askConfirm, askText } from "../components/Dialogs";
@@ -16,9 +19,9 @@ interface Settings {
   pickup_enabled: boolean; dine_in_enabled: boolean; delivery_enabled: boolean; cash_enabled: boolean; upi_at_restaurant_enabled: boolean;
   upi_id: string | null; whatsapp_phone: string | null; default_prep_minutes: number; rating: number | null; review_count: number | null; reviews_url: string | null; temporarily_closed: boolean;
   closure_message: string | null; hero_image_url: string | null; hero_image_credit: string | null; cost_for_two_paise: number | null; min_order_paise: number; max_item_quantity: number; fssai_number: string | null; delivery_area_note: string | null;
-  require_table_code: boolean;
+  require_table_code: boolean; delivery_require_pin?: boolean;
 }
-interface Quote { subtotalPaise: number; discountPaise: number; taxPaise: number; packagingFeePaise: number; deliveryFeePaise: number; totalPaise: number; couponError: string | null; minOrderPaise: number }
+interface Quote { deliveryDistanceKm?: number | null; subtotalPaise: number; discountPaise: number; taxPaise: number; packagingFeePaise: number; deliveryFeePaise: number; totalPaise: number; couponError: string | null; minOrderPaise: number }
 interface Line { itemId: string; qty: number; optionIds: string[] }
 type View = { name: "menu" } | { name: "orders" } | { name: "info" } | { name: "account" } | { name: "order"; token: string };
 type L = (k: Key) => string;
@@ -413,6 +416,15 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
   const defAddr = customer?.addresses.find((a) => a.is_default) ?? customer?.addresses[0];
   const [addrId, setAddrId] = useState<number | "new">(defAddr ? defAddr.id : "new");
   const [saveAddr, setSaveAddr] = useState(true);
+  /** Pins chosen in this cart, per address choice (a saved address can be re-pinned for this order). */
+  const [pins, setPins] = useState<Record<string, Pin>>({});
+  const [mapOpen, setMapOpen] = useState(false);
+  const [quoteErr, setQuoteErr] = useState<string | null>(null);
+  const chosenAddr = addrId === "new" ? null : customer?.addresses.find((a) => a.id === addrId) ?? null;
+  const pin: Pin | null = pins[String(addrId)]
+    ?? (chosenAddr?.latitude != null && chosenAddr.longitude != null ? { lat: chosenAddr.latitude, lng: chosenAddr.longitude } : null);
+  const shopPin: Pin | null = settings.latitude != null && settings.longitude != null ? { lat: settings.latitude, lng: settings.longitude } : null;
+
   const [f, setF] = useState({ name: saved.name, phone: saved.phone, landmark: "", type: ((types as readonly string[]).includes(mode) ? mode : table && types.includes("DINE_IN") ? "DINE_IN" : types.find((x) => x !== "DINE_IN") ?? types[0]) as string,
     tableCode: store.get("ss_table_code", ""), address: "", notes: "", noCutlery: store.get("ss_no_cutlery", false), pay: (pays.includes("UPI_AT_RESTAURANT") ? "UPI_AT_RESTAURANT" : pays[0]) as string, coupon: "", terms: false });
   const [tables, setTables] = useState<{ name: string; seats: number; free: boolean }[]>([]);
@@ -428,11 +440,17 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
   useEffect(() => {
     if (!lines.length) { setQuote(null); return; }
     const id = setTimeout(() => {
-      supabase.rpc("quote_order", { p_order: { orderType: f.type, items, couponCode: f.coupon || null } }).then(({ data }) => data && setQuote(data as Quote));
+      supabase.rpc("quote_order", { p_order: { orderType: f.type, items, couponCode: f.coupon || null,
+        ...(f.type === "DELIVERY" && pin ? { deliveryLat: pin.lat, deliveryLng: pin.lng } : {}) } }).then(({ data }) => {
+        const d = data as (Quote & { ok?: boolean; message?: string }) | null;
+        if (!d) return;
+        if (d.ok === false) { setQuote(null); setQuoteErr(d.message ?? "Delivery not possible here"); return; }
+        setQuoteErr(null); setQuote(d);
+      });
     }, 250);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(items), f.type, f.coupon]);
+  }, [JSON.stringify(items), f.type, f.coupon, pin?.lat, pin?.lng]);
 
   async function place() {
     setErr(null);
@@ -443,6 +461,7 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
     const address = chosen ? chosen.address : f.address.trim();
     const landmark = chosen ? chosen.landmark : f.landmark.trim() || null;
     if (f.type === "DELIVERY" && address.length < 10) return setErr(lang === "hi" ? "पूरा डिलीवरी पता लिखें।" : "Please write the full delivery address.");
+    if (f.type === "DELIVERY" && !pin && settings.delivery_require_pin) return setErr(lang === "hi" ? "नक्शे पर अपनी डिलीवरी की जगह चुनें।" : "Please mark your delivery location on the map.");
     if (!f.terms) return setErr(L("terms"));
     setBusy(true);
     const key = store.get<string | null>("ss_pending_key", null) ?? crypto.randomUUID();
@@ -451,7 +470,8 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
       const { data, error } = await supabase.rpc("place_order", { p_order: {
         idempotencyKey: key, customerName: f.name, customerPhone: f.phone, orderType: f.type, paymentMethod: f.pay, items,
         termsAccepted: f.terms, tableNumber: f.type === "DINE_IN" ? table : null, tableCode: f.type === "DINE_IN" ? f.tableCode : null,
-        deliveryAddress: f.type === "DELIVERY" ? address : null, deliveryLandmark: f.type === "DELIVERY" ? landmark : null, notes: [f.notes.trim(), f.noCutlery && f.type !== "DINE_IN" ? "No cutlery please" : ""].filter(Boolean).join(" · ") || null, couponCode: f.coupon || null,
+        deliveryAddress: f.type === "DELIVERY" ? address : null, deliveryLandmark: f.type === "DELIVERY" ? landmark : null,
+        ...(f.type === "DELIVERY" && pin ? { deliveryLat: pin.lat, deliveryLng: pin.lng } : {}), notes: [f.notes.trim(), f.noCutlery && f.type !== "DINE_IN" ? "No cutlery please" : ""].filter(Boolean).join(" · ") || null, couponCode: f.coupon || null,
         expectedTotalPaise: quote?.totalPaise } });
       if (error) throw new Error(error.message);
       const r = data as { ok: boolean; error?: string; message?: string; order?: { accessToken: string } };
@@ -459,7 +479,8 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
       if (!r.ok) { setErr(r.message ?? "Order could not be placed"); if (r.error === "PRICE_CHANGED") setQuote(null); return; }
       store.set("ss_customer", { name: f.name, phone: f.phone });
       if (customer && f.type === "DELIVERY" && !chosen && saveAddr && customer.addresses.length < 10)
-        void supabase.from("customer_addresses").insert({ label: customer.addresses.length ? "Address " + (customer.addresses.length + 1) : "Home", address, landmark, is_default: customer.addresses.length === 0 });
+        void supabase.from("customer_addresses").insert({ label: customer.addresses.length ? "Address " + (customer.addresses.length + 1) : "Home", address, landmark, is_default: customer.addresses.length === 0,
+          latitude: pin?.lat ?? null, longitude: pin?.lng ?? null });
       store.set("ss_tokens", [r.order!.accessToken, ...store.get<string[]>("ss_tokens", [])].slice(0, 50));
       onPlaced(r.order!.accessToken);
     } catch {
@@ -513,6 +534,15 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
               <label>{lang === "hi" ? "लैंडमार्क (वैकल्पिक)" : "Landmark (optional)"}<input value={f.landmark} onChange={(e) => setF({ ...f, landmark: e.target.value })} /></label>
               {customer && customer.addresses.length < 10 && <label className="check-s"><input type="checkbox" checked={saveAddr} onChange={(e) => setSaveAddr(e.target.checked)} /><span>{lang === "hi" ? "यह पता मेरे खाते में सेव करें" : "Save this address to my account"}</span></label>}
             </>}
+            <button type="button" className={"pin-btn" + (pin ? " set" : "")} onClick={() => setMapOpen(true)}>
+              <MapPin size={18} /> {pin ? (lang === "hi" ? "नक्शे पर जगह लगी है ✓" : "Location pinned on map ✓") : (lang === "hi" ? "नक्शे पर जगह चुनें" : "Mark location on map")}
+              {!settings.delivery_require_pin && !pin && <small> {lang === "hi" ? "(सही डिलीवरी के लिए)" : "(helps the rider)"}</small>}
+            </button>
+            {quoteErr && <p className="bad-s">{quoteErr}</p>}
+            {mapOpen && <Suspense fallback={<div className="map-sheet"><p className="map-hint">…</p></div>}>
+              <MapPicker lang={lang} initial={pin} restaurant={shopPin} onClose={() => setMapOpen(false)}
+                onPick={(p) => { setMapOpen(false); setPins({ ...pins, [String(addrId)]: p }); }} />
+            </Suspense>}
             {settings.delivery_area_note && <small className="muted-s">{settings.delivery_area_note}</small>}
             {!customer && <p className="muted-s small">{lang === "hi" ? "पते सेव करने के लिए " : "To save addresses, "}<a href="#/account">{lang === "hi" ? "लॉगिन करें" : "log in"}</a>.</p>}
           </>}
@@ -533,7 +563,7 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
               {quote.discountPaise > 0 && <tr><td>{L("discount")}</td><td>−{rupees(quote.discountPaise)}</td></tr>}
               {quote.taxPaise > 0 && <tr><td>{L("tax")}</td><td>{rupees(quote.taxPaise)}</td></tr>}
               {quote.packagingFeePaise > 0 && <tr><td>{L("packaging")}</td><td>{rupees(quote.packagingFeePaise)}</td></tr>}
-              {quote.deliveryFeePaise > 0 && <tr><td>{L("deliveryFee")}</td><td>{rupees(quote.deliveryFeePaise)}</td></tr>}
+              {quote.deliveryFeePaise > 0 && <tr><td>{L("deliveryFee")}{quote.deliveryDistanceKm != null && f.type === "DELIVERY" ? ` (${quote.deliveryDistanceKm} km)` : ""}</td><td>{rupees(quote.deliveryFeePaise)}</td></tr>}
               <tr className="tot"><td>{lang === "hi" ? "कुल देय" : "To pay"}</td><td>{rupees(quote.totalPaise)}</td></tr>
               {quote.discountPaise > 0 && <tr className="save"><td colSpan={2}><BadgePercent size={16} /> {lang === "hi" ? `आपने ${rupees(quote.discountPaise)} बचाए` : `You saved ${rupees(quote.discountPaise)} on this order`}</td></tr>}
             </tbody></table>
@@ -542,7 +572,7 @@ function CartSheet({ L, lang, customer, cart, byId, settings, table, setTable, c
           <label className="check-s"><input type="checkbox" checked={f.terms} onChange={(e) => setF({ ...f, terms: e.target.checked })} />
             <span>{L("terms")} — <a href="./terms.html" target="_blank">{L("orderTerms")}</a></span></label>
           {err && <p className="bad-s">{err}</p>}
-          <button className="primary-s wide" disabled={busy || !quote || quote.subtotalPaise < quote.minOrderPaise} onClick={() => void place()}>
+          <button className="primary-s wide" disabled={busy || !quote || !!quoteErr || quote.subtotalPaise < quote.minOrderPaise} onClick={() => void place()}>
             {busy ? "…" : `${L("placeOrder")} · ${rupees(quote?.totalPaise ?? 0)}`}
           </button>
           <p className="muted-s small">{L("priceNote")}</p>

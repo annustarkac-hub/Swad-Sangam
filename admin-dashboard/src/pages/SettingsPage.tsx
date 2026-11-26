@@ -1,9 +1,11 @@
-import { X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { MapPin, X } from "lucide-react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useAuth } from "../auth";
 import Modal from "../components/Modal";
 import { fromPaise, toPaise } from "../lib/format";
 import { friendlyError, supabase } from "../lib/supabase";
+
+const MapPicker = lazy(() => import("../site/MapPicker"));
 
 type Hours = Record<string, { open: string; close: string }[]>;
 type Settings = Record<string, unknown> & { opening_hours: Hours };
@@ -17,14 +19,15 @@ const TEXT: [string, string][] = [
   ["announcement", "Announcement shown in app (optional)"], ["closure_message", "Message when temporarily closed"],
   ["upi_id", "UPI ID shown for pay-at-restaurant"], ["fssai_number", "FSSAI licence/registration no. (14 digits)"],
   ["gstin", "GSTIN (if registered)"], ["legal_business_name", "Legal business name"], ["parking_info", "Parking information"],
-  ["dine_in_info", "Dine-in information"], ["delivery_area_note", "Delivery area description"], ["delivery_radius_km", "Delivery radius (km)"],
+  ["dine_in_info", "Dine-in information"], ["delivery_area_note", "Delivery area description"], ["delivery_radius_km", "Max delivery distance (km, blank = no limit)"],
+  ["delivery_base_km", "Km included in the delivery fee"], ["delivery_road_factor", "Road distance factor (1 = straight line; hilly roads ≈ 1.4)"],
   ["tax_label", "Tax label (e.g. GST)"], ["sac_code", "SAC code on invoices"],
   ["place_of_supply", "Place of supply (state)"], ["invoice_footer", "Bill footer text"], ["rating", "Public rating (e.g. 4.5)"], ["review_count", "Public review count"],
   ["reviews_url", "Link to public reviews (Google)"], ["hero_image_url", "Website banner photo URL (real restaurant photo)"], ["privacy_policy_url", "Privacy policy URL"], ["terms_url", "Order terms URL"],
 ];
 const MONEY: [string, string][] = [
   ["min_order_paise", "Minimum order (₹)"], ["delivery_min_order_paise", "Minimum order for delivery (₹)"],
-  ["delivery_fee_paise", "Delivery fee (₹)"], ["packaging_fee_paise", "Packaging fee for pickup/delivery (₹)"],
+  ["delivery_fee_paise", "Delivery fee (₹)"], ["delivery_per_km_paise", "Extra delivery fee per km after the included km (₹)"], ["packaging_fee_paise", "Packaging fee for pickup/delivery (₹)"],
   ["budget_threshold_paise", "“Budget meals” price limit (₹)"], ["cost_for_two_paise", "Approx. cost for two (₹, shown on website; leave 0 to hide)"],
 ];
 const NUM: [string, string][] = [
@@ -35,7 +38,7 @@ const NUM: [string, string][] = [
 ];
 const SWITCHES: [string, string][] = [
   ["accepting_orders", "Accepting app orders (master switch)"], ["pickup_enabled", "Pickup orders"],
-  ["dine_in_enabled", "Dine-in / table orders"], ["delivery_enabled", "Delivery orders (only if you deliver)"],
+  ["dine_in_enabled", "Dine-in / table orders"], ["delivery_enabled", "Delivery orders (only if you deliver)"], ["delivery_require_pin", "Customer must mark the delivery location on the map"],
   ["cash_enabled", "Cash on pickup/delivery"], ["upi_at_restaurant_enabled", "UPI at restaurant"],
   ["temporarily_closed", "Temporarily closed"], ["allow_cancel_after_accept", "Customers may cancel after acceptance"],
   ["prices_include_tax", "Menu prices include tax"], ["hours_verified", "Opening hours confirmed by owner"],
@@ -49,6 +52,7 @@ export default function SettingsPage() {
   const [orig, setOrig] = useState<Settings | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [pickShop, setPickShop] = useState(false);
   const [pw, setPw] = useState("");
   /** Money fields as typed (string) — never silently turned into ₹0 */
   const [money, setMoney] = useState<Record<string, string>>({});
@@ -168,6 +172,15 @@ export default function SettingsPage() {
         {TEXT.map(([k, l]) => (
           <label key={k}>{l}<input value={(s[k] as string | number | null) ?? ""} onChange={(e) => set(k, e.target.value)} /></label>
         ))}
+        <div className="field-inline">
+          <button type="button" className="secondary" onClick={() => setPickShop(true)}><MapPin size={16} /> {s.latitude != null && s.latitude !== "" ? "Change restaurant location on map" : "Set restaurant location on map"}</button>
+          <span className="muted small">Needed for distance-based delivery fees and the rider's map. Easiest: open this page on your phone while at the restaurant and tap "Use my current location".</span>
+        </div>
+        {pickShop && <Suspense fallback={null}>
+          <MapPicker lang="en" title="Restaurant location" hint="Put the pin exactly on Swad Sangam's door, then confirm and Save changes."
+            initial={s.latitude != null && s.latitude !== "" ? { lat: Number(s.latitude), lng: Number(s.longitude) } : null} restaurant={null}
+            onClose={() => setPickShop(false)} onPick={(p) => { setPickShop(false); setS({ ...s, latitude: String(p.lat), longitude: String(p.lng) }); }} />
+        </Suspense>}
       </div>
 
       {confirming && (

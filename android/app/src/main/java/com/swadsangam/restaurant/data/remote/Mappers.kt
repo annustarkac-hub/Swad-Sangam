@@ -36,6 +36,8 @@ fun StatusDto.toDomain() = RestaurantStatus(isOpenNow, acceptingOrders, temporar
 fun QuoteDto.toDomain() = Quote(
     subtotalPaise, discountPaise, taxPaise, taxLabel, taxRateBps, pricesIncludeTax,
     packagingFeePaise, deliveryFeePaise, totalPaise, couponError, unavailableItemIds, minOrderPaise,
+    deliveryDistanceKm = deliveryDistanceKm,
+    deliveryError = if (ok == false && error?.startsWith("DELIVERY_") == true) message ?: error else null,
 )
 
 fun foodTypeOf(s: String) = if (s == "NON_VEG") FoodType.NON_VEG else FoodType.VEG
