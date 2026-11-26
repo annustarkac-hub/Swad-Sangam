@@ -15,8 +15,7 @@
 5. एक **टेस्ट ऑर्डर** अपने फ़ोन से दें → एडमिन में Accept → Ready → Completed करके देखें।
 
 ## B. ग्राहक खाते (Login) के लिए
-6. **Supabase.com → अपना प्रोजेक्ट → Authentication → Sign In / Providers → Email → "Confirm email" OFF → Save**।
-   (ON रहने पर घंटे में सिर्फ़ ~2 नए ग्राहक खाता बना पाएँगे।)
+6. ~~"Confirm email" OFF करें~~ — अब ज़रूरत नहीं: Brevo लगने के बाद "Confirm email" **ON** रखें (सुरक्षित; मेल की सीमा अब 300/दिन)।
 
 ## C. Android ऐप (APK) के लिए — एक बार
 7. **GitHub → Swad-Sangam → Settings → Secrets and variables → Actions → New repository secret**
@@ -50,7 +49,12 @@
 - भर दिए गए (25 नवंबर 2026): नाम "Swad Sangam", शिकायत अधिकारी "The Owner", रिफ़ंड 7 दिन में cash/UPI से।
 - बाकी: **FSSAI नंबर** मिलते ही बताएँ (terms पेज पर लिखना है); शिकायत अधिकारी के रूप में अपना नाम लिखवाना हो तो बताएँ।
 
-## G. ईमेल (Brevo) — ग्राहक का sign-up / password reset ईमेल अटके नहीं (मुफ़्त, 300 ईमेल/दिन)
+## G. ईमेल (Brevo) — ✅ हो गया (26 नवंबर 2026)
+चालू है: Supabase → Brevo SMTP, भेजने वाला पता Gmail, Brevo में SMTP keys के लिए IP blocking बंद (Supabase का IP बदलता रहता है)। Password reset मेल टेस्ट में पहुँच गया। मेल Spam में जाए तो "Not spam" दबाएँ; अपना डोमेन लेने पर यह ठीक होगा।
+अगर फिर कभी "Error sending … email" आए: Brevo → Security → Authorized IPs → "SMTP keys" Deactivated है या नहीं देखें।
+
+<details><summary>पुराने स्टेप (रिकॉर्ड के लिए)</summary>
+
 Supabase का अपना ईमेल घंटे में सिर्फ़ ~2 ईमेल भेजता है। Brevo जोड़ने से यह सीमा हट जाती है। कोड नहीं बदलना, ~10 मिनट।
 1. **brevo.com → Sign up free** → अपने ईमेल से खाता बनाएँ (फ़ोन/ईमेल OTP आएगा)। Plan: **Free**।
 2. **Brevo → ऊपर दाएँ अपना नाम → Senders, Domains & Dedicated IPs → Senders → Add a sender**
@@ -66,7 +70,9 @@ Supabase का अपना ईमेल घंटे में सिर्फ
    - Gmail वाले पते से भेजने पर कुछ मेल Spam में जा सकते हैं। आगे अपना डोमेन (जैसे swadsangam.in, ~₹500–900/साल) लें तो Brevo में उसे जोड़ने से यह ठीक हो जाता है।
    - Brevo चालू होने के बाद ऊपर B-6 वाला "Confirm email" ON भी रख सकते हैं (सुरक्षित), क्योंकि अब ईमेल की सीमा नहीं अटकेगी।
 
-## H. साइट बंद होने का अलर्ट (UptimeRobot) — मुफ़्त, हर 5 मिनट जाँच
+</details>
+
+## H. साइट बंद होने का अलर्ट (UptimeRobot) — ✅ हो गया (26 नवंबर 2026, तीनों मॉनिटर हरे)
 वेबसाइट, एडमिन या बैकएंड बंद हुआ तो आपको तुरंत ईमेल/फ़ोन पर पता चलेगा। ~5 मिनट।
 1. **uptimerobot.com → Register for FREE** → अपने ईमेल से खाता बनाएँ।
 2. **+ New monitor** → तीन मॉनिटर बनाएँ (Interval: 5 minutes, Alert: अपना ईमेल ✓):
