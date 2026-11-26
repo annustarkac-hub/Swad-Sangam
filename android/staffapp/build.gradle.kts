@@ -17,7 +17,10 @@ fun config(name: String, default: String = ""): String =
         ?: (project.findProperty(name) as String?)?.takeIf { it.isNotBlank() }
         ?: default
 
-val siteBase = config("SITE_BASE_URL", "https://annustarkac-hub.github.io/Swad-Sangam/")
+// The restaurant's own domain (GitHub Pages custom domain). The old github.io address now redirects
+// there; it stays recognised as our own site so older links and redirects keep working inside the app.
+val siteBase = config("SITE_BASE_URL", "https://swadsangam.is-local.org/")
+val legacySiteBase = "https://annustarkac-hub.github.io/Swad-Sangam/"
 
 android {
     namespace = "in.swadsangam.staff"
@@ -29,6 +32,7 @@ android {
         versionCode = config("VERSION_CODE", "1").toInt()
         versionName = config("VERSION_NAME", "1.0.0")
         buildConfigField("String", "SITE_BASE", "\"$siteBase\"")
+        buildConfigField("String", "LEGACY_SITE_BASE", "\"$legacySiteBase\"")
     }
 
     flavorDimensions += "role"

@@ -5,9 +5,9 @@
 > download, restaurant admin/POS/accounts, backups. Play Store zaroori nahi hai.
 >
 > Aapko milega:
-> - **Customer website:** `https://annustarkac-hub.github.io/Swad-Sangam/` — menu, order, table QR ordering, order tracking
+> - **Customer website:** `https://swadsangam.is-local.org/` — menu, order, table QR ordering, order tracking
 > - **Android app (APK):** website ke “Android app” button se free download
-> - **Restaurant admin / POS / accounts:** `https://annustarkac-hub.github.io/Swad-Sangam/admin.html`
+> - **Restaurant admin / POS / accounts:** `https://swadsangam.is-local.org/admin.html`
 >
 > Daily use ke liye Hindi guide: **docs/OWNER_GUIDE_HINDI.md**
 
@@ -91,8 +91,8 @@ Choose **one**:
 2. **Settings → Secrets and variables → Actions → Variables tab → New variable**:
    `ENABLE_GITHUB_PAGES` = `true`.
 3. **Actions → Admin dashboard → Run workflow**. When it finishes, the address is shown on the run page,
-   `https://annustarkac-hub.github.io/Swad-Sangam/` = customer website,
-   `https://annustarkac-hub.github.io/Swad-Sangam/admin.html` = restaurant admin / POS / accounts.
+   `https://swadsangam.is-local.org/` = customer website,
+   `https://swadsangam.is-local.org/admin.html` = restaurant admin / POS / accounts.
 
 **B. Netlify** (works with **private** repositories):
 1. <https://app.netlify.com> → sign in with GitHub → **Add new site → Import an existing project** → pick this repo.
@@ -206,7 +206,7 @@ Follow `docs/PLAY_STORE_LISTING.md` (store text, Data safety answers, content ra
 
 The dashboard **QR codes** page makes one QR per table. Scanning (any phone camera, Android or iPhone, no app needed)
 opens the website menu with the table number filled in (turn on **Dine-in / table orders** in Settings).
-Link format: `https://annustarkac-hub.github.io/Swad-Sangam/index.html?table=5`. Orders appear in the POS / Orders
+Link format: `https://swadsangam.is-local.org/index.html?table=5`. Orders appear in the POS / Orders
 screen with the table number.
 
 ## Keeping it free and healthy

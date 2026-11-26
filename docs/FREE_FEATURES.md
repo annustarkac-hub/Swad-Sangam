@@ -3,7 +3,7 @@
 Everything below runs on free services only: GitHub Pages (website + admin), Supabase free plan (database, login, storage),
 GitHub Releases (Android APK). No payment gateway, no SMS, no paid maps or notification service.
 
-Website: `https://annustarkac-hub.github.io/Swad-Sangam/` · Admin: `…/admin.html`
+Website: `https://swadsangam.is-local.org/` · Admin: `…/admin.html`
 
 | # | Feature | Status | Where |
 |---|---|---|---|

@@ -7,9 +7,9 @@
 
 | क्या | लिंक | किसके लिए |
 |---|---|---|
-| ग्राहक वेबसाइट | `https://annustarkac-hub.github.io/Swad-Sangam/` | ग्राहक — मेन्यू, ऑर्डर, टेबल QR |
+| ग्राहक वेबसाइट | `https://swadsangam.is-local.org/` | ग्राहक — मेन्यू, ऑर्डर, टेबल QR |
 | Android ऐप (APK) | वेबसाइट पर “Android app” बटन | ग्राहक — फ़ोन में ऐप |
-| एडमिन / POS / हिसाब | `https://annustarkac-hub.github.io/Swad-Sangam/admin.html` | आप और स्टाफ़ |
+| एडमिन / POS / हिसाब | `https://swadsangam.is-local.org/admin.html` | आप और स्टाफ़ |
 
 एडमिन लिंक को counter वाले फ़ोन/टैबलेट पर Chrome में खोलें → मेन्यू (⋮) → **Add to Home screen**। अब यह ऐप जैसा खुलेगा।
 
