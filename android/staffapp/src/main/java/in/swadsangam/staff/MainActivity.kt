@@ -92,6 +92,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val siteBase: Uri = Uri.parse(BuildConfig.SITE_BASE)
+    /** Every address of our own site: the current domain and the old github.io one (it redirects to the new domain). */
+    private val ownSites: List<Uri> = listOf(siteBase, Uri.parse(BuildConfig.LEGACY_SITE_BASE)).distinctBy { it.host + it.path }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -147,7 +149,8 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() { web.onPause(); CookieManager.getInstance().flush(); super.onPause() }
     override fun onDestroy() { printer?.destroy(); printer = null; web.destroy(); super.onDestroy() }
 
-    private fun isOwnSite(uri: Uri) = uri.scheme == "https" && uri.host == siteBase.host && (uri.path ?: "").startsWith(siteBase.path ?: "/")
+    private fun isOwnSite(uri: Uri) = uri.scheme == "https" &&
+        ownSites.any { s -> uri.host.equals(s.host, ignoreCase = true) && (uri.path ?: "/").ifEmpty { "/" }.startsWith(s.path ?: "/") }
 
     private fun openOutside(uri: Uri) {
         try {
@@ -186,7 +189,9 @@ class MainActivity : AppCompatActivity() {
     private inner class Chrome : WebChromeClient() {
         /** Location only for our own site (restaurant / delivery pin on the map), never for other pages. */
         override fun onGeolocationPermissionsShowPrompt(origin: String, callback: android.webkit.GeolocationPermissions.Callback) {
-            if (Uri.parse(origin).host != siteBase.host) { callback.invoke(origin, false, false); return }
+            if (ownSites.none { Uri.parse(origin).host.equals(it.host, ignoreCase = true) }) {
+                callback.invoke(origin, false, false); return
+            }
             val perms = arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION)
             if (perms.any { ContextCompat.checkSelfPermission(this@MainActivity, it) == android.content.pm.PackageManager.PERMISSION_GRANTED }) {
                 callback.invoke(origin, true, false)

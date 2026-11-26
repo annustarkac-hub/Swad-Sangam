@@ -10,9 +10,9 @@ Bhaktiyana, Badrinath Marg, near NIT Ground, Srinagar, Uttarakhand. Built from t
 
 | Link (after setup) | What |
 |---|---|
-| `https://annustarkac-hub.github.io/Swad-Sangam/` | Customer website — menu, ordering, table QR ordering, order tracking, installable |
+| `https://swadsangam.is-local.org/` | Customer website — menu, ordering, table QR ordering, order tracking, installable |
 | `…/releases/latest/download/swad-sangam.apk` | Android app, free direct download |
-| `https://annustarkac-hub.github.io/Swad-Sangam/admin.html` | Restaurant ERP: POS, orders, kitchen, accounts, stock, khata, payroll |
+| `https://swadsangam.is-local.org/admin.html` | Restaurant ERP: POS, orders, kitchen, accounts, stock, khata, payroll |
 
 ## What’s inside
 

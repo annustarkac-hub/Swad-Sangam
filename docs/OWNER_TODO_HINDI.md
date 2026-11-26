@@ -79,8 +79,8 @@ Supabase का अपना ईमेल घंटे में सिर्फ
 
    | Monitor type | Friendly name | URL | और |
    |---|---|---|---|
-   | HTTP(s) | Swad Sangam website | `https://annustarkac-hub.github.io/Swad-Sangam/` | — |
-   | HTTP(s) | Swad Sangam admin | `https://annustarkac-hub.github.io/Swad-Sangam/admin.html` | — |
+   | HTTP(s) | Swad Sangam website | `https://swadsangam.is-local.org/` | — |
+   | HTTP(s) | Swad Sangam admin | `https://swadsangam.is-local.org/admin.html` | — |
    | **Keyword** | Swad Sangam backend | `https://gqpyriurdbhhujtpizen.supabase.co/functions/v1/health` | Keyword: `SWAD-OK` · Alert when: **keyword not exists** |
 
    तीसरा मॉनिटर डेटाबेस तक पूरी जाँच करता है (जवाब में सिर्फ़ `SWAD-OK` आता है, कोई ग्राहक डेटा नहीं)। हर 5 मिनट की जाँच से बैकएंड जागता भी रहता है।
@@ -100,6 +100,15 @@ Supabase का अपना ईमेल घंटे में सिर्फ
    - **Road distance factor**: नक्शे पर सीधी दूरी × यह संख्या। पहाड़ी घुमावदार सड़क के लिए 1.4 ठीक रहता है। (उदाहरण: सीधी 3.5 किमी × 1.4 = 4.9 किमी)
    - **"Customer must mark the delivery location on the map"** ✓ करें तो बिना पिन के डिलीवरी ऑर्डर नहीं आएगा।
      ध्यान दें: पुराने Android ऐप (आज से पहले वाला APK) में पिन बटन नहीं है। यह ✓ तभी करें जब ग्राहक नया ऐप डाल चुके हों।
+
+## J. नया डोमेन swadsangam.is-local.org — Supabase में एक बार बताना है
+1. **Supabase → Authentication → URL Configuration**
+   - **Site URL** = `https://swadsangam.is-local.org/admin.html`
+   - **Redirect URLs** में **Add URL** → `https://swadsangam.is-local.org/**` → Save (पुराने github.io वाले रहने दें)।
+   इसके बिना "Forgot password" का लिंक पुराने पते से घूमकर आएगा।
+2. **UptimeRobot**: website और admin वाले मॉनिटर का URL नए पते पर बदल दें (पुराना भी काम करता है, पर redirect से)।
+3. Staff/Admin ऐप: **नया APK** डालें। नए पते पर पहली बार एक बार फिर login करना पड़ेगा।
+4. टेबल पर लगे **QR कोड** पुराने पते के हों तो भी चलेंगे (GitHub नए पते पर भेज देता है); नए छापने हों तो एडमिन → Tables → QR codes से छापें।
 
 ## F. पक्का करें
 16. बैनर पर **"Since - 2025"** लिखा है, बोर्ड पर **2026** — सही साल बताएँ।
