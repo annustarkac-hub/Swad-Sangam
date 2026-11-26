@@ -18,3 +18,7 @@ enable_confirmations = true
 [functions.push-order-status]
 # Called by the database with a shared secret, not a user JWT.
 verify_jwt = false
+
+[functions.health]
+# Public uptime check (no user data); called by UptimeRobot without a JWT.
+verify_jwt = false

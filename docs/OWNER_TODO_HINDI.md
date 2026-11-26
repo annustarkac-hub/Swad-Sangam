@@ -50,6 +50,37 @@
 - भर दिए गए (25 नवंबर 2026): नाम "Swad Sangam", शिकायत अधिकारी "The Owner", रिफ़ंड 7 दिन में cash/UPI से।
 - बाकी: **FSSAI नंबर** मिलते ही बताएँ (terms पेज पर लिखना है); शिकायत अधिकारी के रूप में अपना नाम लिखवाना हो तो बताएँ।
 
+## G. ईमेल (Brevo) — ग्राहक का sign-up / password reset ईमेल अटके नहीं (मुफ़्त, 300 ईमेल/दिन)
+Supabase का अपना ईमेल घंटे में सिर्फ़ ~2 ईमेल भेजता है। Brevo जोड़ने से यह सीमा हट जाती है। कोड नहीं बदलना, ~10 मिनट।
+1. **brevo.com → Sign up free** → अपने ईमेल से खाता बनाएँ (फ़ोन/ईमेल OTP आएगा)। Plan: **Free**।
+2. **Brevo → ऊपर दाएँ अपना नाम → Senders, Domains & Dedicated IPs → Senders → Add a sender**
+   → From name: `Swad Sangam` · From email: वह ईमेल जिससे ग्राहकों को मेल जाए → ईमेल में आया कोड डालकर **Verify**।
+3. **Brevo → अपना नाम → SMTP & API → SMTP टैब → Generate a new SMTP key** → नाम `supabase` → **key कॉपी करें**
+   (यह key सिर्फ़ एक बार दिखती है; किसी को चैट/WhatsApp पर न भेजें)। इसी पेज पर **SMTP Server**, **Port** और **Login** भी लिखे होते हैं।
+4. **Supabase → अपना प्रोजेक्ट → Authentication → Emails → SMTP Settings → "Enable Custom SMTP" ON** और भरें:
+   - Sender email: स्टेप 2 वाला verified ईमेल · Sender name: `Swad Sangam`
+   - Host: `smtp-relay.brevo.com` · Port: `587`
+   - Username: Brevo वाला **Login** (स्टेप 3 के पेज से) · Password: स्टेप 3 की **SMTP key** → **Save**
+5. **Supabase → Authentication → Rate Limits → "Rate limit for sending emails"** = `60` प्रति घंटा → Save।
+6. जाँच: वेबसाइट पर **Login → Forgot password** में अपना ईमेल डालें → 1–2 मिनट में मेल आना चाहिए (Spam फ़ोल्डर भी देखें)।
+   - Gmail वाले पते से भेजने पर कुछ मेल Spam में जा सकते हैं। आगे अपना डोमेन (जैसे swadsangam.in, ~₹500–900/साल) लें तो Brevo में उसे जोड़ने से यह ठीक हो जाता है।
+   - Brevo चालू होने के बाद ऊपर B-6 वाला "Confirm email" ON भी रख सकते हैं (सुरक्षित), क्योंकि अब ईमेल की सीमा नहीं अटकेगी।
+
+## H. साइट बंद होने का अलर्ट (UptimeRobot) — मुफ़्त, हर 5 मिनट जाँच
+वेबसाइट, एडमिन या बैकएंड बंद हुआ तो आपको तुरंत ईमेल/फ़ोन पर पता चलेगा। ~5 मिनट।
+1. **uptimerobot.com → Register for FREE** → अपने ईमेल से खाता बनाएँ।
+2. **+ New monitor** → तीन मॉनिटर बनाएँ (Interval: 5 minutes, Alert: अपना ईमेल ✓):
+
+   | Monitor type | Friendly name | URL | और |
+   |---|---|---|---|
+   | HTTP(s) | Swad Sangam website | `https://annustarkac-hub.github.io/Swad-Sangam/` | — |
+   | HTTP(s) | Swad Sangam admin | `https://annustarkac-hub.github.io/Swad-Sangam/admin.html` | — |
+   | **Keyword** | Swad Sangam backend | `https://gqpyriurdbhhujtpizen.supabase.co/functions/v1/health` | Keyword: `SWAD-OK` · Alert when: **keyword not exists** |
+
+   तीसरा मॉनिटर डेटाबेस तक पूरी जाँच करता है (जवाब में सिर्फ़ `SWAD-OK` आता है, कोई ग्राहक डेटा नहीं)। हर 5 मिनट की जाँच से बैकएंड जागता भी रहता है।
+3. चाहें तो फ़ोन में **UptimeRobot ऐप** डालकर उसी खाते से login करें — बंद होने पर फ़ोन पर नोटिफ़िकेशन आएगा।
+4. तीनों मॉनिटर कुछ मिनट में हरे (**Up**) दिखने चाहिए। लाल हो तो मुझे स्क्रीनशॉट भेजें।
+
 ## F. पक्का करें
 16. बैनर पर **"Since - 2025"** लिखा है, बोर्ड पर **2026** — सही साल बताएँ।
 17. 3 डिश की फ़ोटो नहीं है: **Hot Milk, Lime Soda, Onion Salad** (और Paneer Pasanda) — अपने फ़ोन से फ़ोटो लेकर **Menu → Edit → Photo** में डालें।

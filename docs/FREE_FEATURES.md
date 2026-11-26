@@ -37,10 +37,16 @@ Website: `https://annustarkac-hub.github.io/Swad-Sangam/` · Admin: `…/admin.h
 |---|---|---|
 | Online UPI / card payment with automatic confirmation | Needs a payment gateway (Razorpay, Cashfree, PhonePe PG) — fee per payment | Gateway account + server webhook |
 | SMS OTP login | SMS costs money per message | MSG91 / Twilio / Firebase phone auth (paid after a small free quota) |
-| Unlimited emails (sign-up confirmation, password reset) | Supabase's built-in email sends only a few emails per hour | Free-tier SMTP like Brevo or Resend, or turn off “Confirm email” (see below) |
 | Live rider location on a map | Google Maps live APIs are paid | Maps SDK + rider app |
 | Automatic distance-based delivery charge | Needs a paid distance API | Google Distance Matrix |
 | Push notifications when the website is closed | Possible free with Firebase Cloud Messaging, but needs a Firebase project and a key | Firebase project (free) |
+
+## Free add-ons the owner switches on (steps in OWNER_TODO_HINDI.md, sections G and H)
+
+| Add-on | What it fixes | Free limit |
+|---|---|---|
+| Brevo SMTP in Supabase Auth | Sign-up / password-reset emails no longer stop after ~2 per hour | 300 emails/day |
+| UptimeRobot (website, admin, backend `functions/v1/health` keyword `SWAD-OK`) | Owner is alerted within 5 minutes when anything is down | 50 monitors, 5-minute checks |
 
 ## One setting the owner should check (Supabase dashboard)
 
