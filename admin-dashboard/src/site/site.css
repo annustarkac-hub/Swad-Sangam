@@ -546,3 +546,72 @@ svg { flex: none; }
   border: 1.5px dashed var(--brand); border-radius: 14px; background: var(--brand-50); color: var(--brand); font: inherit; font-weight: 650; text-align: left; cursor: pointer; }
 .pin-btn small { color: var(--muted); font-weight: 500; }
 .pin-btn.set { border-style: solid; border-color: var(--green); background: var(--green-50); color: var(--green); }
+
+/* ===== Desktop layout (PC / laptop / tablet landscape) =====
+   Navigation lives in the header (no floating bar over the Pure Veg switch), the header spans the full width,
+   categories wrap instead of being cut off, forms stay a readable width, and the side column carries the order
+   plus today's hours and contact. */
+.desk-nav { display: none; }
+.desk-info { display: none; }
+@media (min-width: 1024px) {
+  html, body { overflow-x: clip; }
+  .app { max-width: 1240px; padding-inline: 24px; }
+  .tabbar-s { display: none !important; }
+  .topbar-s { margin-inline: calc(50% - 50vw); padding: 12px max(24px, calc(50vw - 50% + 24px)); gap: 16px; }
+  .desk-nav { display: flex; gap: 4px; margin-left: auto; }
+  .desk-nav button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 12px;
+    background: none; color: var(--muted); font-weight: 650; font-size: .95rem; white-space: nowrap; transition: background .15s, color .15s; }
+  .desk-nav button:hover { background: var(--surface-2); color: var(--text); }
+  .desk-nav button.on { background: var(--brand-50); color: var(--brand-600); }
+  .desk-nav button:focus-visible, .top-actions button:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
+  .top-actions { gap: 8px; }
+  .pure-veg, .icon-btn { min-height: 44px; }
+  .icon-btn { width: 44px; }
+
+  .page { padding-top: 20px; }
+  .layout { grid-template-columns: minmax(0, 1fr) 360px; gap: 32px; }
+  .desk-side { top: 92px; max-height: calc(100vh - 108px); }
+  .desk-cart { padding: 20px; border: 0; }
+  .desk-info { display: grid; gap: 12px; margin-top: 16px; padding: 18px 20px; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); }
+  .desk-info-row { display: flex; gap: 10px; align-items: flex-start; color: var(--muted); }
+  .desk-info-row svg { margin-top: 2px; color: var(--brand-600); }
+  .desk-info-row span { display: grid; gap: 2px; }
+  .desk-info-row b { font-size: .95rem; } .ok-t { color: var(--green); } .bad-t { color: var(--red); }
+  .desk-info-row small { font-size: .85rem; line-height: 1.4; }
+  .desk-info-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .desk-info-actions .pill-s { min-height: 40px; }
+
+  /* category row: arrows and edge fades show there is more */
+  .sticky-tools { top: 79px; margin: 0; padding-left: 0; padding-right: 0; }
+  .cat-pills button { min-height: 48px; }
+  .cat-arrow.left { left: -6px; } .cat-arrow.right { right: -6px; }
+  .can-left .cat-arrow.left, .can-right .cat-arrow.right { display: grid; }
+
+  /* dish cards: gentle lift on hover, keyboard focus visible */
+  .dish-card { transition: transform .18s ease, box-shadow .18s ease; }
+  .dish-card:focus-within { box-shadow: 0 0 0 2px var(--brand-600), var(--shadow); }
+  .plus-btn, .stepper-s button { min-width: 40px; min-height: 40px; }
+
+  /* single-column pages (orders, login/account, info, order status) at a readable width */
+  .page > :not(.layout) { max-width: 760px; margin-inline: auto; }
+}
+@media (min-width: 1024px) and (hover: hover) {
+  .dish-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+}
+@media (min-width: 1440px) {
+  .app { max-width: 1360px; }
+  .dish-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  .dish-card { transition: none; } .dish-card:hover { transform: none; }
+}
+
+/* Category scroller (all sizes): fade at the edge that has more */
+.cat-scroller { position: relative; }
+.cat-arrow { display: none; position: absolute; top: 6px; z-index: 2; width: 40px; height: 40px; place-items: center; border: 0; border-radius: 50%;
+  background: var(--surface); color: var(--text); box-shadow: var(--shadow-lg); }
+.cat-arrow:hover { color: var(--brand-600); }
+.cat-scroller.can-right .cat-pills { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent); }
+.cat-scroller.can-left .cat-pills { -webkit-mask-image: linear-gradient(90deg, transparent, #000 56px); mask-image: linear-gradient(90deg, transparent, #000 56px); }
+.cat-scroller.can-left.can-right .cat-pills { -webkit-mask-image: linear-gradient(90deg, transparent, #000 56px, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(90deg, transparent, #000 56px, #000 calc(100% - 56px), transparent); }
+@media (max-width: 1023px) { .cat-arrow { display: none !important; } }

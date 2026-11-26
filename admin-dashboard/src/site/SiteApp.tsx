@@ -1,4 +1,4 @@
-import { BadgePercent, Banknote, BellRing, Bike, Camera, GlassWater, Hand, History, Leaf, MapPin, MessageCircle, Phone, ReceiptText, Search, SlidersHorizontal, Smartphone, Star, Store, UserRound, UtensilsCrossed, X } from "lucide-react";
+import { BadgePercent, Banknote, BellRing, Bike, Camera, ChevronLeft, ChevronRight, Clock, GlassWater, Hand, History, Leaf, MapPin, MessageCircle, Phone, ReceiptText, Search, SlidersHorizontal, Smartphone, Star, Store, UserRound, UtensilsCrossed, X } from "lucide-react";
 import QRCode from "qrcode";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { rupees, time } from "../lib/format";
@@ -154,6 +154,8 @@ export default function SiteApp() {
   const ordering = serverCanOrder ?? (!!settings && settings.accepting_orders && (settings.pickup_enabled || settings.dine_in_enabled || settings.delivery_enabled) && isOpen(settings));
   const open = settings ? isOpen(settings) : false;
 
+  const navItems = [["", "menu", UtensilsCrossed], ["orders", "myOrders", ReceiptText], ["account", customer ? "account" : "login", UserRound], ["info", "info", Store]] as [string, Key, typeof Store][];
+
   return (
     <div className="app">
       <header className="topbar-s">
@@ -164,6 +166,12 @@ export default function SiteApp() {
             {table ? <small className="welcome-table"><BellRing size={14} /> {L("table")} {table}</small>
               : <small>{settings ? <><i className={"dot " + (open ? "on" : "off")} />{open ? L("openNow") : L("closedNow")}</> : " "}</small>}</span>
         </button>
+        <nav className="desk-nav" aria-label={lang === "hi" ? "मुख्य मेनू" : "Main"}>
+          {navItems.map(([p, k, Icon]) => {
+            const on = view.name === (p || "menu");
+            return <button key={p} className={on ? "on" : ""} aria-current={on ? "page" : undefined} onClick={() => go(p)}><Icon size={18} strokeWidth={on ? 2.4 : 2} aria-hidden="true" />{L(k)}</button>;
+          })}
+        </nav>
         <div className="top-actions">
           <button className={"pure-veg" + (pureVeg ? " on" : "")} role="switch" aria-checked={pureVeg} onClick={() => setPureVeg(!pureVeg)}
             title={lang === "hi" ? "केवल शाकाहारी दिखाएँ" : "Show vegetarian dishes only"}><i />{lang === "hi" ? "शुद्ध शाकाहारी" : "Pure Veg"}</button>
@@ -182,7 +190,7 @@ export default function SiteApp() {
               <MenuView L={L} lang={lang} settings={settings} cats={cats} items={pureVeg ? items.filter((i) => i.food_type === "VEG") : items} cart={cart} canOrder={ordering}
                 table={table} installEvt={installEvt} mode={mode} setMode={setMode} onOpen={(i) => setPicker(i)} onChange={change} />
             </div>
-            <DeskCart L={L} lang={lang} cart={cart} byId={byId} estimate={estimate} onChange={change} onCheckout={() => setCartOpen(true)} />
+            <DeskCart L={L} lang={lang} settings={settings} open={open} cart={cart} byId={byId} estimate={estimate} onChange={change} onCheckout={() => setCartOpen(true)} />
           </div>
         )}
         {view.name === "order" && <OrderView L={L} lang={lang} token={view.token} settings={settings} />}
@@ -199,8 +207,8 @@ export default function SiteApp() {
         </button>
       )}
 
-      <nav className="tabbar-s">
-        {([["", "menu", UtensilsCrossed], ["orders", "myOrders", ReceiptText], ["account", customer ? "account" : "login", UserRound], ["info", "info", Store]] as [string, Key, typeof Store][]).map(([p, k, Icon]) => {
+      <nav className="tabbar-s" aria-label={lang === "hi" ? "मुख्य मेनू" : "Main"}>
+        {navItems.map(([p, k, Icon]) => {
           const on = view.name === (p || "menu");
           return <button key={p} className={on ? "on" : ""} aria-current={on ? "page" : undefined} onClick={() => go(p)}>
             <span className="tab-ic"><Icon size={22} strokeWidth={on ? 2.4 : 1.9} aria-hidden="true" /></span>{L(k)}</button>;
@@ -258,6 +266,25 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, onOpe
     return () => obs.disconnect();
   }, [groups.length]);
   const jump = (id: string) => refs.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Category row: arrows + edge fades on wide screens, and keep the active category in view while scrolling the menu
+  const pillsRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  const updateEdges = () => {
+    const el = pillsRef.current; if (!el) return;
+    setEdges({ left: el.scrollLeft > 4, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+  };
+  useEffect(() => {
+    updateEdges();
+    const ro = new ResizeObserver(updateEdges); if (pillsRef.current) ro.observe(pillsRef.current);
+    return () => ro.disconnect();
+  }, [groups.length]);
+  useEffect(() => {
+    const el = pillsRef.current?.querySelector<HTMLElement>(`[data-cat="${CSS.escape(active)}"]`);
+    if (el && pillsRef.current) {
+      const box = pillsRef.current, l = el.offsetLeft - box.offsetLeft;
+      if (l < box.scrollLeft || l + el.offsetWidth > box.scrollLeft + box.clientWidth) box.scrollTo({ left: l - 24, behavior: "smooth" });
+    }
+  }, [active]);
 
   return (
     <>
@@ -290,12 +317,16 @@ function MenuView({ L, lang, settings, cats, items, cart, canOrder, table, onOpe
               {sort === "asc" ? "₹ Low → High" : sort === "desc" ? "₹ High → Low" : (hi ? "क्रम" : "Sort")}</button>
           </div>)}
         {!q && <h2 className="sec cat-title">{hi ? "श्रेणियाँ" : "Categories"}</h2>}
-        <div className="cat-pills">
-          {groups.map(({ c }) => (
-            <button key={c.id} className={active === c.id ? "on" : ""} onClick={() => jump(c.id)}>
-              <span className="pill-img"><DishImg src={catImg(c.id) ?? null} /></span>{name(c)}
-            </button>
-          ))}
+        <div className={"cat-scroller" + (edges.left ? " can-left" : "") + (edges.right ? " can-right" : "")}>
+          <button className="cat-arrow left" aria-label={hi ? "पिछली श्रेणियाँ" : "Previous categories"} tabIndex={-1} onClick={() => pillsRef.current?.scrollBy({ left: -360, behavior: "smooth" })}><ChevronLeft size={20} /></button>
+          <div className="cat-pills" ref={pillsRef} onScroll={updateEdges}>
+            {groups.map(({ c }) => (
+              <button key={c.id} data-cat={c.id} className={active === c.id ? "on" : ""} onClick={() => jump(c.id)}>
+                <span className="pill-img"><DishImg src={catImg(c.id) ?? null} /></span>{name(c)}
+              </button>
+            ))}
+          </div>
+          <button className="cat-arrow right" aria-label={hi ? "अगली श्रेणियाँ" : "More categories"} tabIndex={-1} onClick={() => pillsRef.current?.scrollBy({ left: 360, behavior: "smooth" })}><ChevronRight size={20} /></button>
         </div>
       </div>
 
@@ -384,7 +415,7 @@ function DishSheet({ L, lang, item, canOrder, onClose, onAdd }: { L: L; lang: La
 }
 
 /** Desktop: order summary beside the menu. */
-function DeskCart({ L, lang, cart, byId, estimate, onChange, onCheckout }: { L: L; lang: Lang; cart: Line[]; byId: Record<string, MenuItem>; estimate: number; onChange: (id: string, o: string[], d: number) => void; onCheckout: () => void }) {
+function DeskCart({ L, lang, settings, open, cart, byId, estimate, onChange, onCheckout }: { L: L; lang: Lang; settings: Settings | null; open: boolean; cart: Line[]; byId: Record<string, MenuItem>; estimate: number; onChange: (id: string, o: string[], d: number) => void; onCheckout: () => void }) {
   const lines = cart.filter((l) => byId[l.itemId]);
   return (
     <aside className="desk-side">
@@ -402,7 +433,28 @@ function DeskCart({ L, lang, cart, byId, estimate, onChange, onCheckout }: { L: 
       })}
       {lines.length > 0 && <button className="primary-s wide" onClick={onCheckout}>{L("checkout")} · {rupees(estimate)}</button>}
     </div>
+    {settings && <DeskInfo L={L} lang={lang} s={settings} open={open} />}
     </aside>
+  );
+}
+
+/** Desktop side column: today's hours, call, WhatsApp and directions, so the wide screen is useful. */
+function DeskInfo({ L, lang, s, open }: { L: L; lang: Lang; s: Settings; open: boolean }) {
+  const day = String(((new Date().getDay() + 6) % 7) + 1);
+  const today = (s.opening_hours?.[day] ?? []).map((h) => `${h.open}–${h.close}`).join(", ");
+  const wa = (s.whatsapp_phone ?? "").replace(/\D/g, "");
+  return (
+    <div className="desk-info">
+      <div className="desk-info-row"><Clock size={18} aria-hidden="true" />
+        <span><b className={open ? "ok-t" : "bad-t"}>{open ? L("openNow") : L("closedNow")}</b>
+          <small>{today ? (lang === "hi" ? "आज: " : "Today: ") + today : (lang === "hi" ? "आज बंद" : "Closed today")}</small></span></div>
+      <div className="desk-info-row"><MapPin size={18} aria-hidden="true" /><small>{s.address}</small></div>
+      <div className="desk-info-actions">
+        <a className="pill-s" href={`tel:${s.phone}`}><Phone size={16} /> {lang === "hi" ? "कॉल" : "Call"}</a>
+        {wa.length >= 10 && <a className="pill-s" href={`https://wa.me/${wa.length === 10 ? "91" + wa : wa}`} target="_blank" rel="noreferrer"><MessageCircle size={16} /> WhatsApp</a>}
+        <a className="pill-s" href={mapsUrl(s)} target="_blank" rel="noreferrer"><MapPin size={16} /> {L("directions")}</a>
+      </div>
+    </div>
   );
 }
 
