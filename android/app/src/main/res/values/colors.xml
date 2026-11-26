@@ -4,6 +4,6 @@
     <color name="brand_red">#B83227</color>
     <color name="brand_cream">#F8F6F3</color>
     <color name="brand_dark_bg">#121115</color>
-    <color name="ic_launcher_background">#FFFFFF</color>
-    <color name="splash_bg">#FFFFFF</color>
+    <color name="ic_launcher_background">#B83227</color>
+    <color name="splash_bg">#B83227</color>
 </resources>
