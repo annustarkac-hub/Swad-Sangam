@@ -1,4 +1,4 @@
-import { BellRing, Flame } from "lucide-react";
+import { BellOff, BellRing, ChefHat, Flame, StickyNote } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { can, useAuth } from "../auth";
 import { printReceipt } from "../components/Receipt";
@@ -98,10 +98,13 @@ export default function KitchenPage() {
         </div>
         <button className={sound ? "ok small" : "secondary small"} aria-pressed={sound} onClick={toggleSound}><BellRing size={16} /> {sound ? "Sound on" : "Turn sound on"}</button>
       </div>
-      {!sound && <div className="banner warn small" role="status">🔇 Sound is off — new tickets will not beep. <button className="link" onClick={toggleSound}>Turn on</button></div>}
+      {!sound && <div className="banner warn small" role="status"><BellOff size={16} aria-hidden /> Sound is off — new tickets will not beep. <button className="link" onClick={toggleSound}>Turn on</button></div>}
       {err && <div className="banner danger">{err}</div>}
       <p className="small muted">Tap an item: New → <b>Cooking</b> → <b>Ready</b> (↶ undoes a tap). When every item is ready the bill turns Ready for the counter. Red = waiting 15+ min.</p>
-      {active.length === 0 && <div className="card muted">No tickets in the kitchen. 🎉</div>}
+      {active.length === 0 && (
+        <div className="empty-state"><ChefHat size={36} aria-hidden /><p><b>No tickets in the kitchen</b></p>
+          <p className="small muted">Accepted orders appear here automatically.</p></div>
+      )}
       <div className="kds">
         {active.map((t) => {
           const m = mins(t.acceptedAt);
@@ -129,7 +132,7 @@ export default function KitchenPage() {
                   {PREV[i.prepStatus] && <button type="button" className="link undo" aria-label={`Undo ${i.name}`} title="Undo" onClick={() => void setItem(i, PREV[i.prepStatus])}>↶</button>}
                 </div>
               ))}
-              {t.notes && <div className="small" style={{ padding: ".5rem .8rem", background: "var(--amber-50)" }}>📝 {t.notes}</div>}
+              {t.notes && <div className="small" style={{ padding: ".5rem .8rem", background: "var(--amber-50)" }}><StickyNote size={14} aria-hidden /> {t.notes}</div>}
               <div className="row" style={{ padding: ".55rem .8rem" }}>
                 <button className="ok small" onClick={() => void bumpAll(t)}>All ready</button>
                 <button className="secondary small" onClick={() => void printReceipt(t.id, true)}>Reprint KOT</button>

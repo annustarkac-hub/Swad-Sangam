@@ -59,8 +59,9 @@ export default function DeliveryPage() {
 
   return (
     <div className="rider">
+      {/* The title is already in the app bar; this row says what the list holds */}
       <div className="spread">
-        <h1 style={{ margin: 0 }}>My deliveries</h1>
+        <span className="small muted">{list ? `${active.length} to deliver · ${done.length} delivered today` : " "}</span>
         <button className="secondary small" onClick={() => void load()} aria-label="Refresh"><RefreshCw size={16} /> Refresh</button>
       </div>
       {err && <p className="error" role="alert">{err}</p>}

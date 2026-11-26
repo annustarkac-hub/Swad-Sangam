@@ -366,3 +366,42 @@ h1 { font-weight: 800; letter-spacing: -.02em; }
 .otp-field .otp-input { display: block; margin: 6px 0 4px; }
 .otp-input::placeholder { letter-spacing: .3em; font-size: 1.2rem; }
 .field-help { display: block; }
+
+/* ===== Audit fixes (Nov 2026): touch targets, scroll cues, header, consistency ===== */
+/* Phones and tablets: every control is at least 44 px tall (WCAG 2.5.8 / Fitts) */
+@media (pointer: coarse), (max-width: 900px) {
+  button, button.small, .button, .btn, select, input:not([type=checkbox]):not([type=radio]), .tabs button, .seg button, .chip { min-height: 44px; }
+  .ghost.icon, button.icon, .link.icon { min-width: 44px; }
+  input[type=checkbox], input[type=radio] { width: 22px; height: 22px; }
+  /* text links that act as buttons get a 44 px hit area without changing their look */
+  button.link { min-height: 44px; padding-top: 0; padding-bottom: 0; }
+}
+/* Horizontal tab rows: fade the edge so a clipped tab reads as "scroll for more" (Norman signifiers) */
+.tabs { scrollbar-width: none; }
+.tabs.scrolls:not(.at-end) { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+.tabs::-webkit-scrollbar { display: none; }
+/* Title stays on one line beside the actions */
+.topbar .title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* The app bar already names the page on phones — drop the repeated page heading, keep its actions */
+@media (max-width: 900px) {
+  .content h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .content > div > .spread:first-child, .content > div > .spread:first-child + * { margin-top: 0; }
+}
+/* New-order strip: one line, the action at the end */
+.alert-strip { justify-content: flex-start; }
+.alert-strip .alert-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.alert-strip .alert-cta { font-weight: 800; padding: 4px 12px; border-radius: 999px; background: rgba(255,255,255,.22); }
+/* Bottom bar: links and the More button share one baseline */
+.bottom-bar a, .bottom-bar button { justify-content: center; line-height: 1.1; font-family: inherit; }
+/* Labelled inline selects (payment received / paid back by) */
+.field-inline { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+.field-inline select { width: auto; min-width: 110px; }
+/* ETA quick choices on new orders */
+.eta-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.chip { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 0 14px; min-height: 44px; font-weight: 600; font-size: .85rem; box-shadow: none; }
+.chip:hover { background: var(--surface); }
+.chip.on { background: var(--brand-50); color: var(--brand); border-color: var(--brand); }
+:where(:root[data-theme="dark"]) .chip { color: var(--text); }
+:where(:root[data-theme="dark"]) .chip.on { color: var(--brand); }
+.empty-state svg { color: var(--muted); margin-bottom: 4px; }
+.banner svg, .small svg { vertical-align: -3px; }

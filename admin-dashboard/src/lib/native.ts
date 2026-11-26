@@ -3,6 +3,8 @@ interface AppBridge {
   printHtml(title: string, html: string): void; printPage(title: string): void; saveText(filename: string, mime: string, text: string): void; openExternal(url: string): void;
   /** Added in app 1.2: native high-priority notification with sound. */
   notify?(title: string, body: string): void;
+  /** Added in app 1.3: colours the native status/navigation bar strips to match the theme. */
+  setChrome?(theme: "light" | "dark"): void;
 }
 export const appBridge = (): AppBridge | null => ((window as unknown as { SwadSangamApp?: AppBridge }).SwadSangamApp ?? null);
 

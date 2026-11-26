@@ -9,6 +9,7 @@ import { Link, Navigate, NavLink, Route, Routes, useLocation } from "react-route
 import { useLiveOrders } from "./components/useOrders";
 import { playAlert, unlockAudio } from "./lib/alert";
 import DeliveryPage from "./pages/DeliveryPage";
+import { appBridge } from "./lib/native";
 import { can, useAuth } from "./auth";
 import { isConfigured } from "./lib/supabase";
 import AuditPage from "./pages/AuditPage";
@@ -70,7 +71,27 @@ export default function App() {
   const [drawer, setDrawer] = useState(false);
   const [theme, setTheme] = useState<string>(() => { try { return localStorage.getItem("ss_theme") ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); } catch { return "light"; } });
   const location = useLocation();
-  useEffect(() => { document.documentElement.dataset.theme = theme; try { localStorage.setItem("ss_theme", theme); } catch { /* ignore */ } }, [theme]);
+  // Mark horizontally scrolling tab rows so only those show the "more →" fade
+  useEffect(() => {
+    const mark = () => document.querySelectorAll<HTMLElement>(".tabs").forEach((el) => {
+      el.classList.toggle("scrolls", el.scrollWidth > el.clientWidth + 2);
+      el.classList.toggle("at-end", el.scrollLeft + el.clientWidth >= el.scrollWidth - 2);
+    });
+    let raf = 0;
+    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(mark); };
+    const mo = new MutationObserver(schedule);
+    mo.observe(document.body, { childList: true, subtree: true });
+    document.addEventListener("scroll", schedule, true);
+    window.addEventListener("resize", schedule);
+    schedule();
+    return () => { mo.disconnect(); document.removeEventListener("scroll", schedule, true); window.removeEventListener("resize", schedule); cancelAnimationFrame(raf); };
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem("ss_theme", theme); } catch { /* ignore */ }
+    // Android app: paint the system bars in the same colours as the header / bottom bar
+    try { appBridge()?.setChrome?.(theme === "dark" ? "dark" : "light"); } catch { /* older app */ }
+  }, [theme]);
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
   const current = NAV.find((n) => (n.to === "/" ? location.pathname === "/" : location.pathname.startsWith(n.to)));
 
@@ -109,6 +130,10 @@ export default function App() {
 
   const home = role === "KITCHEN" ? "/kitchen" : role === "ACCOUNTANT" ? "/accounting" : role === "DELIVERY" ? "/delivery" : "/";
   const alerts = ALERT_ROLES.includes(role);
+  const navItems = NAV.filter((n) => can(role, ...n.roles));
+  const bottomItems = navItems.filter((n) => n.bottom).slice(0, 4);
+  // "More" / the menu button only when the drawer holds something the bottom bar does not (a rider has one screen)
+  const hasMore = navItems.length > bottomItems.length;
 
   return (
     <div className="shell">
@@ -132,7 +157,7 @@ export default function App() {
       <div className={"drawer-backdrop" + (drawer ? " open" : "")} onClick={() => setDrawer(false)} />
       <div className="main">
         <header className="topbar">
-          <button className="ghost icon menu-btn" aria-label="Menu" onClick={() => setDrawer(true)}><Menu /></button>
+          {hasMore && <button className="ghost icon menu-btn" aria-label="Menu" onClick={() => setDrawer(true)}><Menu /></button>}
           <div className="title">{current?.label ?? "Swad Sangam"}</div>
           <button className="ghost icon" aria-label="Toggle dark mode" onClick={toggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}</button>
           <div className="user-chip"><span className="badge">{role}</span><span className="email">{profile?.email}</span></div>
@@ -169,10 +194,10 @@ export default function App() {
         </main>
       </div>
       <nav className="bottom-bar">
-        {NAV.filter((n) => n.bottom && can(role, ...n.roles)).slice(0, 4).map((n) => (
+        {bottomItems.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.to === "/"}><n.icon />{n.short ?? n.label}</NavLink>
         ))}
-        <button onClick={() => setDrawer(true)}><Menu />More</button>
+        {hasMore && <button onClick={() => setDrawer(true)}><Menu />More</button>}
       </nav>
     </div>
   );
@@ -208,8 +233,9 @@ function NewOrderStrip({ onOrdersPage }: { onOrdersPage: boolean }) {
   if (orders.length === 0 || onOrdersPage) return null;
   return (
     <Link to="/orders" className="alert-strip" role="status">
-      <Bell size={18} aria-hidden /> <b>{orders.length} new online order{orders.length > 1 ? "s" : ""} waiting</b>
-      {overdue > 0 ? ` — ${overdue} waiting over 2 min!` : ""} — open Orders
+      <Bell size={18} aria-hidden />
+      <span className="alert-text"><b>{orders.length} new order{orders.length > 1 ? "s" : ""}</b>{overdue > 0 ? ` · ${overdue} waiting 2+ min` : ""}</span>
+      <span className="alert-cta">Open</span>
     </Link>
   );
 }

@@ -6,4 +6,9 @@
     <color name="staff_bg">#141318</color>
     <color name="staff_on_bg">#FFFFFF</color>
     <color name="staff_on_bg_muted">#C9C5CC</color>
+    <!-- System-bar strips: same values as the web tokens (bg behind the header, surface behind the bottom bar) -->
+    <color name="chrome_light_top">#F8F6F3</color>
+    <color name="chrome_light_bottom">#FFFFFF</color>
+    <color name="chrome_dark_top">#121115</color>
+    <color name="chrome_dark_bottom">#1C1B21</color>
 </resources>

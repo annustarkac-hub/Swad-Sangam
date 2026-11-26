@@ -138,10 +138,12 @@ export default function OrderCard({ order, onChanged, onOpen, kitchen }: {
       )}
       {late && <div className="small error">Waiting {age} min for confirmation — accept or call the customer.</div>}
       {order.orderStatus === "PLACED" && role !== "KITCHEN" && (
-        <label className="small" style={{ marginTop: 6 }}>
-          Ready in (minutes, optional)
-          <input type="number" min={1} max={240} value={eta} onChange={(e) => setEta(e.target.value)} />
-        </label>
+        <div className="eta-row" role="group" aria-label="Ready in (minutes, optional)">
+          <span className="small muted">Ready in (min)</span>
+          {["10", "15", "20", "30"].map((m) => (
+            <button key={m} type="button" className={"chip" + (eta === m ? " on" : "")} aria-pressed={eta === m} aria-label={`${m} minutes`} onClick={() => setEta(eta === m ? "" : m)}>{m}</button>
+          ))}
+        </div>
       )}
       <div className="actions">
         {role && nextActions(order, role).map((a) => (

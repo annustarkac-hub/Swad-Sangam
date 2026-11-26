@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import type { ReactNode } from "react";
 
 export default function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
@@ -6,7 +7,7 @@ export default function Modal({ title, onClose, children }: { title: string; onC
       <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <div className="spread">
           <h2 style={{ margin: 0 }}>{title}</h2>
-          <button className="link" onClick={onClose} aria-label="Close">✕</button>
+          <button className="ghost icon" onClick={onClose} aria-label="Close"><X size={20} aria-hidden /></button>
         </div>
         {children}
       </div>

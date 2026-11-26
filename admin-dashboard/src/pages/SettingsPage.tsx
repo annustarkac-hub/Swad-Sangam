@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth";
 import Modal from "../components/Modal";
@@ -118,7 +119,7 @@ export default function SettingsPage() {
                   <span key={j} className="row" style={{ display: "inline-flex", marginRight: 12 }}>
                     <input type="time" style={{ width: 120 }} value={sl.open} onChange={(e) => setHours(day, j, "open", e.target.value)} />–
                     <input type="time" style={{ width: 120 }} value={sl.close} onChange={(e) => setHours(day, j, "close", e.target.value)} />
-                    <button className="link" onClick={() => { const h = { ...s.opening_hours, [day]: slots.filter((_, x) => x !== j) }; set("opening_hours", h); }}>✕</button>
+                    <button className="ghost icon" aria-label={`Remove ${d} hours ${j + 1}`} onClick={() => { const h = { ...s.opening_hours, [day]: slots.filter((_, x) => x !== j) }; set("opening_hours", h); }}><X size={18} aria-hidden /></button>
                   </span>
                 ))}
                 <button className="link" onClick={() => set("opening_hours", { ...s.opening_hours, [day]: [...slots, { open: "06:00", close: "23:00" }] })}>+ add hours</button>

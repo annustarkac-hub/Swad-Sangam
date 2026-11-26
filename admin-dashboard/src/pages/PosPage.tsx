@@ -1,3 +1,4 @@
+import { Gift, X } from "lucide-react";
 import QRCode from "qrcode";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { playAlert } from "../lib/alert";
@@ -131,7 +132,7 @@ export default function PosPage() {
   return (
     <div>
       {payer && <CashBar cash={cash} onChange={loadBills} />}
-      {err && <div className="banner danger" role="alert">{err} <button className="link" onClick={() => setErr(null)}>✕</button></div>}
+      {err && <div className="banner danger" role="alert">{err} <button className="ghost icon" aria-label="Dismiss" onClick={() => setErr(null)}><X size={18} aria-hidden /></button></div>}
       <ServiceRequests />
       <div className="tabs pos-tabs">
         {(["bills", "menu", "cart"] as const).map((t) => (
@@ -160,7 +161,7 @@ export default function PosPage() {
                   else { setSelected(null); setType("DINE_IN"); setTable(t.name); }
                 }}
                 title={t.status === "CLEANING" ? "Tap when cleaned" : t.status}>
-                {t.name} {t.status === "CLEANING" ? "🧹" : ""}
+                {t.name}{t.status === "CLEANING" ? " · clean" : ""}
               </button>
             ))}
             {tables.length === 0 && <span className="small muted">Add tables on the Tables page.</span>}
@@ -250,7 +251,7 @@ export default function PosPage() {
                 <button className="secondary small" onClick={() => setCart((c) => c.flatMap((x) => (x === l ? (x.qty > 1 ? [{ ...x, qty: x.qty - 1 }] : []) : [x])))}>−</button>
                 <b>{l.qty}</b>
                 <button className="secondary small" onClick={() => setCart((c) => c.map((x) => (x === l ? { ...x, qty: x.qty + 1 } : x)))}>+</button>
-                {manager && <button className="link small" title="Complimentary" onClick={() => setCart((c) => c.map((x) => (x === l ? { ...x, complimentary: !x.complimentary } : x)))}>🎁</button>}
+                {manager && <button className="ghost icon" title="Complimentary" aria-label={`Make ${l.item.name} complimentary`} aria-pressed={l.complimentary} onClick={() => setCart((c) => c.map((x) => (x === l ? { ...x, complimentary: !x.complimentary } : x)))}><Gift size={18} aria-hidden /></button>}
               </div>
             </div>
           ))}
@@ -413,7 +414,7 @@ function ServiceRequests() {
     return () => { clearInterval(t); void supabase.removeChannel(ch); };
   }, [load]);
   if (!rows.length) return null;
-  const label: Record<string, string> = { CALL_WAITER: "🙋 Calling waiter", REQUEST_BILL: "🧾 Wants the bill", WATER: "💧 Needs water" };
+  const label: Record<string, string> = { CALL_WAITER: "Calling waiter", REQUEST_BILL: "Wants the bill", WATER: "Needs water" };
   return (
     <div className="banner warn row">
       {rows.map((r) => (
@@ -483,7 +484,7 @@ function PaymentModal({ bill, customers, upiId, onClose, onPaid }: { bill: Order
           ) : r.tender !== "CASH" && (
             <input style={{ maxWidth: 160 }} placeholder="UPI / card ref" value={r.reference} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, reference: e.target.value } : x)))} />
           )}
-          {rows.length > 1 && <button className="link" onClick={() => setRows(rows.filter((_, j) => j !== i))}>✕</button>}
+          {rows.length > 1 && <button className="link" aria-label="Remove this payment row" onClick={() => setRows(rows.filter((_, j) => j !== i))}><X size={18} aria-hidden /></button>}
         </div>
       ))}
       <button className="secondary small" onClick={() => setRows([...rows, { tender: "UPI", amount: fromPaise(Math.max(0, due - entered)), reference: "", customerId: "" }])}>+ Split payment</button>
